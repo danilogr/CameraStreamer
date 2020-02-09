@@ -3,11 +3,21 @@
 
 #include <iostream>
 #include <k4a/k4a.h>
+#include "TCPServer.h"
 
 using namespace std;
 int main()
 {
+	TCPServer server(27015);
+	server.Run();
+
+
 	cout << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
+
+	while (getchar() != 'q')
+	{
+	}
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
