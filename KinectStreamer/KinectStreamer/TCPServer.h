@@ -12,6 +12,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
+#include "Logger.h"
+
 using boost::asio::ip::tcp;
 
 /*
@@ -24,27 +26,42 @@ class TCPServer
 {
 public:
 	TCPServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
-		std::cout << "[TCPServer] - Listening on " << port << std::endl;
+		Logger::Log("TCPServer") << "Listening on " << port << std::endl;
 	};
 	~TCPServer()
 	{
-		// stops io service
-		io_service.stop();
-		
-		// joins the thread
-		if (sThread)
-			sThread->join();
+		Stop();
+	}
 
-		// any client still connected?
-		for (std::shared_ptr<tcp::socket> client : clients)
-		{
-			client->close();
-		}
+	bool isRunning()
+	{
+
 	}
 
 	void Run()
 	{
 		sThread.reset(new std::thread(std::bind(&TCPServer::thread_main, this)));
+	}
+
+	void Stop()
+	{
+
+		// stops io service
+		io_service.stop();
+
+		// is it running ?
+		if (sThread && sThread->joinable())
+			sThread->join();
+
+		// any clients connected?
+		for (std::shared_ptr<tcp::socket> client : clients)
+		{
+			client->close();
+		}
+
+		// erase list of clients
+		clients.clear();
+
 	}
 
 
@@ -104,11 +121,10 @@ private:
 	std::set<std::shared_ptr< tcp::socket> > clients;
 	std::mutex clientSetMutex;
 
-
 	// this method implements the main thread for TCPServer
 	void thread_main()
 	{
-		std::cout << "[TCPServer] - Waiting for connections" << std::endl;
+		Logger::Log("TCPServer") << "Waiting for connections" << std::endl;
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 	}
@@ -134,7 +150,7 @@ private:
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
 
-			std::cout << "[TCPServer] - New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
+			Logger::Log("TCPServer") << "New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
 
 		}
 
@@ -148,7 +164,7 @@ private:
 		// there's nothing much we can do here besides remove the client if we get an error sending to it
 		if (error)
 		{
-			std::cout << "[TCPServer] - Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+			Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
 			{
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
 				clients.erase(client);

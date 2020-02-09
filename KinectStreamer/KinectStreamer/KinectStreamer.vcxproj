@@ -187,11 +187,14 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AzureKinect.cpp" />
     <ClCompile Include="KinectStreamer.cpp" />
     <ClCompile Include="TCPServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AzureKinect.h" />
     <ClInclude Include="Frame.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="TCPServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

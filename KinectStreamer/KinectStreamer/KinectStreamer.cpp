@@ -4,19 +4,40 @@
 #include <iostream>
 #include <k4a/k4a.h>
 #include "TCPServer.h"
+#include "Logger.h"
 
 using namespace std;
 int main()
 {
-	TCPServer server(27015);
-	server.Run();
+	
+	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
-
-	cout << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
-
-	while (getchar() != 'q')
+	// no devices installed ?
+	if (k4a_device_get_installed_count() == 0)
 	{
+		Logger::Log("Main") << "No AzureKinect devices connected ... exiting" << endl;
+		return 1;
 	}
+
+	// main application loop where it waits for a user key to stop everything
+	{
+		TCPServer server(27015);
+		server.Run();
+
+		// starts kinect azure
+
+
+		std::cout << endl;
+		Logger::Log("Main") << "To close this application, press 'q'" << endl;
+
+		// waits for user command to exit
+		while (getchar() != 'q')
+		{
+			
+		}
+		Logger::Log("Main") << "User pressed 'q'. Exiting... " << endl;
+	}
+
 
 }
 
