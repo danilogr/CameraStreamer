@@ -8,6 +8,8 @@
 #include <chrono>
 #include <vector>
 
+#include "Frame.h"
+
 class AzureKinect
 {
 	std::shared_ptr<std::thread> sThread;
@@ -19,8 +21,6 @@ class AzureKinect
 	k4a::calibration kinectCameraCalibration;
 	k4a::transformation kinectCameraTransformation;
 
-
-
 	k4a_calibration_intrinsic_parameters_t* intrinsics_color;
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
 
@@ -29,7 +29,12 @@ class AzureKinect
 
 	std::string kinectDeviceSerial;
 
+	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
+
 public:
+
+	FrameReadyCallback onFramesReady;
+
 	AzureKinect() : thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
 		intrinsics_color(nullptr), intrinsics_depth(nullptr), getFrameTimeout(1000)
 	{
@@ -229,13 +234,16 @@ private:
 
 			try
 			{
+
 				while (thread_running)
 				{
-					k4a::capture currentCapture;
+					k4a::capture currentCapture; // this object garantess a release at the end of the 
+
 					if (kinectDevice.get_capture(&currentCapture, getFrameTimeout))
 					{
 						// get color frame
 						k4a::image colorFrame = currentCapture.get_color_image();
+						//colorFrame.get_i
 
 						// get depth frame
 						k4a::image depthFrame = currentCapture.get_depth_image();
@@ -243,8 +251,16 @@ private:
 						// transform color to depth
 						k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
 
+						// copies images to Frame
+						std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorInDepthFrame.get_width_pixels(), colorInDepthFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
+						memcpy(sharedColorFrame->data, colorInDepthFrame.get_buffer(), sharedColorFrame->size());
+
+						std::shared_ptr<Frame> sharedDepthFrame = Frame::Create(depthFrame.get_width_pixels(), depthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
+						memcpy(sharedDepthFrame->data, depthFrame.get_buffer(), sharedDepthFrame->size());
+
 						// invoke callback
-						
+						if (onFramesReady)
+							onFramesReady(colorInDepthFrame.get_device_timestamp(), sharedColorFrame, sharedDepthFrame);
 
 						// counts frames and restarts chances to get a new frame
 						framesCaptured++;

@@ -50,6 +50,9 @@ struct FrameType
 };
 
 struct NFOVUnbinnedFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint16_t) * 1); } };
+struct RGBX2DepthFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint8_t) * 3); } };
+
+struct RGBXFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint8_t) * 8); } };
 //struct SVGAColorFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 3); } };
 //struct SVGABWFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 1); } };
 //struct VGAColorFrameDim { constexpr static unsigned int Size() { return (640 * 480 * sizeof(uint8_t) * 3); } };
@@ -59,6 +62,8 @@ typedef boost::singleton_pool<NFOVUnbinnedFrameDim, NFOVUnbinnedFrameDim::Size()
 //typedef boost::singleton_pool<SVGABWFrameDim, SVGABWFrameDim::Size()> SVGABWMemoryPool;
 //typedef boost::singleton_pool<VGAColorFrameDim, VGAColorFrameDim::Size()> VGAMemoryPool;
 typedef boost::singleton_pool<PassiveIRFrameDim, PassiveIRFrameDim::Size()> PassiveIRFrameMemoryPool;
+typedef boost::singleton_pool<RGBXFrameDim720PFrameDim, RGBXFrameDim720PFrameDim::Size()> RGBXFrameDim720PMemoryPool;
+typedef boost::singleton_pool<RGBX2DepthFrameDim, RGBX2DepthFrameDim::Size()> RGBX2DepthMemoryPool;
 
 class Frame : boost::noncopyable
 {
@@ -74,6 +79,14 @@ protected:
 
 		case PassiveIRFrameDim::Size():
 			data = (unsigned char*)PassiveIRFrameMemoryPool::malloc();
+			break;
+
+		case RGBXFrameDim720PFrameDim::Size():
+			data = (unsigned char*)RGBXFrameDim720PMemoryPool::malloc();
+			break;
+
+		case RGBX2DepthFrameDim::Size():
+			data = (unsigned char*)RGBX2DepthMemoryPool::malloc();
 			break;
 
 		default:
@@ -132,6 +145,14 @@ public:
 
 		case PassiveIRFrameDim::Size():
 			PassiveIRFrameMemoryPool::free(data);
+			break;
+
+	 	case RGBXFrameDim720PFrameDim::Size():
+			RGBXFrameDim720PMemoryPool::free(data);
+			break;
+
+		case RGBX2DepthFrameDim::Size():
+			RGBX2DepthMemoryPool::free(data);
 			break;
 
 		default:
