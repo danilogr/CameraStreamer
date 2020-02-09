@@ -35,7 +35,7 @@ public:
 
 	bool isRunning()
 	{
-
+		return (sThread && sThread->joinable());
 	}
 
 	void Run()

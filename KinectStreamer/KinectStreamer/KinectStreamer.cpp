@@ -4,6 +4,7 @@
 #include <iostream>
 #include <k4a/k4a.h>
 #include "TCPServer.h"
+#include "AzureKinect.h"
 #include "Logger.h"
 
 using namespace std;
@@ -24,7 +25,10 @@ int main()
 		TCPServer server(27015);
 		server.Run();
 
-		// starts kinect azure
+		AzureKinect kinectDevice;
+
+		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+		kinectDevice.Run(config);
 
 
 		std::cout << endl;

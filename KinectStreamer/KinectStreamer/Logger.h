@@ -22,6 +22,6 @@ public:
 		localtime_s(&buf, &t);
 
 		// prints to the console
-		return (std::cout << std::put_time(&buf, "%d-%m-%Y %H-%M-%S") << '[' << std::setfill(' ') << std::setw(10) << module << "] - ");
+		return (std::cout << std::put_time(&buf, "%m/%d/%Y %H:%M:%S ") << '[' << std::setfill(' ') << std::setw(10) << module << "] - ");
 	}
 };
