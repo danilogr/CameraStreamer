@@ -28,6 +28,12 @@ int main()
 		AzureKinect kinectDevice;
 
 		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+		config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
+		config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
+		config.color_resolution = K4A_COLOR_RESOLUTION_720P;     // 1280x720
+		config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
+		config.synchronized_images_only = true;					 // depth and image should be synchronized
+
 		kinectDevice.Run(config);
 
 
