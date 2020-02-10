@@ -29,6 +29,7 @@ class AzureKinect
 
 	std::string kinectDeviceSerial;
 
+	// timestamp, color, depth
 	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
 
 public:

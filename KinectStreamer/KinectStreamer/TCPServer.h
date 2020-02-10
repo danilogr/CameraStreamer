@@ -11,6 +11,7 @@
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <opencv2/opencv.hpp>
 
 #include "Logger.h"
 
@@ -65,36 +66,41 @@ public:
 	}
 
 
-
 	// sends a color and depth frame to all clients connected
-	void ForwardToAll(unsigned int width, unsigned int height,
-		              std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+	void ForwardToAll(std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 	{
+		// if not running
+		if (!sThread) return;
+
+		// first, let's make sure that this method gets called from the same thread that
+		// is running the server
+		if (std::this_thread::get_id() != sThread->get_id())
+		{
+			this->io_service.post(std::bind(&TCPServer::ForwardToAll, this, color, depth));
+			return;
+		}
+
 		using namespace std::placeholders; // for  _1, _2, ...
 
+		// converts color to jpeg
+		cv::Mat colorImage(color->getHeight(), color->getWidth(), CV_8UC4, color->getData());
+		std::vector<uchar> encodedColorImage;
+		cv::imencode(".jpg", colorImage, encodedColorImage);
+
 		// prepares the message
-		boost::asio::streambuf response;
-		std::ostream message(&response);
+		std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(4*sizeof(uint32_t) + encodedColorImage.size() + depth->size());
 
 		// header [width][height][rgb length][depth length]
-		uint32_t toWrite = width;
-		message.write((const char * )& toWrite, sizeof(toWrite));
-
-		toWrite = height;
-		message.write((const char * )& toWrite, sizeof(toWrite));
-
-		toWrite = color->size();
-		message.write((const char *)& toWrite, sizeof(toWrite));
-
-		toWrite = depth->size();
-		message.write((const char *)& toWrite, sizeof(toWrite));
+		*((uint32_t*) & (*message)[0]) = color->getWidth();
+		*((uint32_t*) & (*message)[4]) = color->getHeight();
+		*((uint32_t*) & (*message)[8]) = encodedColorImage.size();
+		*((uint32_t*) & (*message)[12]) =  depth->size();
 
 		// write color frame
-		message.write((const char *) color->getData(), color->size());
+		memcpy((unsigned char *) &(*message)[16], & encodedColorImage[0], encodedColorImage.size());
 
 		// write depth frame
-		message.write((const char*) depth->getData(), depth->size());
-
+		memcpy((unsigned char *) &(*message)[16 + encodedColorImage.size()], (const char*)depth->getData(), depth->size());
 
 		// sends to all clients
 		{
@@ -102,7 +108,7 @@ public:
 
 			for (std::shared_ptr< tcp::socket> client : clients)
 			{
-				boost::asio::async_write(*client, response, std::bind(&TCPServer::write_done, this, client, _1, _2));
+				boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPServer::write_done, this, client, message, _1, _2));
 			}
 		}
 	}
@@ -159,15 +165,19 @@ private:
 	}
 
 	// called when done writing to cleint
-	void write_done(std::shared_ptr<tcp::socket> client, const boost::system::error_code& error, std::size_t bytes_transferred)
+	void write_done(std::shared_ptr<tcp::socket> client, std::shared_ptr < std::vector<uchar> > buffer,
+		            const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
 		// there's nothing much we can do here besides remove the client if we get an error sending to it
 		if (error)
 		{
-			Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
 			{
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
-				clients.erase(client);
+				if (clients.find(client) != clients.end())
+				{
+					Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+					clients.erase(client);
+				}
 			}
 		}
 	}

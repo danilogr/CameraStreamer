@@ -1,11 +1,30 @@
-// KinectStreamer.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+// KinectStreamer.cpp
+// author: Danilo Gasques
+// email: danilod100 at gmail.com / gasques at ucsd.edu
+// danilogasques.com
 
 #include <iostream>
 #include <k4a/k4a.h>
+#include <chrono>
+
 #include "TCPServer.h"
 #include "AzureKinect.h"
+#include "Frame.h"
 #include "Logger.h"
+
+#include <opencv2/opencv.hpp>
+
+
+void OnFrameReadyCallback(std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+{
+	cv::Mat colorImage(color->getHeight(), color->getWidth(), CV_8UC4, color->getData());
+	cv::Mat depthImage(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData());
+
+	cv::imshow("Color", colorImage);
+	cv::imshow("Depth", depthImage);
+	cv::waitKey(-1);
+}
+
 
 using namespace std;
 int main()
@@ -22,10 +41,14 @@ int main()
 
 	// main application loop where it waits for a user key to stop everything
 	{
-		TCPServer server(27015);
+		TCPServer server(3614);
 		server.Run();
 
 		AzureKinect kinectDevice;
+		kinectDevice.onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+		{
+			server.ForwardToAll(color, depth);
+		};
 
 		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
 		config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
@@ -51,13 +74,3 @@ int main()
 
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
