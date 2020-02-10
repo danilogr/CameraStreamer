@@ -64,9 +64,21 @@ int main()
 		Logger::Log("Main") << "To close this application, press 'q'" << endl;
 
 		// waits for user command to exit
-		while (getchar() != 'q')
+		bool exit = false;
+		while (!exit)
 		{
-			
+			switch (getchar())
+			{
+				case '+':
+					kinectDevice.AdjustExposureBy(1);
+					break;
+				case '-':
+					kinectDevice.AdjustExposureBy(-1);
+					break;
+				case 'q':
+					exit = true;
+					break;
+			}
 		}
 		Logger::Log("Main") << "User pressed 'q'. Exiting... " << endl;
 	}

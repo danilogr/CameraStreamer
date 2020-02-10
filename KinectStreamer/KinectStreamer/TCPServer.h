@@ -7,6 +7,8 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <map>
+#include <queue>
 #include <thread>
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
@@ -80,8 +82,6 @@ public:
 			return;
 		}
 
-		using namespace std::placeholders; // for  _1, _2, ...
-
 		// converts color to jpeg
 		cv::Mat colorImage(color->getHeight(), color->getWidth(), CV_8UC4, color->getData());
 		std::vector<uchar> encodedColorImage;
@@ -91,9 +91,9 @@ public:
 		std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(4*sizeof(uint32_t) + encodedColorImage.size() + depth->size());
 
 		// header [width][height][rgb length][depth length]
-		*((uint32_t*) & (*message)[0]) = color->getWidth();
-		*((uint32_t*) & (*message)[4]) = color->getHeight();
-		*((uint32_t*) & (*message)[8]) = encodedColorImage.size();
+		*((uint32_t*) & (*message)[0])  = color->getWidth();
+		*((uint32_t*) & (*message)[4])  = color->getHeight();
+		*((uint32_t*) & (*message)[8])  = encodedColorImage.size();
 		*((uint32_t*) & (*message)[12]) =  depth->size();
 
 		// write color frame
@@ -108,7 +108,17 @@ public:
 
 			for (std::shared_ptr< tcp::socket> client : clients)
 			{
-				boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPServer::write_done, this, client, message, _1, _2));
+				// adds message to client Q
+				clientsQs[client].push(message);
+
+				// is any write pending ?
+				if (clientsQs[client].size() == 1)
+				{
+					write_to_client_async(client);
+				}
+				else {
+					Logger::Log("TCPServer") << clientsQs[client].size() << " pending writes to " << client->remote_endpoint().port() << std::endl;
+				}
 			}
 		}
 	}
@@ -123,8 +133,10 @@ private:
 	// pointer to the thread that will be managing client connections
 	std::shared_ptr<std::thread> sThread;
 
+	// TODO: create a class for clients instead of keeping everything here
 	// set with all clients currently connected to the server
 	std::set<std::shared_ptr< tcp::socket> > clients;
+	std::map < std::shared_ptr< tcp::socket>, std::queue < std::shared_ptr < std::vector<uchar> > > > clientsQs;
 	std::mutex clientSetMutex;
 
 	// this method implements the main thread for TCPServer
@@ -155,9 +167,9 @@ private:
 		{
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
+			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
 
 			Logger::Log("TCPServer") << "New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
-
 		}
 
 		// accepts a new connection
@@ -168,6 +180,8 @@ private:
 	void write_done(std::shared_ptr<tcp::socket> client, std::shared_ptr < std::vector<uchar> > buffer,
 		            const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
+		
+
 		// there's nothing much we can do here besides remove the client if we get an error sending to it
 		if (error)
 		{
@@ -176,11 +190,37 @@ private:
 				if (clients.find(client) != clients.end())
 				{
 					Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+					clientsQs.erase(client);
 					clients.erase(client);
 				}
 			}
+			return;
 		}
+
+		// pops the last read
+		clientsQs[client].pop();
+
+		// moves on
+		write_to_client_async(client);
+
 	}
+
+	void write_to_client_async(std::shared_ptr<tcp::socket> client)
+	{
+		using namespace std::placeholders; // for  _1, _2, ...
+
+				// nothing to write -> done with asynchronous writings
+		if (!clientsQs[client].size())
+			return;
+
+		// something to write? let's pop it!
+		std::shared_ptr<std::vector<uchar > > message = clientsQs[client].back();
+
+		// starts writing for this client
+		boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPServer::write_done, this, client, message, _1, _2));
+	}
+
+
 
 	//void async_client_read()
 	//{
