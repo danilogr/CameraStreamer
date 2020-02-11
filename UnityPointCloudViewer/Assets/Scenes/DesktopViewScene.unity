@@ -309,10 +309,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91fcb72bfca2b1e48884f86df0058ce2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CoordinateSystemCenter: {fileID: 0}
-  RGBTextureObject: {fileID: 0}
-  DepthTextureObject: {fileID: 0}
-  pointSize: 0.005
+  RGBTextureObject: {fileID: 1878950441}
+  DepthTextureObject: {fileID: 7885845616680323663}
+  pointSize: 0.03
 --- !u!114 &1316024452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -342,8 +341,8 @@ MonoBehaviour:
     m_TypeName: MeshReadyEvent, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
       PublicKeyToken=null
   TestLocalNetwork: 0
-  HostIp: 
-  HostPort: 27015
+  HostIp: 127.0.0.1
+  HostPort: 3614
   FreezeCanonical: 0
 --- !u!1 &1878950441
 GameObject:
@@ -363,7 +362,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1878950442
 Transform:
   m_ObjectHideFlags: 0
@@ -510,5 +509,16 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1842393544460802246, guid: 8a4481f7aa846cc4d82726b82376f92a,
+        type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8a4481f7aa846cc4d82726b82376f92a, type: 3}
+--- !u!1 &7885845616680323663 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7885845616680323663, guid: 8a4481f7aa846cc4d82726b82376f92a,
+    type: 3}
+  m_PrefabInstance: {fileID: 5228812830860834992}
+  m_PrefabAsset: {fileID: 0}

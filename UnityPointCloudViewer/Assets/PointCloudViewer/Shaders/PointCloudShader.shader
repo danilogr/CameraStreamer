@@ -14,15 +14,18 @@ Shader "PointCloudViewer/PointCloudShader"
 		_ColorTex("Color Channel", 2D) = "black" {}
 		_ProjectionTex("Point Projection Channel", 2D) = "black" {}
 		_PointSize("Point Size", Float) = 0.0005
+		_Alpha("Alpha", Range(0.00, 1.00)) = 0.8
 	}
 		SubShader
 		{
-			Tags { "RenderType" = "Opaque" }
+			Blend SrcAlpha OneMinusSrcAlpha
+			Tags { "Queue" = "Transparent" "IgnoreProjector" = "True"  "RenderType" = "Transparent" }
+			
 			Pass
 			{
 				CGPROGRAM
 				#pragma vertex vert
-				#pragma fragment frag
+				#pragma fragment frag alpha
 				#pragma geometry geom
 				// make fog work
 				//#pragma multi_compile_fog
@@ -61,6 +64,7 @@ Shader "PointCloudViewer/PointCloudShader"
 				uniform float4 _DepthTex_TexelSize;
 				//uniform float _PointCastTable[640*576];
 				half _PointSize;
+				float _Alpha;
 
 				v2g vert(appdata v)
 				{
@@ -96,55 +100,10 @@ Shader "PointCloudViewer/PointCloudShader"
 					return o;
 				}
 
-				/*[maxvertexcount(1)]
-				void geom(point v2g IN[1], inout PointStream <g2f> pointStream)
-				{
-					g2f o;
-
-
-					o.vertex = UnityObjectToClipPos(IN[0].vertex);
-
-					o.uv = IN[0].uv;
-
-					pointStream.Append(o);
-				}*/
-
 				// "point" as input, output cube
 				[maxvertexcount(CVC)] // CVC refers to Cube Vectex Count - 36
 				void geom(point v2g p[1], inout TriangleStream<g2f> triStream)
 				{
-					/* depreciated - only render square instead of cube - not visible certain angle
-					float3 up = float3(0, 1, 0);
-					float3 look = _WorldSpaceCameraPos - p[0].vertex;
-					look.y = 0;
-					look = normalize(look);
-					float3 right = cross(up, look);
-
-					float halfS = 0.5f * _PointSize;
-
-					float4 v[4];
-					v[0] = float4(p[0].vertex + halfS * right - halfS * up, 1.0f);
-					v[1] = float4(p[0].vertex + halfS * right + halfS * up, 1.0f);
-					v[2] = float4(p[0].vertex - halfS * right - halfS * up, 1.0f);
-					v[3] = float4(p[0].vertex - halfS * right + halfS * up, 1.0f);
-
-					g2f pIn;
-					pIn.vertex = UnityObjectToClipPos(v[0]);
-					pIn.uv = p[0].uv;
-					triStream.Append(pIn);
-
-					pIn.vertex = UnityObjectToClipPos(v[1]);
-					pIn.uv = p[0].uv;
-					triStream.Append(pIn);
-
-					pIn.vertex = UnityObjectToClipPos(v[2]);
-					pIn.uv = p[0].uv;
-					triStream.Append(pIn);
-
-					pIn.vertex = UnityObjectToClipPos(v[3]);
-					pIn.uv = p[0].uv;
-					triStream.Append(pIn);
-					*/
 					float f = _PointSize / 20.0f; //half size
 
 					const float4 vc[CVC] = { float4(-f,  f,  f, 0.0f), float4(f,  f,  f, 0.0f), float4(f,  f, -f, 0.0f),    //Top                                 
@@ -198,7 +157,10 @@ Shader "PointCloudViewer/PointCloudShader"
 					int i;
 
 					// Assign new vertices positions in view space
-					for (i = 0; i < CVC; i++) { v[i].vertex = UnityObjectToClipPos(p[0].vertex + vc[i]); v[i].uv = p[0].uv;}
+					for (i = 0; i < CVC; i++) {
+						v[i].vertex = UnityObjectToClipPos(p[0].vertex + vc[i]);
+						v[i].uv = p[0].uv;
+					}
 
 					// Build the cube tile by submitting triangle strip vertices
 					for (i = 0; i < CVC / 3; i++)
@@ -222,12 +184,12 @@ Shader "PointCloudViewer/PointCloudShader"
 					//float depth = tex2D(_DepthTex, inv_uv).r;
 					//fixed4 col = fixed4(depth, depth, depth, 1.0);
 
-					// To show COLOR
+					// To show COLOR (alpha component only matters when not using geometry shader)
 					fixed4 col = tex2D(_ColorTex, i.uv);
-				//fixed4 col = fixed4(0.8f,0.1f,0.1f,1.0f);
+					col.a = _Alpha;
 
 				return col;
-			}
+				}
 			ENDCG
 		}
 		}

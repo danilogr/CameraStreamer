@@ -103,6 +103,8 @@ public class ReconstructionTCPClient : MonoBehaviour
                     // width, height, color buffer, depth buffer
                     MeshReady.Invoke(t.Item1, t.Item2, t.Item3, t.Item4);
                 }
+
+                t = null;
             }
 
         }
@@ -174,14 +176,17 @@ public class ReconstructionTCPClient : MonoBehaviour
                         // Get a stream object for reading
                         while (!killThreadRequested)
                         {
-                            // Testing the Color Receiving
+                        // Testing the Color Receiving
 
-                            // expected received stream - width + height+ rbgsize + depthsize + rgbdata + depthdata
-                            // TODO: Fix each one of these reads.
-                            stream.Read(widthLengthHeader, 0, widthLengthHeader.Length);     // read width value at 0
-                            stream.Read(heightLengthHeader, 0, heightLengthHeader.Length);   // read height value at 0
-                            stream.Read(rgbLengthHeader, 0, rgbLengthHeader.Length);         // read rbgsize value at 0
-                            stream.Read(depthLengthHeader, 0, depthLengthHeader.Length);     // read depthsize value at 0
+                        // expected received stream - width + height+ rbgsize + depthsize + rgbdata + depthdata
+                        // TODO: Fix each one of these reads.
+                        //int offset = 0;
+                        //while (offset < widthLengthHeader.Length)
+                        //
+                        stream.Read(widthLengthHeader, 0, widthLengthHeader.Length);     // read width value at 0
+                        stream.Read(heightLengthHeader, 0, heightLengthHeader.Length);   // read height value at 0
+                        stream.Read(rgbLengthHeader, 0, rgbLengthHeader.Length);         // read rbgsize value at 0
+                        stream.Read(depthLengthHeader, 0, depthLengthHeader.Length);     // read depthsize value at 0
 
                             // convert to int (UInt32LE)
                             UInt32 width = BitConverter.ToUInt32(widthLengthHeader, 0);
@@ -191,16 +196,14 @@ public class ReconstructionTCPClient : MonoBehaviour
 
                            // var ImageWidth = Convert.ToInt32(width);
                            // var ImageHeight = Convert.ToInt32(height);
-                           // Debug.Log("" + ImageWidth + "x" + ImageHeight + " RGB Length: " + rgb_length + "   Depth Length: " + depth_length);
+                           //Debug.Log("" + width + "x" + height + " RGB Length: " + rgb_length + "   Depth Length: " + depth_length);
 
                             Byte[] rgbbytes = new byte[rgb_length];
                             Byte[] depthbytes = new byte[depth_length];
 
-                            // offset to buffer data
-                            int offset = 0;
-
                             // keeps reading until a full message is received
                             // reading rgb data
+                            int offset = 0;
                             while (offset < rgbbytes.Length)
                             {
                                 //Debug.Log("Getting RGB Bytes");

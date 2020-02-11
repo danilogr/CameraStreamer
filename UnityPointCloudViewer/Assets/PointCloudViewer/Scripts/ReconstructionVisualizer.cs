@@ -94,7 +94,7 @@ public class ReconstructionVisualizer : MonoBehaviour
 
     void ResetMesh(int width, int height)
     {
-
+        Debug.Log(string.Format("[ReconstructionVisualizer] - Updating point cloud mesh to {0}x{1} pixels", width, height));
         pointCloudMesh.Clear();
 
         pointCloudVertices = new Vector3[width * height];
@@ -155,6 +155,15 @@ public class ReconstructionVisualizer : MonoBehaviour
             depthRenderer.material.SetTexture("_ProjectionTex", projectionTexture);
             depthRenderer.material.SetFloat("_PointSize", pointSize);
 
+            // creates a new texture
+            colorTexture = new Texture2D(width, height)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Point,
+            };
+
+            colorRenderer.material.mainTexture = colorTexture;
+            depthRenderer.material.SetTexture("_ColorTex", colorTexture);
         }
         else if (depthTexture.width != width || depthTexture.height != height)
         {
@@ -168,17 +177,21 @@ public class ReconstructionVisualizer : MonoBehaviour
             depthRenderer.material.SetTexture("_DepthTex", depthTexture);
             depthRenderer.material.SetFloat("_PointSize", pointSize);
             // associate texture with shader
+
+            // creates a new texture
+            colorTexture = new Texture2D(width, height)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Point,
+            };
+
+            colorRenderer.material.mainTexture = colorTexture;
+            depthRenderer.material.SetTexture("_ColorTex", colorTexture);
         }
 
         // load color texture
-        colorTexture = new Texture2D(width, height)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Point,
-        };
         colorTexture.LoadImage(colorBuffer, false);
-        colorRenderer.material.mainTexture = colorTexture;
-        depthRenderer.material.SetTexture("_ColorTex", colorTexture);
+
 
         // load depth texture
         depthTexture.LoadRawTextureData(depthBuffer);
