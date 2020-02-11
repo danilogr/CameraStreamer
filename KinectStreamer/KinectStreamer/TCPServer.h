@@ -16,6 +16,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "Logger.h"
+#include "Statistics.h"
 
 using boost::asio::ip::tcp;
 
@@ -60,6 +61,11 @@ public:
 		for (std::shared_ptr<tcp::socket> client : clients)
 		{
 			client->close();
+			clientsStatistics[client].packetsDropped += clientsQs[client].size();
+			Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+			Logger::Log("TCPServer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << ":"
+				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
+				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 		}
 
 		// erase list of clients
@@ -108,16 +114,20 @@ public:
 
 			for (std::shared_ptr< tcp::socket> client : clients)
 			{
+				// pops any message pending 
+				while (clientsQs[client].size() > 1)
+				{
+					clientsQs[client].pop();
+					clientsStatistics[client].packetsDropped++;
+				}
+
 				// adds message to client Q
 				clientsQs[client].push(message);
-
-				// is any write pending ?
+				
 				if (clientsQs[client].size() == 1)
 				{
+					// only message? let's send it
 					write_to_client_async(client);
-				}
-				else {
-					Logger::Log("TCPServer") << clientsQs[client].size() << " pending writes to " << client->remote_endpoint().port() << std::endl;
 				}
 			}
 		}
@@ -137,6 +147,7 @@ private:
 	// set with all clients currently connected to the server
 	std::set<std::shared_ptr< tcp::socket> > clients;
 	std::map < std::shared_ptr< tcp::socket>, std::queue < std::shared_ptr < std::vector<uchar> > > > clientsQs;
+	std::map < std::shared_ptr< tcp::socket>, Statistics > clientsStatistics;
 	std::mutex clientSetMutex;
 
 	// this method implements the main thread for TCPServer
@@ -168,6 +179,7 @@ private:
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
 			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
+			clientsStatistics[newClient] = Statistics();								// starts trackings stats for this client
 
 			Logger::Log("TCPServer") << "New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
 		}
@@ -180,8 +192,6 @@ private:
 	void write_done(std::shared_ptr<tcp::socket> client, std::shared_ptr < std::vector<uchar> > buffer,
 		            const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
-		
-
 		// there's nothing much we can do here besides remove the client if we get an error sending to it
 		if (error)
 		{
@@ -189,9 +199,16 @@ private:
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
 				if (clients.find(client) != clients.end())
 				{
+					clientsStatistics[client].packetsDropped++;
+
 					Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+					Logger::Log("TCPServer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " --> "
+						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
+						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
+					
 					clientsQs.erase(client);
 					clients.erase(client);
+					clientsStatistics.erase(client);
 				}
 			}
 			return;
@@ -199,17 +216,18 @@ private:
 
 		// pops the last read
 		clientsQs[client].pop();
+		clientsStatistics[client].packetsSent++;
+		clientsStatistics[client].bytesSent += bytes_transferred;
 
 		// moves on
 		write_to_client_async(client);
-
 	}
 
 	void write_to_client_async(std::shared_ptr<tcp::socket> client)
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 
-				// nothing to write -> done with asynchronous writings
+		// nothing to write -> done with asynchronous writings
 		if (!clientsQs[client].size())
 			return;
 
@@ -219,14 +237,6 @@ private:
 		// starts writing for this client
 		boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPServer::write_done, this, client, message, _1, _2));
 	}
-
-
-
-	//void async_client_read()
-	//{
-    //
-	//}
-
 
 };
 

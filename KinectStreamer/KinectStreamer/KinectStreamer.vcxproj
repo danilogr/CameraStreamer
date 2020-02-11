@@ -195,6 +195,7 @@
     <ClInclude Include="AzureKinect.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="Statistics.h" />
     <ClInclude Include="TCPServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
