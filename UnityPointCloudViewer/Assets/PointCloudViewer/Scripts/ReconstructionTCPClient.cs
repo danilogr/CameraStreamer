@@ -40,6 +40,8 @@ public class ReconstructionTCPClient : MonoBehaviour
 
     bool killThreadRequested = false;
 
+    public bool dropQueuedFrames = true;
+
 
 
     [HideInInspector]
@@ -87,25 +89,42 @@ public class ReconstructionTCPClient : MonoBehaviour
     private void OnDisable()
     {
         CloseConnection();
+        LogName = "[ReconstructionTCPClient] - ";
     }
 
     // Update is called once per frame
+    long packetsReceived = 0, packetsDropped = 0;
+
     void Update()
     {
-        while (bufferQueue.Count > 0)
+        if (bufferQueue.Count > 0)
         {
+            Queue<Tuple<int, int, byte[], byte[]>> tmpQueue = bufferQueue;
+
+            // changes the bufferQueue to an empty one so that the decoding thread can keep handling it
             lock (bufferQueue)
             {
-                Tuple<int, int, byte[], byte[]> t = bufferQueue.Dequeue();
-                // invokes callback
-                if (MeshReady != null)
-                {
-                    // width, height, color buffer, depth buffer
-                    MeshReady.Invoke(t.Item1, t.Item2, t.Item3, t.Item4);
-                }
-
-                t = null;
+                bufferQueue = new Queue<Tuple<int, int, byte[], byte[]>>();
             }
+
+            // now we can do whatever we want with tmpQueue
+            if (dropQueuedFrames)
+            {
+                packetsDropped += tmpQueue.Count - 1;
+                while (tmpQueue.Count > 1)
+                    tmpQueue.Dequeue();
+            }
+
+            Tuple<int, int, byte[], byte[]> t = tmpQueue.Dequeue();
+            // invokes callback
+            if (MeshReady != null)
+            {
+                // width, height, color buffer, depth buffer
+                MeshReady.Invoke(t.Item1, t.Item2, t.Item3, t.Item4);
+            }
+
+            t = null;
+            
 
         }
 
@@ -141,6 +160,7 @@ public class ReconstructionTCPClient : MonoBehaviour
     {
         bool firstTime = true;
         bool connected = false;
+        DateTime connectionStarted = DateTime.Now;
         // conncets and reads ad infinitum
         while (!killThreadRequested)
         {
@@ -164,18 +184,23 @@ public class ReconstructionTCPClient : MonoBehaviour
 
                 Debug.Log(LogName + "Connected to " + HostIp);
                 statisticsReporter.RecordConnectionEstablished();
+                connectionStarted = DateTime.Now;
 
                 using (NetworkStream stream = socketConnection.GetStream())
                 {
-                        // header of data receiving from server - length of image and depth data
-                        Byte[] widthLengthHeader = new byte[4];
-                        Byte[] heightLengthHeader = new byte[4];
-                        Byte[] rgbLengthHeader = new byte[4];
-                        Byte[] depthLengthHeader = new byte[4];
+                    // header of data receiving from server - length of image and depth data
+                    Byte[] widthLengthHeader = new byte[4];
+                    Byte[] heightLengthHeader = new byte[4];
+                    Byte[] rgbLengthHeader = new byte[4];
+                    Byte[] depthLengthHeader = new byte[4];
+
+                    // starts statistics
+                    packetsDropped = 0;
+                    packetsReceived = 0;
 
                         // Get a stream object for reading
-                        while (!killThreadRequested)
-                        {
+                    while (!killThreadRequested)
+                    {
                         // Testing the Color Receiving
 
                         // expected received stream - width + height+ rbgsize + depthsize + rgbdata + depthdata
@@ -188,73 +213,74 @@ public class ReconstructionTCPClient : MonoBehaviour
                         stream.Read(rgbLengthHeader, 0, rgbLengthHeader.Length);         // read rbgsize value at 0
                         stream.Read(depthLengthHeader, 0, depthLengthHeader.Length);     // read depthsize value at 0
 
-                            // convert to int (UInt32LE)
-                            UInt32 width = BitConverter.ToUInt32(widthLengthHeader, 0);
-                            UInt32 height = BitConverter.ToUInt32(heightLengthHeader, 0);
-                            UInt32 rgb_length = BitConverter.ToUInt32(rgbLengthHeader, 0);
-                            UInt32 depth_length = BitConverter.ToUInt32(depthLengthHeader, 0);
+                        // convert to int (UInt32LE)
+                        UInt32 width = BitConverter.ToUInt32(widthLengthHeader, 0);
+                        UInt32 height = BitConverter.ToUInt32(heightLengthHeader, 0);
+                        UInt32 rgb_length = BitConverter.ToUInt32(rgbLengthHeader, 0);
+                        UInt32 depth_length = BitConverter.ToUInt32(depthLengthHeader, 0);
 
-                           // var ImageWidth = Convert.ToInt32(width);
-                           // var ImageHeight = Convert.ToInt32(height);
-                           //Debug.Log("" + width + "x" + height + " RGB Length: " + rgb_length + "   Depth Length: " + depth_length);
+                        // var ImageWidth = Convert.ToInt32(width);
+                        // var ImageHeight = Convert.ToInt32(height);
+                        //Debug.Log("" + width + "x" + height + " RGB Length: " + rgb_length + "   Depth Length: " + depth_length);
 
-                            Byte[] rgbbytes = new byte[rgb_length];
-                            Byte[] depthbytes = new byte[depth_length];
+                        Byte[] rgbbytes = new byte[rgb_length];
+                        Byte[] depthbytes = new byte[depth_length];
 
-                            // keeps reading until a full message is received
-                            // reading rgb data
-                            int offset = 0;
-                            while (offset < rgbbytes.Length)
+                        // keeps reading until a full message is received
+                        // reading rgb data
+                        int offset = 0;
+                        while (offset < rgbbytes.Length)
+                        {
+                            //Debug.Log("Getting RGB Bytes");
+                            int bytesRead = stream.Read(rgbbytes, offset, rgbbytes.Length - offset); // read from stream
+
+                            //string s = System.Text.Encoding.UTF8.GetString(socketBufferV3, 0, socketBufferV3.Length);
+                            //print(s);
+
+                            // "  If the remote host shuts down the connection, and all available data has been received,
+                            // the Read method completes immediately and return zero bytes. "
+                            // https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.networkstream.read?view=netframework-4.0
+                            if (bytesRead == 0)
                             {
-                                //Debug.Log("Getting RGB Bytes");
-                                int bytesRead = stream.Read(rgbbytes, offset, rgbbytes.Length - offset); // read from stream
-
-                                //string s = System.Text.Encoding.UTF8.GetString(socketBufferV3, 0, socketBufferV3.Length);
-                                //print(s);
-
-                                // "  If the remote host shuts down the connection, and all available data has been received,
-                                // the Read method completes immediately and return zero bytes. "
-                                // https://docs.microsoft.com/en-us/dotnet/api/system.net.sockets.networkstream.read?view=netframework-4.0
-                                if (bytesRead == 0)
-                                {
-                                    // we were disconnected and it is very likely that an exception was thrown; if not, let's throw it and try to reconnect (outer while loop)
-                                    throw new SocketException(995); // WSA_OPERATION_ABORTED
-                                }
-
-                                offset += bytesRead; // updates offset
-
+                                // we were disconnected and it is very likely that an exception was thrown; if not, let's throw it and try to reconnect (outer while loop)
+                                throw new SocketException(995); // WSA_OPERATION_ABORTED
                             }
 
-
-                            // reading depth data
-                            offset = 0; // reset offset
-                            while (offset < depthbytes.Length)
-                            {
-                                //Debug.Log("Getting Depth Bytes");
-                                int bytesRead = stream.Read(depthbytes, offset, depthbytes.Length - offset); // read from stream
-
-                                if (bytesRead == 0)
-                                {
-                                    // we were disconnected and it is very likely that an exception was thrown; if not, let's throw it and try to reconnect (outer while loop)
-                                    throw new SocketException(995); // WSA_OPERATION_ABORTED
-                                }
-
-                                offset += bytesRead; // updates offset
-
-                            }
-
-                            //ushort[] depthData = new UInt16[depthbytes.Length];
-                            //Buffer.BlockCopy(depthbytes, 0, depthData, 0, depthbytes.Length);
-
-                            if (!FreezeCanonical)
-                            {
-                                lock (bufferQueue)
-                                {
-                                    bufferQueue.Enqueue(new Tuple<int, int, byte[], byte[]>((int)width, (int)height, rgbbytes, depthbytes));
-                                }
-                            }
+                            offset += bytesRead; // updates offset
 
                         }
+
+
+                        // reading depth data
+                        offset = 0; // reset offset
+                        while (offset < depthbytes.Length)
+                        {
+                            //Debug.Log("Getting Depth Bytes");
+                            int bytesRead = stream.Read(depthbytes, offset, depthbytes.Length - offset); // read from stream
+
+                            if (bytesRead == 0)
+                            {
+                                // we were disconnected and it is very likely that an exception was thrown; if not, let's throw it and try to reconnect (outer while loop)
+                                throw new SocketException(995); // WSA_OPERATION_ABORTED
+                            }
+
+                            offset += bytesRead; // updates offset
+
+                        }
+
+                        //ushort[] depthData = new UInt16[depthbytes.Length];
+                        //Buffer.BlockCopy(depthbytes, 0, depthData, 0, depthbytes.Length);
+                        ++packetsReceived;
+
+                        if (!FreezeCanonical)
+                        {
+                            lock (bufferQueue)
+                            {
+                                bufferQueue.Enqueue(new Tuple<int, int, byte[], byte[]>((int)width, (int)height, rgbbytes, depthbytes));
+                            }
+                        }
+
+                    }
                 }
             }
             catch (SocketException socketException)
@@ -300,10 +326,10 @@ public class ReconstructionTCPClient : MonoBehaviour
                 // were we listening? 
                 if (connected)
                 {
-                    if (killThreadRequested)
-                        Debug.Log(LogName + "disconnected");
-                    else
-                        Debug.Log(LogName + "disconnected - Reconnecting in 1 sec");
+                    Debug.Log(string.Format("{0}disconnected. Packets received = {1}; Packets dropped = {2}; Rendered at {3} fps", LogName, packetsReceived, packetsDropped, (packetsReceived - packetsDropped) / (DateTime.Now - connectionStarted).TotalSeconds));
+                    if (!killThreadRequested)
+                        Debug.Log(LogName + "Reconnecting in 1 sec");
+
                     statisticsReporter.RecordStreamDisconnect();
                 }
             }

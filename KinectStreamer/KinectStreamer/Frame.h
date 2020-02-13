@@ -52,7 +52,8 @@ struct FrameType
 struct NFOVUnbinnedFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint16_t) * 1); } };
 struct RGBX2DepthFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint8_t) * 3); } };
 
-struct RGBXFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint8_t) * 8); } };
+struct RGBXFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint8_t) * 3); } };
+struct DRGBFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint16_t) * 1); } };
 //struct SVGAColorFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 3); } };
 //struct SVGABWFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 1); } };
 //struct VGAColorFrameDim { constexpr static unsigned int Size() { return (640 * 480 * sizeof(uint8_t) * 3); } };
@@ -64,6 +65,8 @@ typedef boost::singleton_pool<NFOVUnbinnedFrameDim, NFOVUnbinnedFrameDim::Size()
 typedef boost::singleton_pool<PassiveIRFrameDim, PassiveIRFrameDim::Size()> PassiveIRFrameMemoryPool;
 typedef boost::singleton_pool<RGBXFrameDim720PFrameDim, RGBXFrameDim720PFrameDim::Size()> RGBXFrameDim720PMemoryPool;
 typedef boost::singleton_pool<RGBX2DepthFrameDim, RGBX2DepthFrameDim::Size()> RGBX2DepthMemoryPool;
+typedef boost::singleton_pool<DRGBFrameDim720PFrameDim, RGBX2DepthFrameDim::Size()> DRGBFrameDim720PMemoryPool;
+
 
 class Frame : boost::noncopyable
 {
@@ -87,6 +90,10 @@ protected:
 
 		case RGBX2DepthFrameDim::Size():
 			data = (unsigned char*)RGBX2DepthMemoryPool::malloc();
+			break;
+
+		case DRGBFrameDim720PFrameDim::Size():
+			data = (unsigned char*)DRGBFrameDim720PMemoryPool::malloc();
 			break;
 
 		default:
@@ -153,6 +160,10 @@ public:
 
 		case RGBX2DepthFrameDim::Size():
 			RGBX2DepthMemoryPool::free(data);
+			break;
+
+		case DRGBFrameDim720PFrameDim::Size():
+			DRGBFrameDim720PMemoryPool::free(data);
 			break;
 
 		default:

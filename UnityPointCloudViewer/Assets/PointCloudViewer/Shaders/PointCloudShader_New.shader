@@ -5,7 +5,7 @@
 
 // Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
-Shader "PointCloudViewer/PointCloudShader"
+Shader "PointCloudViewer/PointCloudShader_New"
 {
 	Properties
 	{
@@ -15,11 +15,21 @@ Shader "PointCloudViewer/PointCloudShader"
 		_ProjectionTex("Point Projection Channel", 2D) = "black" {}
 		_PointSize("Point Size", Float) = 0.0005
 		_Alpha("Alpha", Range(0.00, 1.00)) = 0.8
+
+		_FocalLengthX("Focal Length X", Range(0.01, 1920.00)) = 504.458
+		_FocalLengthY("Focal Length Y", Range(0.01, 1080.00)) = 504.438
+		_PrincipalPointX("Principal Point X", Float) = 328.616
+		_PrincipalPointY("Principal Point Y", Float) = 344.08
+		_Width("Width", Float) = 640.0
+		_Height("Height", Float) = 576
+
+		// kinect uses mm, so we want to multiply by 1000 (1000mm = 100cm =1m)
+		_MetricMultiplier("MetricMultiplier", Float) = 1000
 	}
 		SubShader
 		{
-			Blend SrcAlpha OneMinusSrcAlpha
-			Tags { "Queue" = "Transparent" "IgnoreProjector" = "True"  "RenderType" = "Transparent" }
+			//Blend SrcAlpha OneMinusSrcAlpha
+			//Tags { "Queue" = "Transparent" "IgnoreProjector" = "True"  "RenderType" = "Transparent" }
 			
 			Pass
 			{
@@ -66,35 +76,37 @@ Shader "PointCloudViewer/PointCloudShader"
 				half _PointSize;
 				float _Alpha;
 
+				float _MetricMultiplier;
+				float _PrincipalPointX, _PrincipalPointY;
+				float _FocalLengthX, _FocalLengthY;
+				float _Width, _Height;
+
 				v2g vert(appdata v)
 				{
 					v2g o;
 
-					//float depth = tex2D(_DepthTex, v.uv).a;
-					//v.vertex.z = depth;
-					//float2 pCoord;
-					//float2 uv = (pCoord + 0.5) * _DepthTex_TexelSize.xy;
-
-					float2 inv_uv = float2(v.uv.x, 1.0-v.uv.y);
+					float2 inv_uv = float2(v.uv.x, 1.0 - v.uv.y);
 					float depth = tex2Dlod(_DepthTex, float4(inv_uv, 0, 0)).r;
 
-					float4 projV = tex2Dlod(_ProjectionTex, float4(inv_uv, 0, 0));
+					//float4 projV = tex2Dlod(_ProjectionTex, float4(inv_uv, 0, 0));
+					
+					//float4 a = float4(projV.x * depth, projV.y * depth, 1.0 * depth, 0.0);
+					
+					const float invfocalLengthx = 1.f / _FocalLengthX;
+					const float invfocalLengthy = 1.f / _FocalLengthY;
+					const float dist = _MetricMultiplier * depth;
+					
 
-					//float3 nProjV = normalize(float3(projV.x, projV.y, 1.0f));
+					//v.vertex.x = a.x * 62.0;
+					//v.vertex.y = a.y * 62.0;
 
-					//float4 a = float4(nProjV.x * depth, nProjV.y * depth, nProjV.z * depth, 0.0);
-					float4 a = float4(-1.0 * projV.x * depth, -1.0 * projV.y * depth, 1.0 * depth, 0.0);
-					v.vertex.x = a.x * 1000.0;
-					v.vertex.y = a.y * 1000.0;
-					v.vertex.z = a.z * 1000.0;
-					/*v.vertex.x = 100.0f;
-					v.vertex.y = 0.0f;
-					v.vertex.z = 0.0f;*/
+					v.vertex.x = (inv_uv.x * _Width -_PrincipalPointX) * dist * invfocalLengthx;
+					v.vertex.y = (inv_uv.y * _Height - _PrincipalPointY) * dist * invfocalLengthy;
+					v.vertex.z = dist;
 
-					//v.vertex.z = depth * -100.0;
 					o.vertex = v.vertex;
-					//o.vertex.z = depth;
 					o.psize = _PointSize;
+
 					o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 					return o;
