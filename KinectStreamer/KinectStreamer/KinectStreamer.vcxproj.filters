@@ -18,17 +18,17 @@
     <ClCompile Include="KinectStreamer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TCPServer.cpp">
+    <ClCompile Include="AzureKinect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AzureKinect.cpp">
+    <ClCompile Include="RemoteControlServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TCPStreamingServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TCPServer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Frame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -39,6 +39,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Statistics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RemoteControlServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TCPStreamingServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

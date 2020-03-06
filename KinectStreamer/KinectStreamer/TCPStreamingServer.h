@@ -21,18 +21,18 @@
 using boost::asio::ip::tcp;
 
 /*
-  The TCPServer class sends kinect color and depth
+  The TCPStreamingServer class sends kinect color and depth
   frames to all members connected.
 
-  TCPServer runs on a separate thread
+  TCPStreamingServer runs on a separate thread
 */
-class TCPServer
+class TCPStreamingServer
 {
 public:
-	TCPServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
-		Logger::Log("TCPServer") << "Listening on " << port << std::endl;
+	TCPStreamingServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
+		Logger::Log("Streamer") << "Listening on " << port << std::endl;
 	};
-	~TCPServer()
+	~TCPStreamingServer()
 	{
 		Stop();
 	}
@@ -44,7 +44,7 @@ public:
 
 	void Run()
 	{
-		sThread.reset(new std::thread(std::bind(&TCPServer::thread_main, this)));
+		sThread.reset(new std::thread(std::bind(&TCPStreamingServer::thread_main, this)));
 	}
 
 	void Stop()
@@ -62,8 +62,8 @@ public:
 		{
 			client->close();
 			clientsStatistics[client].packetsDropped += clientsQs[client].size();
-			Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-			Logger::Log("TCPServer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << ":"
+			Logger::Log("Streamer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+			Logger::Log("Streamer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << ":"
 				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
 				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 		}
@@ -84,7 +84,7 @@ public:
 		// is running the server
 		if (std::this_thread::get_id() != sThread->get_id())
 		{
-			this->io_service.post(std::bind(&TCPServer::ForwardToAll, this, color, depth));
+			this->io_service.post(std::bind(&TCPStreamingServer::ForwardToAll, this, color, depth));
 			return;
 		}
 
@@ -150,10 +150,10 @@ private:
 	std::map < std::shared_ptr< tcp::socket>, Statistics > clientsStatistics;
 	std::mutex clientSetMutex;
 
-	// this method implements the main thread for TCPServer
+	// this method implements the main thread for TCPStreamingServer
 	void thread_main()
 	{
-		Logger::Log("TCPServer") << "Waiting for connections" << std::endl;
+		Logger::Log("Streamer") << "Waiting for connections" << std::endl;
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 	}
@@ -167,7 +167,7 @@ private:
 		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_service);
 
 		// waits for a new connection
-		acceptor.async_accept(*newClient, std::bind(&TCPServer::async_handle_accept, this, newClient, _1));
+		acceptor.async_accept(*newClient, std::bind(&TCPStreamingServer::async_handle_accept, this, newClient, _1));
 	}
 
 	// as soon as a new client connects, adds client to the list and waits for a new connection
@@ -181,7 +181,7 @@ private:
 			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
 			clientsStatistics[newClient] = Statistics();								// starts trackings stats for this client
 
-			Logger::Log("TCPServer") << "New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
+			Logger::Log("Streamer") << "New client connected: " << newClient->remote_endpoint().address().to_string() << ':' << newClient->remote_endpoint().port() << std::endl;
 		}
 
 		// accepts a new connection
@@ -201,8 +201,8 @@ private:
 				{
 					clientsStatistics[client].packetsDropped++;
 
-					Logger::Log("TCPServer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-					Logger::Log("TCPServer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " --> "
+					Logger::Log("Streamer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
+					Logger::Log("Streamer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " --> "
 						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
 						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 					
@@ -235,7 +235,7 @@ private:
 		std::shared_ptr<std::vector<uchar > > message = clientsQs[client].back();
 
 		// starts writing for this client
-		boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPServer::write_done, this, client, message, _1, _2));
+		boost::asio::async_write(*client, boost::asio::buffer(*message, message->size()), std::bind(&TCPStreamingServer::write_done, this, client, message, _1, _2));
 	}
 
 };

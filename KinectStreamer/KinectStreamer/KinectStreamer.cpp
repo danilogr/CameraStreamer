@@ -7,7 +7,7 @@
 #include <k4a/k4a.h>
 #include <chrono>
 
-#include "TCPServer.h"
+#include "TCPStreamingServer.h"
 #include "AzureKinect.h"
 #include "Frame.h"
 #include "Logger.h"
@@ -41,7 +41,7 @@ int main()
 
 	// main application loop where it waits for a user key to stop everything
 	{
-		TCPServer server(3614);
+		TCPStreamingServer server(3614);
 		server.Run();
 
 		AzureKinect kinectDevice;
