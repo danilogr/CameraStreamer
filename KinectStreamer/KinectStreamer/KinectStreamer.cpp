@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include "TCPStreamingServer.h"
+#include "RemoteControlServer.h"
 #include "AzureKinect.h"
 #include "Frame.h"
 #include "Logger.h"
@@ -44,10 +45,14 @@ int main()
 		TCPStreamingServer server(3614);
 		server.Run();
 
+		RemoteControlServer remoteControlServer(6606);
+		remoteControlServer.Run();
+
 		AzureKinect kinectDevice;
 		kinectDevice.onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
+
 		};
 
 		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
@@ -58,7 +63,6 @@ int main()
 		config.synchronized_images_only = true;					 // depth and image should be synchronized
 
 		kinectDevice.Run(config);
-
 
 		std::cout << endl;
 		Logger::Log("Main") << "To close this application, press 'q'" << endl;

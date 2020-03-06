@@ -131,7 +131,6 @@ void RemoteClient::write_next_message(std::shared_ptr<RemoteClient> client)
 // this method is called when someone wants to initiate sending a message to the client
 void RemoteClient::write_request(std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > message)
 {
-
 	// is the client still connected?
 	if (!client->socket)
 	{
@@ -149,4 +148,106 @@ void RemoteClient::write_request(std::shared_ptr<RemoteClient> client, std::shar
 		// only message? let's send it
 		write_next_message(client);
 	}
+}
+
+
+
+void RemoteClient::read_header_async(std::shared_ptr<RemoteClient> client)
+{
+	// can't read if not running
+	if (!client || !client->socket)
+		return;
+
+
+	using namespace std::placeholders; // for  _1, _2, ...
+
+	// readsheader
+	boost::asio::async_read(*client->socket, boost::asio::buffer(&client->incomingMessageSize, RemoteClientHeaderLength), boost::asio::transfer_exactly(RemoteClientHeaderLength), std::bind(&RemoteClient::read_message_async, client, _1, _2));
+}
+
+
+void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, const boost::system::error_code& error, std::size_t bytes_transferred)
+{
+
+	using namespace std::placeholders; // for  _1, _2, ...
+	// can't keep reading if disconnected
+	if (!client || !client->socket)
+		return;
+
+	// any problems?
+	if (error)
+	{
+		// remove itself from the server
+		client->server.DisconnectClient(client);
+
+		return;
+	}
+
+	// did we read the right amount?
+	if (bytes_transferred != RemoteClientHeaderLength)
+	{
+		// log error
+		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error reading message header (" << bytes_transferred << ")!" << std::endl;
+
+		// disconnect client
+		client->server.DisconnectClient(client);
+		return;
+	}
+
+	// is the message too big?
+	if (client->incomingMessageSize > RemoteClientMaxIncoingMessage)
+	{
+		// log error
+		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort <<']' <<" Message is too long (" << client->incomingMessageSize << ")!" << std::endl;
+
+
+		// disconnect client
+		client->server.DisconnectClient(client);
+		return;
+	}
+
+	// now that we know that we have a reasonable message ready to be read - let's read it
+	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageSize);
+
+	// reads the entire message
+	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()), boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));
+
+
+}
+
+// this method is called when the message is read
+void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred)
+{
+	using namespace std::placeholders; // for  _1, _2, ...
+	// can't keep reading if disconnected
+	if (!client || !client->socket || !buffer)
+		return;
+
+	// any problems?
+	if (error)
+	{
+		// remove itself from the server
+		client->server.DisconnectClient(client);
+
+		return;
+	}
+
+	// did we read the right amount?
+	if (bytes_transferred != buffer->size())
+	{
+		// log error
+		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error reading message  (" << bytes_transferred << " of " << buffer->size() << ")!" << std::endl;
+
+		// disconnect client
+		client->server.DisconnectClient(client);
+		return;
+	}
+
+	// ok, now we have the entire message on the buffer and we can process it
+	//Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << std::string(buffer->begin(), buffer->end()) << std::endl;
+	// todo: parse message
+
+	// restarts the process
+	read_header_async(client);
+
 }

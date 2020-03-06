@@ -20,6 +20,8 @@
 using boost::asio::ip::tcp;
 
 class RemoteControlServer; // forward declaration for the RemoteClient implementation
+const unsigned int RemoteClientHeaderLength = sizeof(uint32_t);
+const unsigned int RemoteClientMaxIncoingMessage= 1024*1024*100; // 100kb
 
 class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 {
@@ -32,8 +34,12 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	// read buffer
 	boost::asio::streambuf request;
 
-	// write buffer (we can only call we async write once, so we have to buffer messages until they are fully written)
+	// write buffer (we can only call we asyn	c write once, so we have to buffer messages until they are fully written)
 	std::queue<std::shared_ptr<std::vector<uchar> > > outputMessageQ;
+
+	// all the messages received will be stored here until they are consumed
+	std::queue<std::shared_ptr<std::vector<uchar> > > incomingMessageQ;
+	uint32_t incomingMessageSize;
 
 	// client connection
 	std::shared_ptr<tcp::socket> socket;
@@ -46,6 +52,12 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	// called when done writing to cleint
 	static void write_done(std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
 	static void write_next_message(std::shared_ptr<RemoteClient> client);
+
+	// start reading for the client
+	static void read_header_async(std::shared_ptr<RemoteClient> client);
+	static void read_message_async(std::shared_ptr<RemoteClient> client, const boost::system::error_code& error, std::size_t bytes_transferred);
+	static void read_message_done (std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
+
 
 	// book-keeping
 	std::string remoteAddress;
@@ -74,6 +86,8 @@ public:
 
 class RemoteControlServer
 {
+
+public:
 	RemoteControlServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
 		Logger::Log("Remote") << "Listening on " << port << std::endl;
 	};
@@ -214,9 +228,8 @@ private:
 		{
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			std::shared_ptr<RemoteClient> newRemoteClient = RemoteClient::createClient(*this, newClient);
-			clients.insert(newRemoteClient); // starts trackings stats for this client
-
-			// TODO: starts listening...
+			clients.insert(newRemoteClient);
+			RemoteClient::read_header_async(newRemoteClient);
 		}
 
 		// accepts a new connection
