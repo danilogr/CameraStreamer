@@ -9,5 +9,8 @@ struct Statistics
 	unsigned int packetsDropped;
 	unsigned long long bytesSent;
 
-	Statistics() : connected(std::chrono::system_clock::now()), packetsSent(0), packetsDropped(0), bytesSent(0) {}
+	unsigned int packetsReceived;
+	unsigned long long bytesReceived;
+
+	Statistics() : connected(std::chrono::system_clock::now()), packetsSent(0), packetsDropped(0), bytesSent(0), packetsReceived(0), bytesReceived(0) {}
 };
