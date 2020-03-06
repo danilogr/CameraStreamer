@@ -53,6 +53,12 @@ public:
 		return (sThread && sThread->joinable());
 	}
 
+	// Returns true if kinect is opened and streaming video
+	bool isStreaming()
+	{
+		return runningCameras;
+	}
+
 	void Stop()
 	{
 		thread_running = false;     // stops the loop in case it is running
