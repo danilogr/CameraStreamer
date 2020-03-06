@@ -8,6 +8,8 @@
 #include <chrono>
 #include <vector>
 
+#include <opencv2/opencv.hpp>
+
 #include "Frame.h"
 
 class AzureKinect
@@ -113,6 +115,7 @@ private:
 	bool OpenDefaultKinect()
 	{
 
+
 		if (kinectDevice)
 		{
 			Logger::Log("AzureKinect") << "Device is already open!" << std::endl;
@@ -144,6 +147,59 @@ private:
 	}
 
 	
+	void saveTransformationTable(int img_width, int img_height)
+	{
+
+		k4a_image_t xy_image;
+		
+
+		k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM,
+			img_width, img_height,
+			img_width * (int)sizeof(k4a_float2_t),
+			&xy_image);
+
+		k4a_float2_t* table_data = (k4a_float2_t*)(void*)k4a_image_get_buffer(xy_image);
+
+		k4a_float2_t p;
+		k4a_float3_t ray;
+		bool valid;
+		int y, idx;
+		for (y = 0, idx = 0; y < img_height; ++y)
+		{
+			p.xy.y = (float)y;
+			for (int x = 0; x < img_width; ++x, ++idx)
+			{
+				p.xy.x = (float)x;
+				valid = kinectCameraCalibration.convert_2d_to_3d(p, 1.f, K4A_CALIBRATION_TYPE_COLOR, K4A_CALIBRATION_TYPE_COLOR, &ray);
+				if (valid)
+				{
+					table_data[idx].xy.x = ray.xyz.x;
+					table_data[idx].xy.y = ray.xyz.y;
+				}
+				else
+				{
+					table_data[idx].xy.x = nanf("");
+					table_data[idx].xy.y = nanf("");
+				}
+			}
+		}
+
+
+		cv::Mat xy_image_matrix;
+		xy_image_matrix.create(img_height, img_width, CV_32FC2);
+		memcpy(xy_image_matrix.data, table_data, idx * sizeof(float) * 2);
+
+		// save xy table
+		std::string table_path = R"(xy_table.json)";
+		cv::FileStorage fs(table_path, cv::FileStorage::WRITE);
+		fs << "table" << xy_image_matrix;
+		fs.release();
+
+		k4a_image_release(xy_image);
+
+
+	}
+
 	void thread_main()
 	{
 		Logger::Log("AzureKinect") << "Started Azure Kinect polling thread: " << std::this_thread::get_id << std::endl;
@@ -244,6 +300,9 @@ private:
 				Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
 				print_camera_parameters = false;
 			}
+
+			// saves table
+			saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
 
 			// time to start reading frames and streaming
 			unsigned long long framesCaptured = 0;
