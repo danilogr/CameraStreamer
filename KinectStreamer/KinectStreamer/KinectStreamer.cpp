@@ -34,11 +34,11 @@ int main()
 	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
 	// no devices installed ?
-	if (k4a_device_get_installed_count() == 0)
-	{
-		Logger::Log("Main") << "No AzureKinect devices connected ... exiting" << endl;
-		return 1;
-	}
+	//if (k4a_device_get_installed_count() == 0)
+	//{
+	//	Logger::Log("Main") << "No AzureKinect devices connected ... exiting" << endl;
+	//	return 1;
+	//}
 
 	// main application loop where it waits for a user key to stop everything
 	{

@@ -220,11 +220,16 @@ private:
 			{
 
 				// try opening the device
-				while (!OpenDefaultKinect())
+				while (!OpenDefaultKinect() && thread_running)
 				{
 					// waits one second
 					std::this_thread::sleep_for(std::chrono::seconds(1));
 					Logger::Log("AzureKinect") << "Trying again..." << std::endl;
+				}
+
+				if (!thread_running)
+				{
+					return;
 				}
 
 				Logger::Log("AzureKinect") << "Opened kinect device id: " << kinectDeviceSerial << std::endl;
