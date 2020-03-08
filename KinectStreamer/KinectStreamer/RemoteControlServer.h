@@ -13,6 +13,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <opencv2/opencv.hpp>
+#include <rapidjson/document.h>
 
 #include "Logger.h"
 #include "Statistics.h"
@@ -38,7 +39,6 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	std::queue<std::shared_ptr<std::vector<uchar> > > outputMessageQ;
 
 	// all the messages received will be stored here until they are consumed
-	std::queue<std::shared_ptr<std::vector<uchar> > > incomingMessageQ;
 	uint32_t incomingMessageSize;
 
 	// client connection
@@ -57,7 +57,6 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	static void read_header_async(std::shared_ptr<RemoteClient> client);
 	static void read_message_async(std::shared_ptr<RemoteClient> client, const boost::system::error_code& error, std::size_t bytes_transferred);
 	static void read_message_done (std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
-
 
 	// book-keeping
 	std::string remoteAddress;
@@ -78,6 +77,7 @@ public:
 
 	void close();
 	bool send(std::shared_ptr<std::vector<uchar> > message);
+	bool message(const std::string& content);
 
 	// destructor
 	~RemoteClient();
@@ -107,7 +107,7 @@ public:
 	}
 
 	// sends a color and depth frame to all clients connected
-	void ForwardToAll(std::string messageStr)
+	void ForwardToAll(const std::string& messageStr)
 	{
 		// if not running
 		if (!sThread) return;
@@ -184,6 +184,48 @@ public:
 
 		// client did not exist?
 		return false;
+	}
+
+	void ParseMessage(std::shared_ptr < std::vector<uchar> > messageBuffer, std::shared_ptr<RemoteClient> client = nullptr)
+	{
+		if (!messageBuffer)
+			return;
+ 
+
+		rapidjson::Document message;
+		try
+		{
+			message.Parse((const char*) & (*messageBuffer)[0], messageBuffer->size());
+
+
+			if (message.HasMember("type"))
+			{
+				if (client)
+				{
+					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " message with type " << message["type"].GetString() << " received!" << std::endl;
+				}
+			}
+			else {
+				if (client)
+				{
+					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << "Invalid messaged received (type is missing)" << std::endl;
+				}
+				else {
+					Logger::Log("Remote") << " Invalid messaged received (type is missing)" << std::endl;
+				}
+			}
+
+		}
+		catch (const std::exception &e)
+		{
+			if (client)
+			{
+				Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error parsing message: " << e.what() << std::endl;
+			}
+			else {
+				Logger::Log("Remote") << " Error parsing message: " << e.what() << std::endl;
+			}
+		}
 	}
 
 	// event queue

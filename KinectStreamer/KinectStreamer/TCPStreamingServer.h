@@ -32,6 +32,7 @@ public:
 	TCPStreamingServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
 		Logger::Log("Streamer") << "Listening on " << port << std::endl;
 	};
+
 	~TCPStreamingServer()
 	{
 		Stop();
@@ -57,11 +58,17 @@ public:
 		if (sThread && sThread->joinable())
 			sThread->join();
 
+		// gets done with thread
+		sThread = nullptr;
+
 		// any clients connected?
 		for (std::shared_ptr<tcp::socket> client : clients)
 		{
 			client->close();
+			
+			// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
 			clientsStatistics[client].packetsDropped += clientsQs[client].size();
+			
 			Logger::Log("Streamer") << "Client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
 			Logger::Log("Streamer") << "[Stats] Sent client " << client->remote_endpoint().address().to_string() << ':' << client->remote_endpoint().port() << ":"
 				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"

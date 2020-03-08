@@ -191,6 +191,7 @@
     <ClCompile Include="KinectStreamer.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
     <ClCompile Include="TCPStreamingServer.cpp" />
+    <ClCompile Include="VideoRecorder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AzureKinect.h" />
@@ -199,6 +200,7 @@
     <ClInclude Include="RemoteControlServer.h" />
     <ClInclude Include="Statistics.h" />
     <ClInclude Include="TCPStreamingServer.h" />
+    <ClInclude Include="VideoRecorder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

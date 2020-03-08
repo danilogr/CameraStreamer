@@ -25,8 +25,8 @@ RemoteClient::~RemoteClient()
 		socket->close();
 	}
 
-	Logger::Log("Remote") << "Client " << remoteAddress << ':' << remotePort << " disconnected" << std::endl;
-	Logger::Log("Remote") << "[Stats] Sent client " << remoteAddress << ':' << remotePort << " --> "
+	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Client disconnected" << std::endl;
+	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] Sent client --> "
 		<< statistics.bytesSent << " bytes (" << statistics.packetsSent << " messages sent and " << statistics.packetsDropped << " dropped) -"
 		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connected).count() / 1000.0f << " sec" << std::endl;
 }
@@ -60,7 +60,10 @@ bool RemoteClient::send(std::shared_ptr<std::vector<uchar> > message)
 	{
 		// thread is not running anymore...
 		if (server.io_service.stopped())
+		{
+			Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Error sending message! RemoteControlServer is not running!" << std::endl;
 			return false;
+		}
 
 		// makes sure that we are running from the right thread before continuing
 		if (std::this_thread::get_id() != server.sThread->get_id())
@@ -70,10 +73,19 @@ bool RemoteClient::send(std::shared_ptr<std::vector<uchar> > message)
 		}
 	}
 	else {
-		Logger::Log("Remote") << "Error sending message! Client " << remoteAddress << ':' << remotePort << " is not connected" << std::endl;
+		Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Error sending message! Client is not connected!" << std::endl;
 	}
 
 	return true;
+}
+
+bool RemoteClient::message(const std::string& messageStr)
+{
+	// creates a buffer for this message
+	std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(sizeof(uint32_t) + messageStr.length());
+
+	// sends the message
+	send(message);
 }
 
 // ======================================= static methods =========================================== //
@@ -245,7 +257,9 @@ void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::
 
 	// ok, now we have the entire message on the buffer and we can process it
 	//Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << std::string(buffer->begin(), buffer->end()) << std::endl;
-	// todo: parse message
+
+	// parse message 
+	client->server.ParseMessage(buffer, client);
 
 	// restarts the process
 	read_header_async(client);

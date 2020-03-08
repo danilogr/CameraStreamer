@@ -9,6 +9,7 @@
 
 #include "TCPStreamingServer.h"
 #include "RemoteControlServer.h"
+#include "VideoRecorder.h"
 #include "AzureKinect.h"
 #include "Frame.h"
 #include "Logger.h"
@@ -43,12 +44,9 @@ int main()
 	// main application loop where it waits for a user key to stop everything
 	{
 		TCPStreamingServer server(3614);
-		server.Run();
 
-		RemoteControlServer remoteControlServer(6606);
-		remoteControlServer.Run();
+		AzureKinect kinectDevice;		
 
-		AzureKinect kinectDevice;
 		kinectDevice.onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
@@ -63,6 +61,15 @@ int main()
 		config.synchronized_images_only = true;					 // depth and image should be synchronized
 
 		kinectDevice.Run(config);
+
+		server.Run();
+
+		VideoRecorder videoRecorderThread;
+		videoRecorderThread.Run();
+
+		RemoteControlServer remoteControlServer(6606);
+		remoteControlServer.Run();
+
 
 		std::cout << endl;
 		Logger::Log("Main") << "To close this application, press 'q'" << endl;
