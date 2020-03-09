@@ -70,6 +70,16 @@ int main()
 
 		};
 
+		kinectDevice.onKinectConnect = [&]()
+		{
+		};
+
+
+		kinectDevice.onKinectDisconnect = [&]()
+		{
+
+		};
+	
 		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
 		config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
 		config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
@@ -115,12 +125,37 @@ int main()
 		// on start recording request
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
-			std::string recordingPath = message["path"].GetString();
-
+		
 			bool recordingColor = (message.HasMember("color") && message["color"].IsBool()) ? message["color"].GetBool() : true; // records color by default
 			bool recordingDepth = (message.HasMember("depth") && message["depth"].IsBool()) ? message["depth"].GetBool() : true; // records depth by default
 
-			videoRecorderThread.StartRecording(recordingPath, recordingColor, recordingDepth);
+			std::string recordingColorPath;
+			if (recordingColor)
+			{
+				if (message.HasMember("colorPath"))
+					recordingColorPath = message["colorPath"].GetString();
+				else
+				{
+					Logger::Log("Remote") << "(startRecording) Color path was not defined!" << std::endl;
+					return;
+				}
+			}
+
+			std::string recordingDepthPath;
+
+			if (recordingDepth)
+			{
+				if (message.HasMember("depthPath"))
+					recordingColorPath = message["depthPath"].GetString();
+				else
+				{
+					Logger::Log("Remote") << "(startRecording) Depth path was not defined!" << std::endl;
+					return;
+				}
+			}
+			
+			videoRecorderThread.StartRecording(recordingColor, recordingDepth, recordingColorPath, recordingDepthPath);
+
 		},
 
 

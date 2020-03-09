@@ -85,6 +85,10 @@ bool RemoteClient::message(const std::string& messageStr)
 	// creates a buffer for this message
 	std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(sizeof(uint32_t) + messageStr.length());
 
+	*((uint32_t*) & (*message)[0]) = messageStr.length();
+	memcpy((unsigned char*) & (*message)[4], messageStr.c_str(), messageStr.length());
+
+
 	// sends the message
 	return send(message);
 }

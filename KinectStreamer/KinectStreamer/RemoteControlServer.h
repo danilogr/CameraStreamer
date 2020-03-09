@@ -355,10 +355,10 @@ private:
 			std::lock_guard<std::mutex> guard(appStatus->statusChangeLock);
 			{
 				pongMessage.AddMember("streaming", appStatus->isStreaming, allocator);
+				pongMessage.AddMember("cameraRunning", appStatus->isCameraRunning, allocator);
 				pongMessage.AddMember("recording", appStatus->isRecordingColor || appStatus->isRecordingDepth, allocator);
 				pongMessage.AddMember("recordingColor", appStatus->isRecordingColor , allocator);
 				pongMessage.AddMember("recordingDepth", appStatus->isRecordingDepth, allocator);
-				pongMessage.AddMember("recordingPath", rapidjson::Value().SetString(appStatus->recordingPath.c_str(), appStatus->recordingDepthPath.length(), allocator), allocator);
 				pongMessage.AddMember("recordingDepthPath", rapidjson::Value().SetString(appStatus->recordingDepthPath.c_str(), appStatus->recordingDepthPath.length(), allocator), allocator);
 				pongMessage.AddMember("recordingColorPath", rapidjson::Value().SetString(appStatus->recordingColorPath.c_str(), appStatus->recordingColorPath.length(), allocator), allocator);
 				pongMessage.AddMember("port", appStatus->streamerPort, allocator);
@@ -372,6 +372,7 @@ private:
 
 			// sends message to client
 			client->message(output);
+			Logger::Log("Remote") << '[' << client->RemoteAddress() << ':' << client->RemotePort() << ']' << " Send Pong ! " << output << std::endl;
 
 		}
 		else {

@@ -3,6 +3,7 @@
 #include "Frame.h"
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <functional>
@@ -56,10 +57,12 @@ class VideoRecorder
 	// when all events have been processed (and not what it is currently doing)
 	// (they are the same as what is repoerted in appStatus)
 	bool externalIsRecordingColor, externalIsRecordingDepth;
-	int externalTakeNumber;
+	int externalColorTakeNumber, externalDepthTakeNumber, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight;
 
-	std::string filePrefix, filePath;
-	int framesLeft, internalFramesRecorded;
+	std::string filePrefix, colorFolderPath, depthFolderPath;
+	int framesLeft, internalColorFramesRecorded, internalDepthFramesRecorded, internalColorFramesDropped, internalDepthFramesDropped;
+
+	
 
 
 	// returns the number of ticks (C# / .NET equivalent) in GMT
@@ -73,8 +76,6 @@ class VideoRecorder
 
 		return ((long long)ticks.count() / (long long)100) + (long long)621355968000000000;
 	}
-
-
 
 	void RequestInternalStop()
 	{
@@ -92,7 +93,6 @@ class VideoRecorder
 		m_work.reset();
 	}
 
-
 	// this method is guaranteed to be called by the VideoRecorder thread
 	// it represents the internal state of the VideoRecorder (e.g.: internally,
 	// VideoRecorder could be stopping a video stream while an outside call
@@ -104,17 +104,17 @@ class VideoRecorder
 		if (colorVideoWriter.isOpened())
 		{
 			colorVideoWriter.release();
-			Logger::Log("Recorder") << "Closed file " << internalFilenameColor << " after recording " << internalFramesRecorded << " frames" << std::endl;
+			Logger::Log("Recorder") << "Closed file " << internalFilenameColor << " after recording " << internalColorFramesRecorded << " frames (" << internalColorFramesDropped << " dropped)" << std::endl;
 		}
 
 		if (depthVideoWriter.is_open())
 		{
 			depthVideoWriter.close();
-			Logger::Log("Recorder") << "Closed file " << internalFilenameDepth << " after recording " << internalFramesRecorded << " frames" << std::endl;
+			Logger::Log("Recorder") << "Closed file " << internalFilenameDepth << " after recording " << internalDepthFramesRecorded << " frames (" << internalDepthFramesDropped << " dropped)" << std::endl;
 		}
 
 		// reset variables 
-		internalFramesRecorded = 0;
+		internalColorFramesRecorded = internalDepthFramesRecorded = internalColorFramesDropped = internalDepthFramesDropped  = 0;
 		internalFilenameColor.clear();
 		internalFilenameDepth.clear();
 		internalIsRecordingDepth = false;
@@ -122,7 +122,8 @@ class VideoRecorder
 	}
 
 	// similar to InternalStopRecording. This method is guaranteed to be called by the VideoRecorder thread
-	void InternalStartRecording(const std::string& colorPath, const std::string& depthPath, bool recordColor, bool recordDepth)
+	void InternalStartRecording(const std::string& colorPath, const std::string& depthPath, bool recordColor, bool recordDepth,
+								int colorWidth, int colorHeight, int depthWidth, int depthHeight)
 	{
 		// there is a small change that an external request to start a new recording
 		// while a recording is already happening will be ignored because another thread
@@ -139,24 +140,42 @@ class VideoRecorder
 		internalIsRecordingColor = recordColor;
 		internalIsRecordingDepth = recordDepth;
 
-		// prepare the files
-		if (internalIsRecordingColor)
+		try
 		{
-//			vw.open(filenameDepth, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 30, cv::Size(KinectV2Source::cColorWidth, KinectV2Source::cColorHeight));
-
+			// prepare the files
+			if (internalIsRecordingColor)
+			{
+	//			vw.open(filenameDepth, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 30, cv::Size(KinectV2Source::cColorWidth, KinectV2Source::cColorHeight));
+				colorVideoWriter.open(internalFilenameColor, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 30, cv::Size(colorWidth, colorHeight));
+			}
+		}
+		catch (const std::exception& e)
+		{
+			internalIsRecordingColor = false; // sorry
+			Logger::Log("Recorder") << "Error creating color video stream: " << e.what() << std::endl;
 		}
 
-		if (internalIsRecordingDepth)
+		try
 		{
-			// open depth file
+			if (internalIsRecordingDepth)
+			{
+				// open depth file
+				depthVideoWriter.open(internalFilenameDepth, std::ios::out | std::ios::binary);
 
-			// save ugly depth header
+				// save ugly depth header
+				std::stringstream header;
+				header << "{\"filetype\":\"depth\", \"datatype\": \"numpy.int16\", \"resolution\": [";
+				header << depthWidth << ", " << depthHeight << "]}\n";
+				std::string headerStr = header.str();
+				depthVideoWriter.write(headerStr.c_str(), headerStr.length());
+			}
+		}
+		catch (const std::exception & e)
+		{
+			internalIsRecordingDepth = false; // sorry
+			Logger::Log("Recorder") << "Error creating deth video stream: " << e.what() << std::endl;
 		}
 
-
-		// done recording another frame
-		++internalFramesRecorded;
-		--framesLeft;
 	}
 
 	// work that keeps the thread busy
@@ -168,11 +187,54 @@ class VideoRecorder
 	void InternalRecordFrame(long long ticksSoFar, std::shared_ptr<Frame> colorFrame, std::shared_ptr<Frame> depthFrame)
 	{
 
+		if (colorFrame)
+		{
+			if (internalIsRecordingColor && colorVideoWriter.isOpened())
+			{
+				try
+				{
+					cv::Mat frame(colorFrame->getHeight(), colorFrame->getWidth() , CV_8UC4, colorFrame->getData());
+					colorVideoWriter.write(frame);
+					++internalColorFramesRecorded;
+				}
+				catch (const std::exception& e)
+				{
+					++internalColorFramesDropped;
+				}
+			}
+			else {
+				++internalColorFramesDropped;
+			}
+		}
+
+		if (depthFrame)
+		{
+			if (internalIsRecordingDepth && depthVideoWriter.is_open())
+			{
+				try
+				{
+					depthVideoWriter.write((const char*)& ticksSoFar, sizeof(long long));
+					depthVideoWriter.write((const char*) depthFrame->getData(), depthFrame->size());
+					++internalColorFramesRecorded;
+				}
+				catch (const std::exception & e)
+				{
+					++internalDepthFramesDropped;
+				}
+			}
+			else {
+				++internalDepthFramesDropped;
+			}
+		}
+
+
+		// done recording another frame
+		--framesLeft;
 	}
 
 	// This method updates appStatus (ApplicationStatus) so that Ping/Pong messages contain the right
 	// information about recording status
-	void UpdateAppStatus(const std::string& filePath = std::string(), const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
+	void UpdateAppStatus(const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
 	{
 		std::lock_guard<std::mutex> guard(appStatus->statusChangeLock);
 		{
@@ -180,7 +242,6 @@ class VideoRecorder
 			appStatus->isRecordingDepth = externalIsRecordingDepth;
 			appStatus->recordingColorPath = colorPath;
 			appStatus->recordingDepthPath = depthPath;
-			appStatus->recordingPath = filePath;
 		}
 	}
 
@@ -190,7 +251,9 @@ public:
 
 	VideoRecorder(std::shared_ptr<ApplicationStatus> appStatus, const std::string& filePrefix = "StandardCamera") :
 	appStatus(appStatus), acceptNewTasks(false), internalIsRecordingColor(false), internalIsRecordingDepth(false),
-	externalIsRecordingColor(false), externalIsRecordingDepth(false), externalTakeNumber(1), framesLeft(0), internalFramesRecorded(0)
+	externalIsRecordingColor(false), externalIsRecordingDepth(false), externalColorTakeNumber(1), externalDepthTakeNumber(1),
+	externalColorWidth(0), externalColorHeight(0), externalDepthWidth(0), externalDepthHeight(0),
+	framesLeft(0), internalColorFramesRecorded(0), internalDepthFramesRecorded(0), internalColorFramesDropped(0), internalDepthFramesDropped(0)
 	{
 
 	}
@@ -263,7 +326,7 @@ public:
 	}
 
 
-	bool StartRecording(const std::string& path, bool color, bool depth)
+	bool StartRecording(bool color, bool depth, const std::string& colorPath, const std::string& depthPath)
 	{
 		// if not running
 		if (!sThread)
@@ -286,14 +349,56 @@ public:
 			StopRecording();
 		}
 
-		// are we recording to the same path?
-		if (path == filePath)
+		// is the camera streaming at all?
+		if (!appStatus->isCameraRunning)
 		{
-			externalTakeNumber++;
+			Logger::Log("Recorder") << "Error! Cannot record without a camera..." << std::endl;
+			return false;
 		}
-		else {
-			externalTakeNumber = 1;
-			filePath = path;
+
+		// can we record? what's the resolution so far
+		if (color && (appStatus->streamingColorHeight == 0 || appStatus->streamingColorWidth == 0))
+		{
+			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
+			return false;
+		}
+
+		if (depth && (appStatus->streamingDepthHeight == 0 || appStatus->streamingDepthWidth == 0))
+		{
+			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
+			return false;
+		}
+
+		// yay, we are good to record!
+		externalColorHeight = appStatus->streamingColorHeight;
+		externalColorWidth  = appStatus->streamingColorWidth;
+		externalDepthHeight = appStatus->streamingDepthHeight;
+		externalDepthWidth  = appStatus->streamingDepthWidth;
+
+		// are we recording to the same path?
+		// (this might happen if the camera gets unplugged and plugged back again)
+		if (color)
+		{
+			if (colorPath == colorFolderPath)
+			{
+				externalColorTakeNumber++;
+			}
+			else {
+				externalColorTakeNumber = 1;
+				colorFolderPath = colorPath;
+			}
+		}
+
+		if (depth)
+		{
+			if (depthPath == depthFolderPath)
+			{
+				externalDepthTakeNumber++;
+			}
+			else {
+				externalDepthTakeNumber = 1;
+				depthFolderPath = depthPath;
+			}
 		}
 
 		// create file names
@@ -303,11 +408,11 @@ public:
 		// creates file names
 		{
 			std::stringstream depthFileName, colorFileName;
-			colorFileName << filePrefix << "_Color_Take-" << externalTakeNumber << "_Time-" << timestampNow << ".mp4";
-			depthFileName << filePrefix << "_Depth_Take-" << externalTakeNumber << "_Time-" << timestampNow << ".depth.artemis";
+			colorFileName << filePrefix << "_Color_Take-" << externalColorTakeNumber << "_Time-" << timestampNow << ".mp4";
+			depthFileName << filePrefix << "_Depth_Take-" << externalDepthTakeNumber << "_Time-" << timestampNow << ".depth.artemis";
 		
 			// figure out paths
-			std::experimental::filesystem::path colorVideoP(filePath), depthVideoP(filePath);
+			std::experimental::filesystem::path colorVideoP(colorFolderPath), depthVideoP(depthFolderPath);
 			colorVideoP.append(colorFileName.str());
 			depthVideoP.append(depthFileName.str());
 
@@ -322,14 +427,14 @@ public:
 		externalIsRecordingDepth = depth;
 
 		// let others know that we are recording
-		UpdateAppStatus(filePath, colorVideoPath, depthVideoPath);
+		UpdateAppStatus(colorVideoPath, depthVideoPath);
 
 		// now we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
-		io_service.post(std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth));
+		io_service.post(std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight));
 		
 		// logs what just happened
-		Logger::Log("Recorder") << "Request to record to " << path  << " processed succesfully!" << std::endl;
+		Logger::Log("Recorder") << "Request to record to " << colorVideoPath << " and "  <<  depthVideoPath << " processed succesfully!" << std::endl;
 			
 		return true;
 	}
@@ -385,6 +490,32 @@ public:
 
 		// writes down that we have another frame to record
 		++framesLeft;
+
+		// drop memory references that we are not using
+		// drop frames with the wrong resolution
+		if (!externalIsRecordingColor)
+			color.reset();
+		else
+		{
+			if (!color || color->getWidth() != externalColorWidth || color->getHeight() != externalColorHeight)
+			{
+				Logger::Log("Recorder") << "Error! Invalid color frame size (Expected " << externalColorWidth << "x" << externalColorHeight << ")" << std::endl;
+				return false;
+			}
+		}
+
+		if (!externalIsRecordingDepth)
+			depth.reset();
+		else
+		{
+			if (!depth || depth->getWidth() != externalDepthWidth || depth->getHeight() != externalDepthHeight)
+			{
+				Logger::Log("Recorder") << "Error! Invalid depth frame size (Expected " << externalDepthWidth << "x" << externalDepthHeight << ")" << std::endl;
+				return false;
+			}
+		}
+
+		// good to go!
 		io_service.post(std::bind(&VideoRecorder::InternalRecordFrame, this, timenow, color, depth));
 	}
 

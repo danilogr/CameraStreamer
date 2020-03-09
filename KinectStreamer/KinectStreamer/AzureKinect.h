@@ -37,10 +37,15 @@ class AzureKinect
 
 	// timestamp, color, depth
 	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
+	typedef std::function<void()> KinectConnectedCallback;
+	typedef std::function<void()> KinectDisconnectedCallback;
+
 
 public:
 
 	FrameReadyCallback onFramesReady;
+	KinectConnectedCallback onKinectConnect;
+	KinectDisconnectedCallback onKinectDisconnect;
 
 	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
 		intrinsics_color(nullptr), intrinsics_depth(nullptr), getFrameTimeout(1000)
@@ -356,12 +361,24 @@ private:
 				print_camera_parameters = false;
 			}
 
+			// updates app with stream status
+			appStatus->streamingColorWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
+			appStatus->streamingColorHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
+			appStatus->streamingDepthWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
+			appStatus->streamingDepthHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
+
 			// time to start reading frames and streaming
 			unsigned long long framesCaptured = 0;
 			unsigned int triesBeforeRestart = 5;
 			unsigned long long totalTries = 0;
 			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
 			appStatus->isCameraRunning = true;
+
+
+			// invokes the kinect started callback
+			if (onKinectConnect)
+				onKinectConnect();
+
 			auto start = std::chrono::high_resolution_clock::now();
 
 			try
@@ -383,8 +400,6 @@ private:
 
 						// transform color to depth
 						//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
-
-						
 
 						// copies images to Frame
 						std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
@@ -440,15 +455,19 @@ private:
 			} 
 
 			// are we running cameras?
+
+			appStatus->isCameraRunning = false;
 			if (runningCameras)
 			{
 				kinectDevice.stop_cameras();
 				runningCameras = false;
-				appStatus->isCameraRunning = false;
 			}
 
 			auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
 			Logger::Log("AzureKinect") << "Captured " << framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
+
+			if (onKinectDisconnect)
+				onKinectDisconnect();
 
 			// waits one second before restarting...
 			if (thread_running)

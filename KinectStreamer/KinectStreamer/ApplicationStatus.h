@@ -14,11 +14,16 @@ struct ApplicationStatus
 
 	int streamerPort;
 	int controlPort;
-	bool isStreaming;
-	
 
+	int streamingColorWidth, streamingColorHeight;
+	int streamingDepthWidth, streamingDepthHeight;
+
+	bool isStreaming;
 	bool isTCPStreamerServerRunning, isCameraRunning;
 
-	ApplicationStatus() : isRecordingColor(false), isRecordingDepth(false), _redirectFramesToRecorder(false), streamerPort(0), controlPort(0), isStreaming(false), isTCPStreamerServerRunning(false), isCameraRunning(false) {};
+	ApplicationStatus() : isRecordingColor(false), isRecordingDepth(false), _redirectFramesToRecorder(false), streamerPort(0), controlPort(0),
+	streamingColorWidth(0), streamingColorHeight(0),
+	streamingDepthWidth(0), streamingDepthHeight(0),
+	isStreaming(false),	isTCPStreamerServerRunning(false), isCameraRunning(false) {};
 
 };
