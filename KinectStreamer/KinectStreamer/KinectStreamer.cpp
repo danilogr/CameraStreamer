@@ -13,6 +13,7 @@
 #include "AzureKinect.h"
 #include "Frame.h"
 #include "Logger.h"
+#include "ApplicationStatus.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -32,23 +33,6 @@ using namespace std;
 int main()
 {
 
-
-	rapidjson::Document pongMessage;
-	pongMessage.SetObject();
-	pongMessage.AddMember("type", "pong", pongMessage.GetAllocator());
-	pongMessage.AddMember("streaming", true, pongMessage.GetAllocator());
-	pongMessage.AddMember("recording", false, pongMessage.GetAllocator());
-
-	rapidjson::StringBuffer buffer;
-	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-	pongMessage.Accept(writer);
-
-	const char* output = buffer.GetString();
-
-	std::cout << output << std::endl;
-
-	return 0;
-
 	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
 	// no devices installed ?
@@ -60,13 +44,22 @@ int main()
 
 	// main application loop where it waits for a user key to stop everything
 	{
-		TCPStreamingServer server(3614);
+		// ApplicationStatus is the data structure the application uses to synchronize 
+		// the overall application state machine across threads (e.g.: VideoRecorder uses it
+		// to let other threads know when it is recording, for instance)
+		std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
+		appStatus->streamerPort = 3614;
+		appStatus->controlPort = 6606;
 
-		AzureKinect kinectDevice;		
+		// starts listening but not yet dealing with client connections
+		TCPStreamingServer server(appStatus);
+		VideoRecorder videoRecorderThread(appStatus, "Kinect");
+		AzureKinect kinectDevice(appStatus);		
 
 		kinectDevice.onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
+
 
 		};
 
@@ -77,19 +70,94 @@ int main()
 		config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
 		config.synchronized_images_only = true;					 // depth and image should be synchronized
 
+		// start device, streaming server, and recording thread
 		kinectDevice.Run(config);
-
 		server.Run();
-
-		VideoRecorder videoRecorderThread;
 		videoRecorderThread.Run();
 
-		//RemoteControlServer remoteControlServer(6606);
-		//remoteControlServer.Run();
+		// finally 
+		RemoteControlServer remoteControlServer(appStatus,
+
+		// on start kinect request
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
+		{
+			// we are already running
+			if (kinectDevice.isStreaming())
+			{
+				Logger::Log("Remote") << "(startKinect) Kinect is already running!" << std::endl;
+				return;
+			}
+
+			kinectDevice.Run(config);
+			
+		},
+
+		// on stop kinect request
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
+		{
+			if (!kinectDevice.isRunning())
+			{
+				Logger::Log("Remote") << "(stopKinect) Kinect is not running!" << std::endl;
+				return;
+			}
+
+			kinectDevice.Stop();
+		},
 
 
-		std::cout << endl;
-		Logger::Log("Main") << "To close this application, press 'q'" << endl;
+		// on start recording request
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
+		{
+			std::string recordingPath = message["path"].GetString();
+
+			bool recordingColor = (message.HasMember("color") && message["color"].IsBool()) ? message["color"].GetBool() : true; // records color by default
+			bool recordingDepth = (message.HasMember("depth") && message["depth"].IsBool()) ? message["depth"].GetBool() : true; // records depth by default
+
+			videoRecorderThread.StartRecording(recordingPath, recordingColor, recordingDepth);
+		},
+
+
+		// on stop recording request
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
+		{
+			videoRecorderThread.StopRecording();
+		},
+
+
+		// on shutdown request
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
+		{
+			Logger::Log("Remote") << "Received shutdown notice... " << endl;
+
+			// if recording, we stop recording...
+			videoRecorderThread.StopRecording();
+
+			// prevents remote control from receiving any new messages
+			// by stopping it first
+			//remoteControlServer.Stop();
+
+			// stops tcp server
+			server.Stop();
+
+			// stops cameras
+			kinectDevice.Stop();
+
+			// wait for video recording to end
+			if (videoRecorderThread.isRecordingInProgress())
+				videoRecorderThread.Stop();
+
+			// kicks the bucket
+			exit(0);
+
+		});
+
+		// runs the rmeote server with the above callbacks (yeah, I should remove
+		// them from the constructor...)
+		remoteControlServer.Run();
+
+
+		// let's everyone know that they can exit by pressing 'q'
+		Logger::Log("Main") << endl << "To close this application, press 'q'" << endl;
 
 		// waits for user command to exit
 		bool exit = false;
@@ -109,6 +177,25 @@ int main()
 			}
 		}
 		Logger::Log("Main") << "User pressed 'q'. Exiting... " << endl;
+
+		// if recording, we stop recording...
+		videoRecorderThread.StopRecording();
+
+		// prevents remote control from receiving any new messages
+		// by stopping it first
+		remoteControlServer.Stop();
+
+		// stops tcp server
+		server.Stop();
+
+		// stops cameras
+		kinectDevice.Stop();
+
+		// wait for video recording to end
+		if (videoRecorderThread.isRecordingInProgress())
+			videoRecorderThread.Stop();
+
+		// done
 	}
 
 

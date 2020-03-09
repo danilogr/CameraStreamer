@@ -194,6 +194,7 @@
     <ClCompile Include="VideoRecorder.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ApplicationStatus.h" />
     <ClInclude Include="AzureKinect.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Logger.h" />

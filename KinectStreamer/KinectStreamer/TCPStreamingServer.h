@@ -17,6 +17,7 @@
 
 #include "Logger.h"
 #include "Statistics.h"
+#include "ApplicationStatus.h"
 
 using boost::asio::ip::tcp;
 
@@ -28,9 +29,12 @@ using boost::asio::ip::tcp;
 */
 class TCPStreamingServer
 {
+
+	std::shared_ptr<ApplicationStatus> appStatus;
+
 public:
-	TCPStreamingServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
-		Logger::Log("Streamer") << "Listening on " << port << std::endl;
+	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->streamerPort)) {
+		Logger::Log("Streamer") << "Listening on " << appStatus->streamerPort << std::endl;
 	};
 
 	~TCPStreamingServer()
@@ -51,15 +55,22 @@ public:
 	void Stop()
 	{
 
-		// stops io service
-		io_service.stop();
+		if (isRunning())
+		{
+			// stops io service
+			io_service.stop();
 
-		// is it running ?
-		if (sThread && sThread->joinable())
-			sThread->join();
+			// is it running ?
+			if (sThread && sThread->joinable())
+				sThread->join();
 
-		// gets done with thread
-		sThread = nullptr;
+			// next line is technically not necessary, but
+			// we are doing it for book keeping
+			appStatus->isTCPStreamerServerRunning = false;
+
+			// gets done with thread
+			sThread = nullptr;
+		}
 
 		// any clients connected?
 		for (std::shared_ptr<tcp::socket> client : clients)
@@ -161,8 +172,13 @@ private:
 	void thread_main()
 	{
 		Logger::Log("Streamer") << "Waiting for connections" << std::endl;
+		appStatus->isTCPStreamerServerRunning = true;
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
+		
+		// make sure others knows that the thread is not running
+		appStatus->isTCPStreamerServerRunning = false;
+		Logger::Log("Streamer") << "Thread exited successfully" << std::endl;
 	}
 
 	// waits for connections

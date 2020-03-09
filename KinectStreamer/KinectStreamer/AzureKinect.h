@@ -11,9 +11,12 @@
 #include <opencv2/opencv.hpp>
 
 #include "Frame.h"
+#include "ApplicationStatus.h"
 
 class AzureKinect
 {
+	std::shared_ptr<ApplicationStatus> appStatus;
+
 	std::shared_ptr<std::thread> sThread;
 	k4a::device kinectDevice;
 	bool thread_running;
@@ -38,7 +41,7 @@ public:
 
 	FrameReadyCallback onFramesReady;
 
-	AzureKinect() : thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
+	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
 		intrinsics_color(nullptr), intrinsics_depth(nullptr), getFrameTimeout(1000)
 	{
 	}
@@ -61,15 +64,26 @@ public:
 
 	void Stop()
 	{
-		thread_running = false;     // stops the loop in case it is running
-		kinectDeviceSerial.clear(); // erases serial
 
-		if (sThread && sThread->joinable())
-			sThread->join();
+		// if we are running
+		if (thread_running)
+		{
+			thread_running = false;     // stops the loop in case it is running
+			kinectDeviceSerial.clear(); // erases serial
+
+			if (sThread && sThread->joinable())
+				sThread->join();
+
+			// makes sure that sthread doesn't point to anything
+			sThread = nullptr;
+		}
 
 		// frees resources
 		if (runningCameras)
+		{
 			kinectDevice.stop_cameras();
+			runningCameras = false;
+		}
 
 		if (kinectDevice.handle() != nullptr)
 			kinectDevice.close();
@@ -77,11 +91,14 @@ public:
 
 	void Run(k4a_device_configuration_t kinectConfig)
 	{
-		// saves the configuration
-		kinectConfiguration = kinectConfig;
+		if (!thread_running && !sThread)
+		{ 
+			// saves the configuration
+			kinectConfiguration = kinectConfig;
 
-		// starts thread
-		sThread.reset(new std::thread(std::bind(&AzureKinect::thread_main, this)));
+			// starts thread
+			sThread.reset(new std::thread(std::bind(&AzureKinect::thread_main, this)));
+		}
 	}
 
 	bool AdjustExposureBy(int exposure_level)
@@ -120,8 +137,6 @@ private:
 
 	bool OpenDefaultKinect()
 	{
-
-
 		if (kinectDevice)
 		{
 			Logger::Log("AzureKinect") << "Device is already open!" << std::endl;
@@ -309,17 +324,19 @@ private:
 				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
 				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
 				Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
+				
+				// saves table
+				saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
+
 				print_camera_parameters = false;
 			}
-
-			// saves table
-			saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
 
 			// time to start reading frames and streaming
 			unsigned long long framesCaptured = 0;
 			unsigned int triesBeforeRestart = 5;
 			unsigned long long totalTries = 0;
 			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
+			appStatus->isCameraRunning = true;
 			auto start = std::chrono::high_resolution_clock::now();
 
 			try
@@ -382,13 +399,27 @@ private:
 			catch (const k4a::error& e)
 			{
 				Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds." << std::endl;
-				std::this_thread::sleep_for(std::chrono::seconds(5));
+				
 				if (kinectDevice)
 				{
 					kinectDevice.stop_cameras();
+					kinectDevice.close();
 				}
-				kinectDevice.close();
+
+				kinectDevice.stop_cameras();
 				runningCameras = false;
+				appStatus->isCameraRunning = false;
+
+				// waits 5 seconds before trying again
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			} 
+
+			// are we running cameras?
+			if (runningCameras)
+			{
+				kinectDevice.stop_cameras();
+				runningCameras = false;
+				appStatus->isCameraRunning = false;
 			}
 
 			auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();

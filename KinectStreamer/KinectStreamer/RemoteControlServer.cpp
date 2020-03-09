@@ -85,7 +85,7 @@ bool RemoteClient::message(const std::string& messageStr)
 	std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(sizeof(uint32_t) + messageStr.length());
 
 	// sends the message
-	send(message);
+	return send(message);
 }
 
 // ======================================= static methods =========================================== //
