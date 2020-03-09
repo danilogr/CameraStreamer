@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <string>
 
 struct Statistics
 {
@@ -12,5 +13,8 @@ struct Statistics
 	unsigned int packetsReceived;
 	unsigned long long bytesReceived;
 
-	Statistics() : connected(std::chrono::system_clock::now()), packetsSent(0), packetsDropped(0), bytesSent(0), packetsReceived(0), bytesReceived(0) {}
+	std::string remoteAddress;
+	int remotePort;
+
+	Statistics() : connected(std::chrono::system_clock::now()), packetsSent(0), packetsDropped(0), bytesSent(0), packetsReceived(0), bytesReceived(0), remotePort(0) {}
 };
