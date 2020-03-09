@@ -134,7 +134,7 @@ int main()
 			if (recordingColor)
 			{
 				if (message.HasMember("colorPath"))
-					recordingColorPath = message["colorPath"].GetString();
+					recordingColorPath = std::string(message["colorPath"].GetString(), message["colorPath"].GetStringLength());
 				else
 				{
 					Logger::Log("Remote") << "(startRecording) Color path was not defined!" << std::endl;
@@ -147,7 +147,7 @@ int main()
 			if (recordingDepth)
 			{
 				if (message.HasMember("depthPath"))
-					recordingColorPath = message["depthPath"].GetString();
+					recordingDepthPath = std::string(message["depthPath"].GetString(), message["depthPath"].GetStringLength());
 				else
 				{
 					Logger::Log("Remote") << "(startRecording) Depth path was not defined!" << std::endl;
