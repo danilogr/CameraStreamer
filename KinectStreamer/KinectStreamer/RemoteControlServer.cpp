@@ -67,11 +67,9 @@ bool RemoteClient::send(std::shared_ptr<std::vector<uchar> > message)
 		}
 
 		// makes sure that we are running from the right thread before continuing
-		if (std::this_thread::get_id() != server.sThread->get_id())
-		{
-			server.io_service.post(std::bind(&RemoteClient::write_request, shared_from_this(), message));
-			return true;
-		}
+		server.io_service.post(std::bind(&RemoteClient::write_request, shared_from_this(), message));
+		return true;
+		
 	}
 	else {
 		Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Error sending message! Client is not connected!" << std::endl;
@@ -119,6 +117,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 
 	// pops the last read
 	client->outputMessageQ.pop();
+
 	client->statistics.packetsSent++;
 	
 	// moves on with next writes
@@ -129,17 +128,21 @@ void RemoteClient::write_next_message(std::shared_ptr<RemoteClient> client)
 {
 	using namespace std::placeholders; // for  _1, _2, ...
 
+	// sanity check
+	if (!client)
+		return;
+
 	// can we still right / do we still have a socket?
 	if (!client->socket)
 		return;
 
 	// nothing to write? -> done with asynchronous writings
-	if (!client->outputMessageQ.size())
+	if (client->outputMessageQ.size() == 0)
 		return;
 
-	// something to write? let's pop it!
+	// something to write? let's get it!
 	std::shared_ptr<std::vector<uchar > > message = client->outputMessageQ.back();
-
+	
 	// starts writing for this client
 	boost::asio::async_write(*client->socket, boost::asio::buffer(*message, message->size()), std::bind(&RemoteClient::write_done, client, message, _1, _2));
 }

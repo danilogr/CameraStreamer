@@ -124,7 +124,7 @@ public:
 	
 		using namespace std::placeholders; // for  _1, _2, ...
 		remoteCommandsCallbacks["startKinect"] = startKinectCallback;
-		remoteCommandsCallbacks["stopKinect "] = stopKinectCallback;
+		remoteCommandsCallbacks["stopKinect"] = stopKinectCallback;
 		remoteCommandsCallbacks["startRecording"] = startRecordingCallback;
 		remoteCommandsCallbacks["stopRecording"] = stopRecordingCallback;
 		remoteCommandsCallbacks["shutdown"] = shutdownCallback;
