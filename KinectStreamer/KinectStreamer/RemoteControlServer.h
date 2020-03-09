@@ -317,7 +317,15 @@ private:
 				if (messageCallback != remoteCommandsCallbacks.end())
 				{
 					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " message with type " << messageType << " received!" << std::endl;
-					messageCallback->second(client, message);
+					
+					try
+					{
+						messageCallback->second(client, message);
+					}
+					catch (const std::exception & e)
+					{
+						Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Exception throw while handling message " << messageType <<  " : " << e.what() << std::endl;
+					}
 				}
 				else
 				{
