@@ -14,6 +14,8 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <opencv2/opencv.hpp>
 #include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include "Logger.h"
 #include "Statistics.h"
@@ -62,7 +64,6 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	std::string remoteAddress;
 	int remotePort;
 
-
 protected:
 	static void write_request(std::shared_ptr<RemoteClient> client, std::shared_ptr<std::vector<uchar> > message);
 	friend class RemoteControlServer;
@@ -79,6 +80,21 @@ public:
 	bool send(std::shared_ptr<std::vector<uchar> > message);
 	bool message(const std::string& content);
 
+	bool isConnected() const
+	{
+		return (socket && socket->is_open());
+	}
+
+	const std::string& RemoteAddress() const
+	{
+		return remoteAddress;
+	}
+
+	int RemotePort() const
+	{
+		return remotePort;
+	}
+
 	// destructor
 	~RemoteClient();
 };
@@ -87,9 +103,27 @@ public:
 class RemoteControlServer
 {
 
+	// support remote commands
+	std::map < std::string, std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> > remoteCommandsCallbacks;
+
 public:
-	RemoteControlServer(unsigned int port) : acceptor(io_service, tcp::endpoint(tcp::v4(), port)) {
+	RemoteControlServer(unsigned int port,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startKinectCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopKinectCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startRecordingCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback) : acceptor(io_service, tcp::endpoint(tcp::v4(), port))
+	{
+		
+		using namespace std::placeholders; // for  _1, _2, ...
+		remoteCommandsCallbacks["startKinect"] = startKinectCallback;
+		remoteCommandsCallbacks["stopKinect "] = stopKinectCallback;
+		remoteCommandsCallbacks["startRecording"] = startRecordingCallback;
+		remoteCommandsCallbacks["shutdown"] = shutdownCallback;
+		remoteCommandsCallbacks["ping"] = std::bind(&RemoteControlServer::pingRequest, this, _1, _2);
+
+		
 		Logger::Log("Remote") << "Listening on " << port << std::endl;
+
 	};
 	~RemoteControlServer()
 	{
@@ -186,50 +220,19 @@ public:
 		return false;
 	}
 
-	void ParseMessage(std::shared_ptr < std::vector<uchar> > messageBuffer, std::shared_ptr<RemoteClient> client = nullptr)
-	{
-		if (!messageBuffer)
-			return;
- 
-
-		rapidjson::Document message;
-		try
-		{
-			message.Parse((const char*) & (*messageBuffer)[0], messageBuffer->size());
-
-
-			if (message.HasMember("type"))
-			{
-				if (client)
-				{
-					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " message with type " << message["type"].GetString() << " received!" << std::endl;
-				}
-			}
-			else {
-				if (client)
-				{
-					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << "Invalid messaged received (type is missing)" << std::endl;
-				}
-				else {
-					Logger::Log("Remote") << " Invalid messaged received (type is missing)" << std::endl;
-				}
-			}
-
-		}
-		catch (const std::exception &e)
-		{
-			if (client)
-			{
-				Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error parsing message: " << e.what() << std::endl;
-			}
-			else {
-				Logger::Log("Remote") << " Error parsing message: " << e.what() << std::endl;
-			}
-		}
-	}
-
 	// event queue
 	boost::asio::io_service io_service;
+
+	//
+	void SetCameraRecordingStatus(bool isRecording)
+	{
+		cameraIsRecording = isRecording;
+	}
+
+	void SetCameraRunningStatus(bool isCameraRunning)
+	{
+		cameraIsRunning = isCameraRunning;
+	}
 
 private:
 	// tcp server that listens and waits for clients
@@ -278,6 +281,78 @@ private:
 		aync_accept_connection();
 	}
 
+
+	void ParseMessage(std::shared_ptr < std::vector<uchar> > messageBuffer, std::shared_ptr<RemoteClient> client)
+	{
+		if (!messageBuffer)
+			return;
+
+		if (!client)
+		{
+			Logger::Log("Remote") << "Error! Cannot parse message without client!" << std::endl;
+			return;
+		}
+
+
+		rapidjson::Document message;
+		try
+		{
+			// parses message
+			message.Parse((const char*) & (*messageBuffer)[0], messageBuffer->size());
+
+			if (message.HasMember("type"))
+			{
+				std::string messageType = message["type"].GetString();
+
+				auto messageCallback = remoteCommandsCallbacks.find(messageType);
+				
+				
+				// if we have a callback for the message
+				if (messageCallback != remoteCommandsCallbacks.end())
+				{
+					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " message with type " << messageType << " received!" << std::endl;
+					messageCallback->second(client, message);
+				}
+				else
+				{
+					Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error! Invalid message with type " << messageType << " received!" << std::endl;
+				}
+
+			}
+			else {
+				Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << "Invalid messaged received (type is missing)" << std::endl;
+			}
+
+		}
+		catch (const std::exception & e)
+		{
+			Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << " Error parsing message: " << e.what() << std::endl;	
+		}
+	}
+
+
 	friend class RemoteClient;
+
+	bool cameraIsRunning;
+	bool cameraIsRecording;
+
+
+	// tell the client what's up
+	void pingRequest(std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
+	{
+		// it only makes sense to message the client if the client is still connected
+		if (client->isConnected())
+		{
+			rapidjson::Document pongMessage;
+			pongMessage["type"] = "pong";
+			pongMessage["streaming"] = cameraIsRunning;
+			pongMessage["recording"] = cameraIsRecording;
+
+		}
+		else {
+			Logger::Log("Remote") << '[' << client->RemoteAddress() << ':' << client->RemotePort() << ']' << " Could not send Pong message back!" << std::endl;
+		}
+	}
+
 };
 

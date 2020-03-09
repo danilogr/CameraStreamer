@@ -31,6 +31,24 @@ void OnFrameReadyCallback(std::chrono::microseconds, std::shared_ptr<Frame> colo
 using namespace std;
 int main()
 {
+
+
+	rapidjson::Document pongMessage;
+	pongMessage.SetObject();
+	pongMessage.AddMember("type", "pong", pongMessage.GetAllocator());
+	pongMessage.AddMember("streaming", true, pongMessage.GetAllocator());
+	pongMessage.AddMember("recording", false, pongMessage.GetAllocator());
+
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	pongMessage.Accept(writer);
+
+	const char* output = buffer.GetString();
+
+	std::cout << output << std::endl;
+
+	return 0;
+
 	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
 	// no devices installed ?
@@ -66,8 +84,8 @@ int main()
 		VideoRecorder videoRecorderThread;
 		videoRecorderThread.Run();
 
-		RemoteControlServer remoteControlServer(6606);
-		remoteControlServer.Run();
+		//RemoteControlServer remoteControlServer(6606);
+		//remoteControlServer.Run();
 
 
 		std::cout << endl;
