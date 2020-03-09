@@ -42,14 +42,17 @@ int main()
 	//	return 1;
 	//}
 
-	// main application loop where it waits for a user key to stop everything
-	{
-		// ApplicationStatus is the data structure the application uses to synchronize 
+	// ApplicationStatus is the data structure the application uses to synchronize 
 		// the overall application state machine across threads (e.g.: VideoRecorder uses it
 		// to let other threads know when it is recording, for instance)
-		std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
-		appStatus->streamerPort = 3614;
-		appStatus->controlPort = 6606;
+	std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
+	ApplicationStatus& appStatusPtr = *appStatus;
+
+	appStatus->streamerPort = 3614;
+	appStatus->controlPort = 6606;
+
+	// main application loop where it waits for a user key to stop everything
+	{
 
 		// starts listening but not yet dealing with client connections
 		TCPStreamingServer server(appStatus);
@@ -60,6 +63,10 @@ int main()
 		{
 			server.ForwardToAll(color, depth);
 
+			if (appStatusPtr._redirectFramesToRecorder)
+			{
+				videoRecorderThread.RecordFrame(color, depth);
+			}
 
 		};
 
@@ -130,6 +137,8 @@ int main()
 			Logger::Log("Remote") << "Received shutdown notice... " << endl;
 
 			// if recording, we stop recording...
+
+			if (videoRecorderThread.isRecordingInProgress())
 			videoRecorderThread.StopRecording();
 
 			// prevents remote control from receiving any new messages
@@ -143,8 +152,7 @@ int main()
 			kinectDevice.Stop();
 
 			// wait for video recording to end
-			if (videoRecorderThread.isRecordingInProgress())
-				videoRecorderThread.Stop();
+			videoRecorderThread.Stop();
 
 			// kicks the bucket
 			exit(0);
@@ -179,7 +187,8 @@ int main()
 		Logger::Log("Main") << "User pressed 'q'. Exiting... " << endl;
 
 		// if recording, we stop recording...
-		videoRecorderThread.StopRecording();
+		if (videoRecorderThread.isRecordingInProgress())
+			videoRecorderThread.StopRecording();
 
 		// prevents remote control from receiving any new messages
 		// by stopping it first
@@ -192,8 +201,7 @@ int main()
 		kinectDevice.Stop();
 
 		// wait for video recording to end
-		if (videoRecorderThread.isRecordingInProgress())
-			videoRecorderThread.Stop();
+		videoRecorderThread.Stop();
 
 		// done
 	}
