@@ -30,6 +30,7 @@ class AzureKinect
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
 
 	int currentExposure = 0;
+	int currentGain = 0;
 	std::chrono::milliseconds getFrameTimeout;
 
 	std::string kinectDeviceSerial;
@@ -101,28 +102,52 @@ public:
 		}
 	}
 
-	bool AdjustExposureBy(int exposure_level)
+	bool AdjustGainBy(int gain_level)
 	{
-		int prosedExposure = currentExposure + exposure_level;
-		if (prosedExposure > 1)
+		int proposedGain = currentGain + gain_level;
+		if (proposedGain < 0)
 		{
-			prosedExposure = 1;
+			proposedGain = 0;
 		}
-		else if (prosedExposure < -11)
+		else if (proposedGain > 10)
 		{
-			prosedExposure = -11;
+			proposedGain = 10;
 		}
 
 		try
 		{
-			kinectDevice.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>(exp2f((float)prosedExposure) *
+			kinectDevice.set_color_control(K4A_COLOR_CONTROL_GAIN, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>((float)proposedGain * 25.5f));
+			currentGain = proposedGain;
+			Logger::Log("AzureKinect") << "Gain level: " << currentGain << std::endl;
+		}
+		catch (const k4a::error & e)
+		{
+			Logger::Log("AzureKinect") << "Could not adjust gain level to : " << proposedGain << std::endl;
+		}
+	}
+
+	bool AdjustExposureBy(int exposure_level)
+	{
+		int proposedExposure = currentExposure + exposure_level;
+		if (proposedExposure > 1)
+		{
+			proposedExposure = 1;
+		}
+		else if (proposedExposure < -11)
+		{
+			proposedExposure = -11;
+		}
+
+		try
+		{
+			kinectDevice.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>(exp2f((float)proposedExposure) *
 				1000000.0f));
-			currentExposure = prosedExposure;
+			currentExposure = proposedExposure;
 			Logger::Log("AzureKinect") << "Exposure level: " << currentExposure << std::endl;
 		}
 		catch (const k4a::error& e)
 		{
-			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << prosedExposure << std::endl;
+			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << proposedExposure << std::endl;
 		}
 		
 	}
