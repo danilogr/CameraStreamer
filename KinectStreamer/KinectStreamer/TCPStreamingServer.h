@@ -79,26 +79,18 @@ public:
 			{
 				// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
 				clientsStatistics[client].packetsDropped += clientsQs[client].size();
-
-
 				client->close();
-
-
 			}
 			catch (std::exception e)
 			{
-				Logger::Log("Streamer") << "Error closing connection w/ Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << std::endl;
-
+				Logger::Log("Streamer") << "Error closing connection w/ Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << std::endl;
 			}
 
-			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << ":"
+			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
+			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << ":"
 				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
 				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
-
 		}
-
-
 
 		// erase list of clients
 		clients.clear();
@@ -241,8 +233,8 @@ private:
 				{
 					clientsStatistics[client].packetsDropped++;
 
-					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " --> "
+					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
+					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " --> "
 						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
 						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 					
