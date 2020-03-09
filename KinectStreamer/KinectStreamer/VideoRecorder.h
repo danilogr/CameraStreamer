@@ -7,6 +7,7 @@
 #include <sstream>
 #include <functional>
 #include <filesystem>
+#include <experimental/filesystem> // Header file for pre-standard implementation
 #include <memory>
 #include <mutex>
 #include <set>
@@ -29,13 +30,31 @@ class VideoRecorder
 	std::shared_ptr<std::thread> sThread;
 
 	// are we recording?
-	bool isRecordingVideo, isRecordingDepth;
+	bool isRecordingColor, isRecordingDepth;
 	bool acceptNewTasks;
 	std::string filenameColor, filenameDepth;
+	std::string filePrefix, filePath;
+	int takeNumber;
+
 	int framesLeft, framesRecorded;
 
 	cv::VideoWriter colorVideoWriter;
 	std::ofstream depthVideoWriter;
+
+
+	// returns the number of ticks (C# / .NET equivalent) in GMT
+	static const long long TicksNow()
+	{
+		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+		auto ticks = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
+
+		// to suport timezones we can do something like the below.. unfortunately it crashes
+		//auto now = date::make_zoned(date::current_zone(), std::chrono::system_clock::now()).get_local_time();
+
+		return ((long long)ticks.count() / (long long)100) + (long long)621355968000000000;
+	}
+
+
 
 	void RequestInternalStop()
 	{
@@ -58,7 +77,7 @@ class VideoRecorder
 		if (colorVideoWriter.isOpened())
 		{
 			colorVideoWriter.release();
-			isRecordingVideo = false;
+			isRecordingColor = false;
 			Logger::Log("Recorder") << "Closed file " << filenameColor << " after recording " << framesRecorded << " frames" << std::endl;
 		}
 
@@ -79,9 +98,11 @@ class VideoRecorder
 	// work that keeps the thread busy
 	std::shared_ptr<boost::asio::io_service::work> m_work;
 
+
+
 public:
 
-	VideoRecorder() : isRecordingVideo(false), isRecordingDepth(false), acceptNewTasks(false), framesLeft(0), framesRecorded(0)
+	VideoRecorder(const std::string& filePrefix = "StandardCamera") : isRecordingColor(false), isRecordingDepth(false), acceptNewTasks(false), takeNumber(0), framesLeft(0), framesRecorded(0)
 	{
 
 	}
@@ -108,7 +129,7 @@ public:
 
 		// the videorecorder thread has to stop itself to make sure
 		// that we are done recording all video files
-		if (isRecordingDepth || isRecordingVideo)
+		if (isRecordingDepth || isRecordingColor)
 		{
 			Logger::Log("Recorder") << "Still recording... waiting for recording to end so that files are saved successfully! (" << FramesLeft() << " frames left)" << std::endl;
 		}
@@ -136,6 +157,13 @@ public:
 	void VideoRecorderThreadLoop()
 	{
 
+
+		std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
+		auto ticks = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
+
+		std::cout << ((long long) ticks.count() / (long long)100) << std::endl;
+
+		std::cout << ((long long) ticks.count() / (long long) 100) + (long long) 621355968000000000 << std::endl;
 		Logger::Log("Recorder") << "Thread started" << std::endl;
 
 		// we can start accepting requests
@@ -188,10 +216,34 @@ public:
 			EndRecording();
 		}
 
-		// let's start a new recording
+		// todo: lowercase path before comparing?
+
+		// are we recording to the same path?
+		if (path == filePath)
+		{
+			takeNumber++;
+		}
+		else {
+			takeNumber = 1;
+			filePath = path;
+		}
+
+		// gets the timestamp for the videoname
+
 		std::stringstream depthFileName, colorFileName;
-		depthFileName << path;
-		colorFileName << path;
+		depthFileName << filePrefix << "_Depth_Take-" << takeNumber << "_Time-";
+		colorFileName << filePrefix << "_Color_Take-" << takeNumber << "_Time-";
+
+		// create file names
+		std::experimental::filesystem::path saveFolder(filePath);
+		
+
+		// open file handles
+
+
+		// ready to record!
+		isRecordingDepth = depth;
+		isRecordingColor = color;
 	}
 
 	bool StopRecording()
@@ -247,6 +299,17 @@ public:
 			return true;
 		}
 
+		// are we recording at this point?
+		if (isRecordingColor)
+		{
+
+		}
+
+		if (isRecordingDepth)
+		{
+
+		}
+
 		// everything below is guaranteed to be running on the VideoRecorder thread
 
 		// done recording another frame
@@ -256,7 +319,7 @@ public:
 	// returns true if there is a recording in progresss
 	bool isRecordingInProgress()
 	{
-		return (isRecordingDepth || isRecordingVideo);
+		return (isRecordingDepth || isRecordingColor);
 	}
 
 	// returns the number of frames queued to record

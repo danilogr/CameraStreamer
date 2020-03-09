@@ -31,7 +31,6 @@ void OnFrameReadyCallback(std::chrono::microseconds, std::shared_ptr<Frame> colo
 using namespace std;
 int main()
 {
-	
 	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
 	// no devices installed ?
