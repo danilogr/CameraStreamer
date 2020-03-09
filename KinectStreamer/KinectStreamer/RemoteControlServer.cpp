@@ -26,8 +26,9 @@ RemoteClient::~RemoteClient()
 	}
 
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Client disconnected" << std::endl;
-	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] Sent client --> "
+	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] "
 		<< statistics.bytesSent << " bytes (" << statistics.packetsSent << " messages sent and " << statistics.packetsDropped << " dropped) -"
+		<< statistics.bytesReceived << " bytes (" << statistics.packetsReceived << " messages received) -"
 		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connected).count() / 1000.0f << " sec" << std::endl;
 }
 
@@ -182,9 +183,13 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 {
 
 	using namespace std::placeholders; // for  _1, _2, ...
+
 	// can't keep reading if disconnected
 	if (!client || !client->socket)
 		return;
+
+	// saves the amount of bytes read
+	client->statistics.bytesReceived += bytes_transferred;
 
 	// any problems?
 	if (error)
@@ -244,6 +249,9 @@ void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::
 		return;
 	}
 
+	// saves the amount of bytes read
+	client->statistics.bytesReceived += bytes_transferred;
+
 	// did we read the right amount?
 	if (bytes_transferred != buffer->size())
 	{
@@ -255,8 +263,8 @@ void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::
 		return;
 	}
 
-	// ok, now we have the entire message on the buffer and we can process it
-	//Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort << ']' << std::string(buffer->begin(), buffer->end()) << std::endl;
+	// everything went well. this counts as a message
+	++client->statistics.packetsReceived;
 
 	// parse message 
 	client->server.ParseMessage(buffer, client);
