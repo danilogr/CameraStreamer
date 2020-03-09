@@ -72,6 +72,7 @@ int main()
 
 		kinectDevice.onKinectConnect = [&]()
 		{
+
 		};
 
 
