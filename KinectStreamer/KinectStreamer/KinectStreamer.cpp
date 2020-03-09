@@ -157,6 +157,33 @@ int main()
 			// kicks the bucket
 			exit(0);
 
+		},
+
+		// change exposure
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
+		{
+			if (message.HasMember("value") && message["value"].IsNumber())
+			{
+				kinectDevice.AdjustExposureBy(message["value"].GetInt());
+			}
+			else {
+				Logger::Log("Remote") << "(changeExposure) Error! No value received!" << std::endl;
+			}
+
+		},
+
+
+		// change gain
+		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
+		{
+			if (message.HasMember("value") && message["value"].IsNumber())
+			{
+				kinectDevice.AdjustGainBy(message["value"].GetInt());
+			}
+			else {
+				Logger::Log("Remote") << "(changeGain) Error! No value received!" << std::endl;
+			}
+
 		});
 
 		// runs the rmeote server with the above callbacks (yeah, I should remove

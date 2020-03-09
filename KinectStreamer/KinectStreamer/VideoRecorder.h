@@ -245,12 +245,6 @@ public:
 	// basically starts an io_service with "work"
 	void VideoRecorderThreadLoop()
 	{
-		std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-		auto ticks = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
-
-		std::cout << ((long long) ticks.count() / (long long)100) << std::endl;
-
-		std::cout << ((long long) ticks.count() / (long long) 100) + (long long) 621355968000000000 << std::endl;
 		Logger::Log("Recorder") << "Thread started" << std::endl;
 
 		// we can start accepting requests

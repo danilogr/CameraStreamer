@@ -117,7 +117,9 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopKinectCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->controlPort))
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->controlPort))
 	{
 	
 		using namespace std::placeholders; // for  _1, _2, ...
@@ -126,6 +128,8 @@ public:
 		remoteCommandsCallbacks["startRecording"] = startRecordingCallback;
 		remoteCommandsCallbacks["stopRecording"] = stopRecordingCallback;
 		remoteCommandsCallbacks["shutdown"] = shutdownCallback;
+		remoteCommandsCallbacks["changeExposure"] = changeExposureCallback;
+		remoteCommandsCallbacks["changeGain"] = changeGainCallback;
 		remoteCommandsCallbacks["ping"] = std::bind(&RemoteControlServer::pingRequest, this, _1, _2);
 
 		Logger::Log("Remote") << "Listening on " << appStatus->controlPort << std::endl;
