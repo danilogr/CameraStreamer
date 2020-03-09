@@ -175,7 +175,7 @@ int main()
 			// if recording, we stop recording...
 
 			if (videoRecorderThread.isRecordingInProgress())
-			videoRecorderThread.StopRecording();
+				videoRecorderThread.StopRecording();
 
 			// prevents remote control from receiving any new messages
 			// by stopping it first

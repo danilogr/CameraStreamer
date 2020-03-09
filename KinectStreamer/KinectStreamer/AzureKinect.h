@@ -91,8 +91,7 @@ public:
 			runningCameras = false;
 		}
 
-		if (kinectDevice.handle() != nullptr)
-			kinectDevice.close();
+		kinectDevice.close();
 	}
 
 	void Run(k4a_device_configuration_t kinectConfig)

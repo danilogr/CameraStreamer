@@ -215,7 +215,7 @@ class VideoRecorder
 				{
 					depthVideoWriter.write((const char*)& ticksSoFar, sizeof(long long));
 					depthVideoWriter.write((const char*) depthFrame->getData(), depthFrame->size());
-					++internalColorFramesRecorded;
+					++internalDepthFramesRecorded;
 				}
 				catch (const std::exception & e)
 				{
@@ -252,7 +252,7 @@ public:
 	VideoRecorder(std::shared_ptr<ApplicationStatus> appStatus, const std::string& filePrefix = "StandardCamera") :
 	appStatus(appStatus), acceptNewTasks(false), internalIsRecordingColor(false), internalIsRecordingDepth(false),
 	externalIsRecordingColor(false), externalIsRecordingDepth(false), externalColorTakeNumber(1), externalDepthTakeNumber(1),
-	externalColorWidth(0), externalColorHeight(0), externalDepthWidth(0), externalDepthHeight(0),
+	externalColorWidth(0), externalColorHeight(0), externalDepthWidth(0), externalDepthHeight(0), filePrefix(filePrefix),
 	framesLeft(0), internalColorFramesRecorded(0), internalDepthFramesRecorded(0), internalColorFramesDropped(0), internalDepthFramesDropped(0)
 	{
 
