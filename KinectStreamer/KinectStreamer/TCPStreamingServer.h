@@ -34,7 +34,7 @@ class TCPStreamingServer
 
 public:
 	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->streamerPort)) {
-		Logger::Log("Streamer") << "Listening on " << appStatus->streamerPort << std::endl;
+		Logger::Log("Streamer") << "Listening on " << appStatus->GetStreamerPort() << std::endl;
 	};
 
 	~TCPStreamingServer()
@@ -66,7 +66,7 @@ public:
 
 			// next line is technically not necessary, but
 			// we are doing it for book keeping
-			appStatus->isStreaming = false;
+			appStatus->SetStreamingStatus(false);
 
 			// gets done with thread
 			sThread = nullptr;
@@ -177,13 +177,13 @@ private:
 	// this method implements the main thread for TCPStreamingServer
 	void thread_main()
 	{
-		Logger::Log("Streamer") << "Waiting for connections" << std::endl;
-		appStatus->isStreaming = true;
+		Logger::Log("Streamer") << "Waiting for connections on port" << appStatus->GetStreamerPort() << std::endl;
+		appStatus->SetStreamingStatus(true);
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 		
 		// make sure others knows that the thread is not running
-		appStatus->isStreaming = false;
+		appStatus->SetStreamingStatus(false);
 		Logger::Log("Streamer") << "Thread exited successfully" << std::endl;
 	}
 

@@ -187,6 +187,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ApplicationStatus.cpp" />
     <ClCompile Include="AzureKinect.cpp" />
     <ClCompile Include="KinectStreamer.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />

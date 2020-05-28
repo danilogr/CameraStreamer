@@ -48,8 +48,13 @@ int main()
 	std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
 	ApplicationStatus& appStatusPtr = *appStatus;
 
-	appStatus->streamerPort = 3614;
-	appStatus->controlPort = 6606;
+	// set default values
+	appStatus->SetStreamerPort(3614);
+	appStatus->SetControlPort(6606);
+
+	// read configuration file if one is present
+
+
 
 	// main application loop where it waits for a user key to stop everything
 	{
@@ -63,7 +68,7 @@ int main()
 		{
 			server.ForwardToAll(color, depth);
 
-			if (appStatusPtr._redirectFramesToRecorder)
+			if (appStatusPtr.isRedirectingFramesToRecorder())
 			{
 				videoRecorderThread.RecordFrame(color, depth);
 			}

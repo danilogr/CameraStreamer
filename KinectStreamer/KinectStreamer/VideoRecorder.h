@@ -232,22 +232,7 @@ class VideoRecorder
 		--framesLeft;
 	}
 
-	// This method updates appStatus (ApplicationStatus) so that Ping/Pong messages contain the right
-	// information about recording status
-	void UpdateAppStatus(const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
-	{
-		std::lock_guard<std::mutex> guard(appStatus->statusChangeLock);
-		{
-			appStatus->isRecordingColor = externalIsRecordingColor;
-			appStatus->isRecordingDepth = externalIsRecordingDepth;
-			appStatus->recordingColorPath = colorPath;
-			appStatus->recordingDepthPath = depthPath;
-		}
-	}
-
 public:
-
-
 
 	VideoRecorder(std::shared_ptr<ApplicationStatus> appStatus, const std::string& filePrefix = "StandardCamera") :
 	appStatus(appStatus), acceptNewTasks(false), internalIsRecordingColor(false), internalIsRecordingDepth(false),
@@ -350,7 +335,7 @@ public:
 		}
 
 		// is the camera streaming at all?
-		if (!appStatus->isCameraRunning)
+		if (!appStatus->IsCameraRunning())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record without a camera..." << std::endl;
 			return false;
@@ -422,12 +407,9 @@ public:
 		}
 
 		// tell others that the VideoRecorder thread can start receiving frames
-		appStatus->_redirectFramesToRecorder = true;
 		externalIsRecordingColor = color;
 		externalIsRecordingDepth = depth;
-
-		// let others know that we are recording
-		UpdateAppStatus(colorVideoPath, depthVideoPath);
+		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
 
 		// now we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
@@ -453,15 +435,12 @@ public:
 			Logger::Log("Recorder") << "Request to stop recording processed succesfully!" << std::endl;
 
 			// we can already tell cameras to stop sending us frames
-			appStatus->_redirectFramesToRecorder = false;
+			appStatus->UpdateRecordingStatus(false, false, false);
 
 			// we can also stop receiving frames
 			externalIsRecordingColor = false;
 			externalIsRecordingDepth = false;
 
-			// stops recording externally
-			UpdateAppStatus();
-			
 			// stops recording internally
 			io_service.post(std::bind(&VideoRecorder::InternalStopRecording, this));
 			return true;

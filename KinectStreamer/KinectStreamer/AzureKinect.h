@@ -360,18 +360,21 @@ private:
 				print_camera_parameters = false;
 			}
 
-			// updates app with stream status
-			appStatus->streamingColorWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
-			appStatus->streamingColorHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
-			appStatus->streamingDepthWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
-			appStatus->streamingDepthHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
-
+			
 			// time to start reading frames and streaming
 			unsigned long long framesCaptured = 0;
 			unsigned int triesBeforeRestart = 5;
 			unsigned long long totalTries = 0;
+			
+			// updates app with capture and stream status
+			appStatus->UpdateCaptureStatus(true, true,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height, // might change depending on config
+				kinectCameraCalibration.depth_camera_calibration.resolution_width, kinectCameraCalibration.depth_camera_calibration.resolution_height,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
+
+			// starts
 			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
-			appStatus->isCameraRunning = true;
 
 
 			// invokes the kinect started callback
@@ -447,15 +450,14 @@ private:
 
 				kinectDevice.stop_cameras();
 				runningCameras = false;
-				appStatus->isCameraRunning = false;
+				appStatus->UpdateCaptureStatus(false, false);
 
 				// waits 5 seconds before trying again
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			} 
 
 			// are we running cameras?
-
-			appStatus->isCameraRunning = false;
+			appStatus->UpdateCaptureStatus(false, false);
 			if (runningCameras)
 			{
 				kinectDevice.stop_cameras();
