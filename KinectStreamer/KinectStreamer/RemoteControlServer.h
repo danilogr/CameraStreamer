@@ -253,7 +253,7 @@ private:
 	void thread_main()
 	{
 
-		Logger::Log("Remote") << "Waiting for connections on port" << appStatus->GetControlPort() << std::endl;
+		Logger::Log("Remote") << "Waiting for connections on port " << appStatus->GetControlPort() << std::endl;
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 	}

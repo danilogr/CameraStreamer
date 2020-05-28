@@ -342,23 +342,23 @@ public:
 		}
 
 		// can we record? what's the resolution so far
-		if (color && (appStatus->streamingColorHeight == 0 || appStatus->streamingColorWidth == 0))
+		if (color && (appStatus->GetStreamingColorHeight() == 0 || appStatus->GetStreamingColorWidth() == 0))
 		{
 			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
 			return false;
 		}
 
-		if (depth && (appStatus->streamingDepthHeight == 0 || appStatus->streamingDepthWidth == 0))
+		if (depth && (appStatus->GetStreamingDepthHeight() == 0 || appStatus->GetStreamingDepthWidth() == 0))
 		{
 			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
 			return false;
 		}
 
 		// yay, we are good to record!
-		externalColorHeight = appStatus->streamingColorHeight;
-		externalColorWidth  = appStatus->streamingColorWidth;
-		externalDepthHeight = appStatus->streamingDepthHeight;
-		externalDepthWidth  = appStatus->streamingDepthWidth;
+		externalColorHeight = appStatus->GetStreamingColorHeight();
+		externalColorWidth  = appStatus->GetStreamingColorWidth();
+		externalDepthHeight = appStatus->GetStreamingDepthHeight();
+		externalDepthWidth  = appStatus->GetStreamingDepthWidth();
 
 		// are we recording to the same path?
 		// (this might happen if the camera gets unplugged and plugged back again)

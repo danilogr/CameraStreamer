@@ -55,8 +55,12 @@ public:
 	int GetStreamerPort() const { return streamerPort; }
 	int GetControlPort() const { return controlPort;  }
 	bool isRedirectingFramesToRecorder() const { return _redirectFramesToRecorder;  }
+	int GetStreamingColorHeight() const { return streamingColorHeight; }
+	int GetStreamingColorWidth() const { return streamingColorWidth; }
+	int GetStreamingDepthHeight() const { return streamingDepthHeight; }
+	int GetStreamingDepthWidth() const { return streamingDepthWidth; }
 
-
+	
 	// the getters and setters should have a lock, but if multiple of them are
 	// being called at once, then the developer is responsible for that
 	void SetStreamingClients(int value) { streamingClients = value; }
