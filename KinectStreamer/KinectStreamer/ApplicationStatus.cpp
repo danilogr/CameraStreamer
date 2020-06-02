@@ -26,7 +26,7 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 		// streaming server
 		applicationStatusJson.AddMember("streaming", isStreamingColor || isStreamingDepth, allocator);	// true if streaming either color, depth, or both
 		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator);				// number of clients currently connected to the stream
-		applicationStatusJson.AddMember("streamingMaxFPS", streamingFPS, allocator);						// FPS of the stream
+		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);						// FPS of the stream
 		applicationStatusJson.AddMember("streamingColor", isStreamingColor, allocator);
 		applicationStatusJson.AddMember("streamingColorWidth", streamingColorWidth, allocator);
 		applicationStatusJson.AddMember("streamingColorFormat", rapidjson::Value().SetString(streamingColorFormat.c_str(), streamingColorFormat.length(), allocator), allocator);
@@ -50,4 +50,9 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 	}
 
 	return std::move(applicationStatusJson);
+}
+
+bool LoadConfiguration(const std::string& filepath)
+{
+
 }

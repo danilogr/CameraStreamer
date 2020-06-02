@@ -52,7 +52,13 @@ int main()
 	appStatus->SetStreamerPort(3614);
 	appStatus->SetControlPort(6606);
 
+	// structure that lists supported cameras
+	//std::map<std::string
+
 	// read configuration file if one is present
+
+
+	// figure out if the current camera is supported
 
 
 
@@ -75,13 +81,13 @@ int main()
 
 		};
 
-		kinectDevice.onKinectConnect = [&]()
+		kinectDevice.onCameraConnect = [&]()
 		{
 
 		};
 
 
-		kinectDevice.onKinectDisconnect = [&]()
+		kinectDevice.onCameraDisconnect = [&]()
 		{
 
 		};
@@ -94,7 +100,8 @@ int main()
 		config.synchronized_images_only = true;					 // depth and image should be synchronized
 
 		// start device, streaming server, and recording thread
-		kinectDevice.Run(config);
+		kinectDevice.SetCameraSpecificConfiguration((void*)& config);
+		kinectDevice.Run();
 		server.Run();
 		videoRecorderThread.Run();
 
@@ -111,7 +118,7 @@ int main()
 				return;
 			}
 
-			kinectDevice.Run(config);
+			kinectDevice.Run();
 			
 		},
 

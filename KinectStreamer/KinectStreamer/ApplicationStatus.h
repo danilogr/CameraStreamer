@@ -19,13 +19,12 @@ class ApplicationStatus
 
 	// can be set by the configuration file
 	int streamingClients;
-	int streamingFPS;
+	int streamingMaxFPS;
 	int streamingColorWidth, streamingColorHeight;
 	int streamingDepthWidth, streamingDepthHeight;
 	std::string streamingColorFormat, streamingDepthFormat;
-	float streamingColorBitrate, streamingDepthBitrate;
+	float streamingColorBitrate, streamingDepthBitrate, streamingCurrentFPS;
 	
-
 	// true if the camera is streaming to at least one client?
 	bool isStreaming;
 	bool isStreamingColor, isStreamingDepth;
@@ -39,10 +38,10 @@ class ApplicationStatus
 public:
 
 	ApplicationStatus() : isRecordingColor(false), isRecordingDepth(false), _redirectFramesToRecorder(false), streamerPort(0), controlPort(0),
-	streamingClients(0), streamingFPS(0),
+	streamingClients(0), streamingMaxFPS(0),
 	streamingColorWidth(0), streamingColorHeight(0),
 	streamingDepthWidth(0), streamingDepthHeight(0),
-    streamingColorBitrate(0.0), streamingDepthBitrate(0.0),
+    streamingColorBitrate(0.0f), streamingDepthBitrate(0.0f), streamingCurrentFPS(0.0f),
 	isStreaming(false), isStreamingColor(false), isStreamingDepth(false),
 	isCameraDepthRunning(false), isCameraColorRunning(false),
 	cameraRequestedDepthWidth(0), cameraRequestedDepthHeight(0),
@@ -59,18 +58,19 @@ public:
 	int GetStreamingColorWidth() const { return streamingColorWidth; }
 	int GetStreamingDepthHeight() const { return streamingDepthHeight; }
 	int GetStreamingDepthWidth() const { return streamingDepthWidth; }
-
 	
-	// the getters and setters should have a lock, but if multiple of them are
-	// being called at once, then the developer is responsible for that
 	void SetStreamingClients(int value) { streamingClients = value; }
-	void SetStreamingMaxFPS(int value) { streamingFPS = value;  }
-	int GetStreamingMaxFPS() const { return streamingFPS; }
+	void SetStreamingMaxFPS(int value) { streamingMaxFPS = value;  }
+	int GetStreamingMaxFPS() const { return streamingMaxFPS; }
 	int GetStreamingClients() const { return streamingClients;}
 	void SetStreamingStatus(bool value) { isStreaming = value; if (!value) { isStreamingColor = false; isStreamingDepth = false; } }
 	bool GetStreamingStatus() const { return isStreaming; }
-
 	bool IsCameraRunning() const { return isStreamingColor || isStreamingDepth;  }
+	float GetCurrentStreamingFPS() const { return streamingCurrentFPS;  }
+
+	// this function sets the current streaming FPS. This should be updated by the class
+	// responsible for streaming
+	void SetCurrentStreamingFPS(float value) { streamingCurrentFPS = value;  }
 
 	// create a function to read this from a configuration file
 	bool LoadConfiguration(const std::string& filepath);

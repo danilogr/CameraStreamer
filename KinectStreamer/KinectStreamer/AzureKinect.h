@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Camera.h"
 #include "Logger.h"
 #include <k4a/k4a.hpp>
 #include <functional>
@@ -13,14 +14,11 @@
 #include "Frame.h"
 #include "ApplicationStatus.h"
 
-class AzureKinect
+class AzureKinect : public Camera
 {
-	std::shared_ptr<ApplicationStatus> appStatus;
 
-	std::shared_ptr<std::thread> sThread;
+	// internal implementation of the handle
 	k4a::device kinectDevice;
-	bool thread_running;
-	bool runningCameras;
 
 	k4a_device_configuration_t kinectConfiguration;
 	k4a::calibration kinectCameraCalibration;
@@ -28,85 +26,46 @@ class AzureKinect
 
 	k4a_calibration_intrinsic_parameters_t* intrinsics_color;
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
-
-	int currentExposure = 0;
-	int currentGain = 0;
-	std::chrono::milliseconds getFrameTimeout;
-
 	std::string kinectDeviceSerial;
+	
 
-	// timestamp, color, depth
-	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
-	typedef std::function<void()> KinectConnectedCallback;
-	typedef std::function<void()> KinectDisconnectedCallback;
+
+
+	//
+	// Virtual Methods (Camera interface)
+	// They are called whenever in a safe environment
+	// that guarantees that the cameras are running / the device was loaded
+	// (this is signalled through the runningCameras boolean)
+	//
+
+	// stop streaming from cameras
+	virtual void StopCameras()
+	{
+		kinectDevice.stop_cameras();
+	}
+
+	// free devices
+	virtual void FreeDevice()
+	{
+		kinectDevice.close();
+	}
 
 
 public:
 
-	FrameReadyCallback onFramesReady;
-	KinectConnectedCallback onKinectConnect;
-	KinectDisconnectedCallback onKinectDisconnect;
 
-	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
-		intrinsics_color(nullptr), intrinsics_depth(nullptr), getFrameTimeout(1000)
+	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : Camera(appStatus), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
+		intrinsics_color(nullptr), intrinsics_depth(nullptr)
 	{
 	}
 
-	~AzureKinect()
+
+	void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration)
 	{
-		Stop();
+		k4a_device_configuration_t kinectConfig = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
 	}
 
-	bool isRunning()
-	{
-		return (sThread && sThread->joinable());
-	}
-
-	// Returns true if kinect is opened and streaming video
-	bool isStreaming()
-	{
-		return runningCameras;
-	}
-
-	void Stop()
-	{
-
-		// if we are running
-		if (thread_running)
-		{
-			thread_running = false;     // stops the loop in case it is running
-			kinectDeviceSerial.clear(); // erases serial
-
-			if (sThread && sThread->joinable())
-				sThread->join();
-
-			// makes sure that sthread doesn't point to anything
-			sThread = nullptr;
-		}
-
-		// frees resources
-		if (runningCameras)
-		{
-			kinectDevice.stop_cameras();
-			runningCameras = false;
-		}
-
-		kinectDevice.close();
-	}
-
-	void Run(k4a_device_configuration_t kinectConfig)
-	{
-		if (!thread_running && !sThread)
-		{ 
-			// saves the configuration
-			kinectConfiguration = kinectConfig;
-
-			// starts thread
-			sThread.reset(new std::thread(std::bind(&AzureKinect::thread_main, this)));
-		}
-	}
-
-	bool AdjustGainBy(int gain_level)
+	virtual bool AdjustGainBy(int gain_level)
 	{
 		int proposedGain = currentGain + gain_level;
 		if (proposedGain < 0)
@@ -130,7 +89,7 @@ public:
 		}
 	}
 
-	bool AdjustExposureBy(int exposure_level)
+	virtual bool AdjustExposureBy(int exposure_level)
 	{
 		int proposedExposure = currentExposure + exposure_level;
 		if (proposedExposure > 1)
@@ -154,11 +113,6 @@ public:
 			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << proposedExposure << std::endl;
 		}
 		
-	}
-
-	const std::string& getSerial()
-	{
-		return kinectDeviceSerial;
 	}
 
 
@@ -185,12 +139,12 @@ private:
 		// let's update the serial number
 		try
 		{
-			kinectDeviceSerial = kinectDevice.get_serialnum();
+			cameraSerialNumber = kinectDevice.get_serialnum();
 		}
 		catch (const k4a::error & e)
 		{
 			Logger::Log("AzureKinect") << "Could not open default device..." << std::endl;
-			kinectDeviceSerial = "Unknown";
+			cameraSerialNumber = "Unknown";
 		}
 
 		return true;
@@ -250,10 +204,9 @@ private:
 
 	}
 
-	void thread_main()
+	virtual void CameraLoop()
 	{
 		Logger::Log("AzureKinect") << "Started Azure Kinect polling thread: " << std::this_thread::get_id << std::endl;
-		thread_running = true;
 		bool print_camera_parameters = true;
 
 		while (thread_running)
@@ -276,7 +229,7 @@ private:
 					return;
 				}
 
-				Logger::Log("AzureKinect") << "Opened kinect device id: " << kinectDeviceSerial << std::endl;
+				Logger::Log("AzureKinect") << "Opened kinect device id: " << cameraSerialNumber << std::endl;
 
 				// opening cameras
 				try
@@ -378,8 +331,8 @@ private:
 
 
 			// invokes the kinect started callback
-			if (onKinectConnect)
-				onKinectConnect();
+			if (onCameraConnect)
+				onCameraConnect();
 
 			auto start = std::chrono::high_resolution_clock::now();
 
@@ -467,8 +420,9 @@ private:
 			auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
 			Logger::Log("AzureKinect") << "Captured " << framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
 
-			if (onKinectDisconnect)
-				onKinectDisconnect();
+			// calls the camera disconnect callback
+			if (onCameraDisconnect)
+				onCameraDisconnect();
 
 			// waits one second before restarting...
 			if (thread_running)
