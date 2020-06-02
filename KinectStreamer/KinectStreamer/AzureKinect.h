@@ -27,28 +27,6 @@ class AzureKinect : public Camera
 	k4a_calibration_intrinsic_parameters_t* intrinsics_color;
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
 	std::string kinectDeviceSerial;
-	
-
-
-
-	//
-	// Virtual Methods (Camera interface)
-	// They are called whenever in a safe environment
-	// that guarantees that the cameras are running / the device was loaded
-	// (this is signalled through the runningCameras boolean)
-	//
-
-	// stop streaming from cameras
-	virtual void StopCameras()
-	{
-		kinectDevice.stop_cameras();
-	}
-
-	// free devices
-	virtual void FreeDevice()
-	{
-		kinectDevice.close();
-	}
 
 
 public:
@@ -59,10 +37,29 @@ public:
 	{
 	}
 
-
-	void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration)
+	~AzureKinect()
 	{
-		k4a_device_configuration_t kinectConfig = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
+		Stop();
+	}
+
+	virtual void Stop()
+	{
+		// stop thread
+		Camera::Stop();
+
+		// frees resources
+		if (runningCameras)
+		{
+			kinectDevice.stop_cameras();
+			runningCameras = false;
+		}
+
+		kinectDevice.close();
+	}
+
+	virtual void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration)
+	{
+		kinectConfiguration = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
 	}
 
 	virtual bool AdjustGainBy(int gain_level)

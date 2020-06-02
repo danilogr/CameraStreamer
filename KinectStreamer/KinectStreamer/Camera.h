@@ -105,8 +105,6 @@ protected:
 
 
 	// Virtual Methods to start and stop the camera
-	virtual void StopCameras() = 0;
-	virtual void FreeDevice() = 0;
 	virtual void CameraLoop() = 0;
 
 	void thread_main()
@@ -129,7 +127,6 @@ protected:
 			// were devices running?
 			if (runningCameras)
 			{
-				StopCameras();
 				runningCameras = false;
 			}
 
@@ -177,7 +174,8 @@ public:
 		return runningCameras;
 	}
 
-	void Stop()
+	// responsible for stopping the thread
+	virtual void Stop()
 	{
 
 		// if we are running
@@ -193,22 +191,9 @@ public:
 			sThread = nullptr;
 		}
 
-		// frees resources
-		if (runningCameras)
-		{
-			StopCameras();
-			runningCameras = false;
-		}
-
-		FreeDevice();
 	}
 
-
-	
-	virtual void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration)
-	{
-
-	}
+	virtual void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration) = 0;
 
 	void Run()
 	{
