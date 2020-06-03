@@ -227,6 +227,7 @@ int main()
 			if (message.HasMember("value") && message["value"].IsNumber())
 			{
 				kinectDevice.AdjustGainBy(message["value"].GetInt());
+				
 			}
 			else {
 				Logger::Log("Remote") << "(changeGain) Error! No value received!" << std::endl;

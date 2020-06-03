@@ -2,6 +2,7 @@
 
 #include <string>
 #include <mutex>
+#include <vector>
 #include <rapidjson/document.h>
 
 class ApplicationStatus
@@ -9,6 +10,7 @@ class ApplicationStatus
 	// this is only used when a recording starts or stops as many fields are changed at once
 	std::mutex statusChangeLock;
 
+	// recording remote control
 	std::string recordingColorPath, recordingDepthPath;
 	bool isRecordingColor, isRecordingDepth;
 	bool _redirectFramesToRecorder;
@@ -31,9 +33,22 @@ class ApplicationStatus
 
 	// true if the camera is connected and receiving frames
 	std::string cameraName, cameraSerial;
+	bool useFirstCameraAvailable;
 	bool isCameraDepthRunning, isCameraColorRunning;
+	bool requestDepthCamera, requestColorCamera;
 	int cameraRequestedDepthWidth, cameraRequestedDepthHeight;
 	int cameraRequestedColorWidth, cameraRequestedColorHeight;
+	
+	// camera specific configuration (stored as a json document)
+	// stores configuration specific information in memory
+	rapidjson::Document cameraSpecificConfiguration;
+	std::vector<char> configurationFileString;
+	
+	// reads the contents of parsedConfigurationFile into class elements
+	void ParseConfiguration();
+	
+	// saves the contents of class elements into the parsedConfigurationFile
+	void SerializeConfiguration();
 
 public:
 
@@ -44,8 +59,9 @@ public:
     streamingColorBitrate(0.0f), streamingDepthBitrate(0.0f), streamingCurrentFPS(0.0f),
 	isStreaming(false), isStreamingColor(false), isStreamingDepth(false),
 	isCameraDepthRunning(false), isCameraColorRunning(false),
+	requestDepthCamera(true), requestColorCamera(true),
 	cameraRequestedDepthWidth(0), cameraRequestedDepthHeight(0),
-	cameraRequestedColorWidth(0), cameraRequestedColorHeight(0){};
+	cameraRequestedColorWidth(0), cameraRequestedColorHeight(0), useFirstCameraAvailable(true) {};
 
 	// basic getters and setters - changes to these are only guaranteed to have
 	// an effect when they happen before the other threads are instantiated
@@ -67,6 +83,11 @@ public:
 	bool GetStreamingStatus() const { return isStreaming; }
 	bool IsCameraRunning() const { return isStreamingColor || isStreamingDepth;  }
 	float GetCurrentStreamingFPS() const { return streamingCurrentFPS;  }
+	bool UseFirstCameraAvailable() const { return useFirstCameraAvailable;  }
+	bool SetUseFirstCameraAvailable(bool value) { useFirstCameraAvailable = value; }
+
+	bool IsDepthCameraEnabled() const { return requestDepthCamera; }
+	bool IsColorCameraEnabled() const { return requestColorCamera; }
 
 	// this function sets the current streaming FPS. This should be updated by the class
 	// responsible for streaming
