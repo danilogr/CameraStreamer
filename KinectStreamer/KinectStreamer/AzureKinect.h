@@ -57,9 +57,86 @@ public:
 		kinectDevice.close();
 	}
 
-	virtual void SetCameraSpecificConfiguration(void* cameraSpecificConfiguration)
+	virtual void SetCameraConfigurationFromCustomDatastructure(void* cameraSpecificConfiguration)
 	{
 		kinectConfiguration = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
+	}
+
+	virtual void SetCameraConfigurationFromAppStatus(bool resetConfiguration)
+	{
+		// blank slate
+		if (resetConfiguration)
+			kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+
+		// first figure out which cameras have been loaded
+		if (appStatus->IsColorCameraEnabled())
+		{
+			kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
+
+			const int requestedWidth = appStatus->GetCameraColorWidth();
+			const int requestedHeight = appStatus->GetCameraColorHeight();
+			int newWidth = requestedWidth;
+			
+			switch (requestedHeight)
+			{
+				case 720:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+					newWidth = 1280;
+				break;
+
+				case 1080:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1080P;
+					newWidth = 1920;
+					break;
+
+				case 1440:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1440P;
+					newWidth = 2560;
+					break;
+
+				case 1536:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1536P;
+					newWidth = 2048;
+					break;
+
+				case 2160:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_2160P;
+					newWidth = 3840;
+					break;
+
+				// we currently onyl support up to 2k
+				default:
+					Logger::Log("AzureKinect") << "Camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << " ( we only support K4A native resolutions that run at 30fps)" << std::endl;
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+					appStatus->SetCameraColorHeight(720);
+					appStatus->SetCameraColorWidth(1280);
+					newWidth = 1280;
+					break;
+			}
+
+			// adjusting requested resolution to match an accepted resolution
+			if (requestedWidth != newWidth)
+			{
+				// add warning?
+				appStatus->SetCameraColorWidth(newWidth);
+			}
+
+		}
+		else {
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_OFF;
+		}
+
+		// then figure out depth camera
+		if (appStatus->IsDepthCameraEnabled())
+		{
+
+		}
+
+		// if both cameras are enabled, we will make sure that frames are synchronized
+		if (appStatus->IsColorCameraEnabled() && appStatus->IsDepthCameraEnabled())
+		{
+			kinectConfiguration.synchronized_images_only = true;
+		}
 	}
 
 	virtual bool AdjustGainBy(int gain_level)

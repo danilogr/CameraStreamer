@@ -149,8 +149,12 @@ void  ApplicationStatus::ParseConfiguration()
 	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraRequestedColorWidth, 1280);
 	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraRequestedColorHeight, 720);
 	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true);
+	ReadJSONDefaultBool(currentDoc, "requestInfrared", requestInfraredCamera, true);
 	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 1280);
 	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 720);
+
+	// color2
+	ReadJSONDefaultBool(currentDoc, "transformation", requestInfraredCamera, true);
 
 	// should we force a specific camera serial number?
 	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string());

@@ -35,7 +35,7 @@ class ApplicationStatus
 	std::string cameraName, cameraSerial;
 	bool useFirstCameraAvailable;
 	bool isCameraDepthRunning, isCameraColorRunning;
-	bool requestDepthCamera, requestColorCamera;
+	bool requestDepthCamera, requestInfraredCamera, requestColorCamera;
 	int cameraRequestedDepthWidth, cameraRequestedDepthHeight;
 	int cameraRequestedColorWidth, cameraRequestedColorHeight;
 	
@@ -59,7 +59,7 @@ public:
     streamingColorBitrate(0.0f), streamingDepthBitrate(0.0f), streamingCurrentFPS(0.0f),
 	isStreaming(false), isStreamingColor(false), isStreamingDepth(false),
 	isCameraDepthRunning(false), isCameraColorRunning(false),
-	requestDepthCamera(true), requestColorCamera(true),
+	requestDepthCamera(true), requestColorCamera(true), requestInfraredCamera(false),
 	cameraRequestedDepthWidth(0), cameraRequestedDepthHeight(0),
 	cameraRequestedColorWidth(0), cameraRequestedColorHeight(0), useFirstCameraAvailable(true) {};
 
@@ -74,6 +74,15 @@ public:
 	int GetStreamingColorWidth() const { return streamingColorWidth; }
 	int GetStreamingDepthHeight() const { return streamingDepthHeight; }
 	int GetStreamingDepthWidth() const { return streamingDepthWidth; }
+	int GetCameraColorHeight() const { return cameraRequestedColorHeight; }
+	int GetCameraColorWidth() const { return cameraRequestedColorWidth; }
+	int GetCameraDepthHeight() const { return cameraRequestedDepthHeight; }
+	int GetCameraDepthWidth() const { return cameraRequestedDepthWidth; }
+	void SetCameraColorHeight(int value) {  cameraRequestedColorHeight = value; }
+	void SetCameraColorWidth(int value) {  cameraRequestedColorWidth = value; }
+	void SetCameraDepthHeight(int value) { cameraRequestedDepthHeight = value; }
+	void SetCameraDepthWidth(int value) { cameraRequestedDepthWidth = value; }
+
 	
 	void SetStreamingClients(int value) { streamingClients = value; }
 	void SetStreamingMaxFPS(int value) { streamingMaxFPS = value;  }
@@ -88,6 +97,7 @@ public:
 
 	bool IsDepthCameraEnabled() const { return requestDepthCamera; }
 	bool IsColorCameraEnabled() const { return requestColorCamera; }
+	bool IsInfraredCameraEnabled() const { return requestInfraredCamera; }
 
 	// this function sets the current streaming FPS. This should be updated by the class
 	// responsible for streaming
