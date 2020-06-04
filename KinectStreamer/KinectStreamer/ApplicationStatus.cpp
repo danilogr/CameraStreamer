@@ -8,10 +8,10 @@
 #include <fstream>
 #include "Logger.h"
 
-#define ReadJSONDefaultInt(d,name,destination,defaultvalue) if (d.HasMember(name)) { if (d[name].IsNumber()) {destination = d[name].GetInt();} else { destination = defaultvalue; Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid integer! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
-#define ReadJSONDefaultFloat(d,name,destination,defaultvalue) if (d.HasMember(name)) { if (d[name].IsNumber()) {destination = d[name].GetFloat();} else { destination = defaultvalue; Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid float! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
-#define ReadJSONDefaultBool(d,name,destination,defaultvalue) if (d.HasMember(name)) { if (d[name].IsBool()) {destination = d[name].GetBool();} else { destination = defaultvalue; Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid boolean! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
-#define ReadJSONDefaultString(d,name,destination,defaultvalue) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;}
+#define ReadJSONDefaultInt(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetInt(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid integer! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
+#define ReadJSONDefaultFloat(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetFloat(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid float! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
+#define ReadJSONDefaultBool(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid boolean! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
+#define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid string! (Using default value instead: " << defaultvalue <<')' << std::endl; } }
 
 
 
@@ -126,7 +126,7 @@ bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 		}
 
 		// now that json parsing is done, time to read individual components
-		ParseConfiguration();
+		ParseConfiguration(successReading);
 
 		if (successReading)
 			Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
@@ -135,15 +135,15 @@ bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 
 
 
-void  ApplicationStatus::ParseConfiguration()
+void  ApplicationStatus::ParseConfiguration(bool warn)
 {
 	// trick to always use default elements in case parts of the document are missing
 	rapidjson::Value emptyDoc;
 	rapidjson::Value currentDoc;
 
 	// ports
-	ReadJSONDefaultInt(parsedConfigurationFile, "streamerPort", streamerPort, 3614);
-	ReadJSONDefaultInt(parsedConfigurationFile, "controlPort", streamerPort, 6606);
+	ReadJSONDefaultInt(parsedConfigurationFile, "streamerPort", streamerPort, 3614, true);
+	ReadJSONDefaultInt(parsedConfigurationFile, "controlPort", streamerPort, 6606, true);
 
 	// =======================================================================================
 	// camera
@@ -155,16 +155,16 @@ void  ApplicationStatus::ParseConfiguration()
 		currentDoc = emptyDoc;
 	}
 
-	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a");
-	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true);
-	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraRequestedColorWidth, 1280);
-	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraRequestedColorHeight, 720);
-	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true);
-	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 640);
-	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 576);
+	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true);
+	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true, warn);
+	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraRequestedColorWidth, 1280, warn);
+	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraRequestedColorHeight, 720, warn);
+	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true, warn);
+	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 640, warn);
+	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 576, warn);
 
 	// should we force a specific camera serial number?
-	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string());
+	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string(), false);
 	if (!cameraSerial.empty())
 	{
 		useFirstCameraAvailable = false; // depending on camera implementation, this will force the application to use a specific camera

@@ -45,7 +45,7 @@ class ApplicationStatus
 	std::vector<char> configurationFileString;
 	
 	// reads the contents of parsedConfigurationFile into class elements
-	void ParseConfiguration();
+	void ParseConfiguration(bool warn=true);
 	
 	// saves the contents of class elements into the parsedConfigurationFile
 	void SerializeConfiguration();
