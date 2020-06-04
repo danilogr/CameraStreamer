@@ -167,8 +167,8 @@ public:
 			// we will decided on the mode (wide vs narrow) based on the resolution
 
 			//kinectConfiguration.depth_mode
-			const int requestedWidth = appStatus->GetCameraColorWidth();
-			const int requestedHeight = appStatus->GetCameraColorHeight();
+			const int requestedWidth = appStatus->GetCameraDepthWidth();
+			const int requestedHeight = appStatus->GetCameraDepthHeight();
 			int newWidth = requestedWidth;
 
 			switch (requestedHeight)
