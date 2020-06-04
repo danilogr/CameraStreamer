@@ -35,13 +35,13 @@ class ApplicationStatus
 	std::string cameraName, cameraSerial;
 	bool useFirstCameraAvailable;
 	bool isCameraDepthRunning, isCameraColorRunning;
-	bool requestDepthCamera, requestInfraredCamera, requestColorCamera;
+	bool requestDepthCamera, requestColorCamera;// , requestInfraredCamera;
 	int cameraRequestedDepthWidth, cameraRequestedDepthHeight;
 	int cameraRequestedColorWidth, cameraRequestedColorHeight;
 	
 	// camera specific configuration (stored as a json document)
 	// stores configuration specific information in memory
-	rapidjson::Document cameraSpecificConfiguration;
+	rapidjson::Document parsedConfigurationFile;
 	std::vector<char> configurationFileString;
 	
 	// reads the contents of parsedConfigurationFile into class elements
@@ -59,7 +59,7 @@ public:
     streamingColorBitrate(0.0f), streamingDepthBitrate(0.0f), streamingCurrentFPS(0.0f),
 	isStreaming(false), isStreamingColor(false), isStreamingDepth(false),
 	isCameraDepthRunning(false), isCameraColorRunning(false),
-	requestDepthCamera(true), requestColorCamera(true), requestInfraredCamera(false),
+	requestDepthCamera(true), requestColorCamera(true),// requestInfraredCamera(false),
 	cameraRequestedDepthWidth(0), cameraRequestedDepthHeight(0),
 	cameraRequestedColorWidth(0), cameraRequestedColorHeight(0), useFirstCameraAvailable(true) {};
 
@@ -83,6 +83,9 @@ public:
 	void SetCameraDepthHeight(int value) { cameraRequestedDepthHeight = value; }
 	void SetCameraDepthWidth(int value) { cameraRequestedDepthWidth = value; }
 
+	const std::string& GetCameraName() const { return cameraName; }
+	const std::string& GetCameraSN() const { return cameraSerial; }
+
 	
 	void SetStreamingClients(int value) { streamingClients = value; }
 	void SetStreamingMaxFPS(int value) { streamingMaxFPS = value;  }
@@ -97,7 +100,7 @@ public:
 
 	bool IsDepthCameraEnabled() const { return requestDepthCamera; }
 	bool IsColorCameraEnabled() const { return requestColorCamera; }
-	bool IsInfraredCameraEnabled() const { return requestInfraredCamera; }
+	//bool IsInfraredCameraEnabled() const { return requestInfraredCamera; }
 
 	// this function sets the current streaming FPS. This should be updated by the class
 	// responsible for streaming

@@ -69,6 +69,7 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 
 bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 {
+	bool successReading = true;
 	// blocks anyone from reading from ApplicationStatus while we are reading from file
 	std::lock_guard<std::mutex> guard(statusChangeLock);
 	{
@@ -79,46 +80,56 @@ bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 		if (!file.is_open())
 		{
 			Logger::Log("Config") << "Could not open configuration file: " << filepath << std::endl;
+			successReading = false;
 		}
-
-		// gets file size ( 100 mb should be enough; this is a basic safety check)
-		std::streamsize fsize = file.tellg();
-
-		if (fsize > 100 * 1024 * 1024)
+		else // reads a file if one is available
 		{
-			Logger::Log("Config") << "Configuration file is too big (> 100mb)! (" << filepath << ")" << std::endl;
-		}
 
-		// parses file to a buffer
-		file.seekg(0, std::ios::beg);
-		std::vector<char> configurationFileContent(fsize + 32, 0); // pads string with zeros
-		file.read(&configurationFileContent[0], fsize);
-		file.close();
+			// gets file size ( 100 mb should be enough; this is a basic safety check)
+			std::streamsize fsize = file.tellg();
 
-		// parses json
-		rapidjson::StringStream filestream(&configurationFileContent[0]);
-
-		try
-		{
-			rapidjson::ParseResult ok = parsedConfigurationFile.Parse((const char*)& configurationFileContent[0], fsize);
-
-			// I am really trying to understand what this API does
-			if (ok.IsError())
+			// check file size
+			if (fsize > 100 * 1024 * 1024)
 			{
-				Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << ok.Code() << " at location " << ok.Offset() << std::endl << std::endl;
-				return false;
+				Logger::Log("Config") << "Configuration file is too big (> 100mb)! (" << filepath << ")" << std::endl;
+				successReading = false;
+				file.close();
+			} else {
+				// parses file to a buffer
+				file.seekg(0, std::ios::beg);
+				std::vector<char> configurationFileContent(fsize + 32, 0); // pads string with zeros
+				file.read(&configurationFileContent[0], fsize);
+				file.close();
+
+				// parses json
+				rapidjson::StringStream filestream(&configurationFileContent[0]);
+
+				try
+				{
+					rapidjson::ParseResult ok = parsedConfigurationFile.Parse((const char*)& configurationFileContent[0], fsize);
+
+					// I am really trying to understand what this API does
+					if (ok.IsError())
+					{
+						Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << ok.Code() << " at location " << ok.Offset() << std::endl << std::endl;
+						successReading = false;
+					}
+				}
+				catch (const std::exception & e)
+				{
+					Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << e.what() << std::endl << std::endl;
+					successReading = false;
+				}
+
 			}
-		}
-		catch (const std::exception & e)
-		{
-			Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << e.what() << std::endl << std::endl;
-			return false;
+
 		}
 
 		// now that json parsing is done, time to read individual components
 		ParseConfiguration();
 
-		Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
+		if (successReading)
+			Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
 	}
 }
 
@@ -149,12 +160,8 @@ void  ApplicationStatus::ParseConfiguration()
 	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraRequestedColorWidth, 1280);
 	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraRequestedColorHeight, 720);
 	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true);
-	ReadJSONDefaultBool(currentDoc, "requestInfrared", requestInfraredCamera, true);
-	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 1280);
-	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 720);
-
-	// color2
-	ReadJSONDefaultBool(currentDoc, "transformation", requestInfraredCamera, true);
+	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 640);
+	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 576);
 
 	// should we force a specific camera serial number?
 	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string());

@@ -177,7 +177,6 @@ public:
 	// responsible for stopping the thread
 	virtual void Stop()
 	{
-
 		// if we are running
 		if (thread_running)
 		{

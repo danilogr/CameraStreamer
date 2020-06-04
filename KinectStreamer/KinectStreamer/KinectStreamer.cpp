@@ -4,43 +4,37 @@
 // danilogasques.com
 
 #include <iostream>
-#include <k4a/k4a.h>
 #include <chrono>
+#include <map>
 
-#include "TCPStreamingServer.h"
-#include "RemoteControlServer.h"
-#include "VideoRecorder.h"
-#include "AzureKinect.h"
-#include "Frame.h"
+//
+// Local includes, from more generic and widely used to more specific and locally required
+//
+
+// 1) key resources shared by all other headers
 #include "Logger.h"
 #include "ApplicationStatus.h"
 
-#include <opencv2/opencv.hpp>
+// 2) Abstraction of video capture devices and memory management for frames
+#include "Frame.h"
+#include "Camera.h"
 
+// 3) Applications (threads)
+#include "TCPStreamingServer.h"
+#include "RemoteControlServer.h"
+#include "VideoRecorder.h"
 
-void OnFrameReadyCallback(std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
-{
-	cv::Mat colorImage(color->getHeight(), color->getWidth(), CV_8UC4, color->getData());
-	cv::Mat depthImage(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData());
-
-	cv::imshow("Color", colorImage);
-	cv::imshow("Depth", depthImage);
-	cv::waitKey(-1);
-}
+// 4) specific cameras supported
+#include "AzureKinect.h"
 
 
 using namespace std;
+
 int main()
 {
 
-	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
+//	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
 
-	// no devices installed ?
-	//if (k4a_device_get_installed_count() == 0)
-	//{
-	//	Logger::Log("Main") << "No AzureKinect devices connected ... exiting" << endl;
-	//	return 1;
-	//}
 
 	// ApplicationStatus is the data structure the application uses to synchronize 
 		// the overall application state machine across threads (e.g.: VideoRecorder uses it
@@ -52,14 +46,18 @@ int main()
 	appStatus->SetStreamerPort(3614);
 	appStatus->SetControlPort(6606);
 
-	// structure that lists supported cameras
-	//std::map<std::string
+	// structure that lists supported cameras -> points to their constructors
+	map<string, std::shared_ptr<Camera> (*)(std::shared_ptr<ApplicationStatus>)> SupportedCamerasSet = { {"k4a", &AzureKinect::Create} };
 
 	// read configuration file if one is present
+	appStatus->LoadConfiguration("config.json");
 
-
-	// figure out if the current camera is supported
-
+	// do we have a camera we currently support?
+	if (SupportedCamerasSet.find(appStatus->GetCameraName()) == SupportedCamerasSet.cend())
+	{
+		Logger::Log("Main") << "Device \"" << appStatus->GetCameraName() << "\" is not supported! Exiting..." << endl;
+		return 1;
+	}
 
 
 	// main application loop where it waits for a user key to stop everything
@@ -67,10 +65,12 @@ int main()
 
 		// starts listening but not yet dealing with client connections
 		TCPStreamingServer server(appStatus);
-		VideoRecorder videoRecorderThread(appStatus, "Kinect");
-		AzureKinect kinectDevice(appStatus);		
+		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraName());
 
-		kinectDevice.onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+		// instantiate the correct camera
+		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus);
+
+		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
 
@@ -81,27 +81,22 @@ int main()
 
 		};
 
-		kinectDevice.onCameraConnect = [&]()
-		{
-
-		};
-
-
-		kinectDevice.onCameraDisconnect = [&]()
-		{
-
-		};
+		// we could print messages when the camera gets connected / disconnected; not now
+		depthCamera->onCameraConnect = []()	{};
+		depthCamera->onCameraDisconnect = []() {};
 	
-		k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
-		config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
-		config.color_resolution = K4A_COLOR_RESOLUTION_720P;     // 1280x720
-		config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
-		config.synchronized_images_only = true;					 // depth and image should be synchronized
+		// this is a commented out example of how we can override camera settings using a 
+		// SDK specific data structure
+		//k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+		//config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
+		//config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
+		//config.color_resolution = K4A_COLOR_RESOLUTION_720P;     // 1280x720
+		//config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
+		//config.synchronized_images_only = true;					 // depth and image should be synchronized
 
 		// start device, streaming server, and recording thread
-		kinectDevice.SetCameraSpecificConfiguration((void*)& config);
-		kinectDevice.Run();
+		//depthCamera.SetCameraConfigurationFromCustomDatastructure((void*)& config);
+		depthCamera->Run();
 		server.Run();
 		videoRecorderThread.Run();
 
@@ -111,27 +106,33 @@ int main()
 		// on start kinect request
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
+			// sanity check
+			if (!depthCamera) return;
+
 			// we are already running
-			if (kinectDevice.isStreaming())
+			if (depthCamera->isStreaming())
 			{
 				Logger::Log("Remote") << "(startKinect) Kinect is already running!" << std::endl;
 				return;
 			}
 
-			kinectDevice.Run();
+			depthCamera->Run();
 			
 		},
 
 		// on stop kinect request
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
-			if (!kinectDevice.isRunning())
+			// sanity check
+			if (!depthCamera) return;
+
+			if (!depthCamera->isRunning())
 			{
 				Logger::Log("Remote") << "(stopKinect) Kinect is not running!" << std::endl;
 				return;
 			}
 
-			kinectDevice.Stop();
+			depthCamera->Stop();
 		},
 
 
@@ -197,7 +198,8 @@ int main()
 			server.Stop();
 
 			// stops cameras
-			kinectDevice.Stop();
+			if (depthCamera)
+				depthCamera->Stop();
 
 			// wait for video recording to end
 			videoRecorderThread.Stop();
@@ -210,9 +212,12 @@ int main()
 		// change exposure
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
 		{
+			// sanity check
+			if (!depthCamera) return;
+
 			if (message.HasMember("value") && message["value"].IsNumber())
 			{
-				kinectDevice.AdjustExposureBy(message["value"].GetInt());
+				depthCamera->AdjustExposureBy(message["value"].GetInt());
 			}
 			else {
 				Logger::Log("Remote") << "(changeExposure) Error! No value received!" << std::endl;
@@ -224,9 +229,12 @@ int main()
 		// change gain
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
 		{
+			// sanity check
+			if (!depthCamera) return;
+
 			if (message.HasMember("value") && message["value"].IsNumber())
 			{
-				kinectDevice.AdjustGainBy(message["value"].GetInt());
+				depthCamera->AdjustGainBy(message["value"].GetInt());
 				
 			}
 			else {
@@ -250,10 +258,10 @@ int main()
 			switch (getchar())
 			{
 				case '+':
-					kinectDevice.AdjustExposureBy(1);
+					depthCamera->AdjustExposureBy(1);
 					break;
 				case '-':
-					kinectDevice.AdjustExposureBy(-1);
+					depthCamera->AdjustExposureBy(-1);
 					break;
 				case 'q':
 					exit = true;
@@ -274,7 +282,7 @@ int main()
 		server.Stop();
 
 		// stops cameras
-		kinectDevice.Stop();
+		depthCamera->Stop();
 
 		// wait for video recording to end
 		videoRecorderThread.Stop();
