@@ -193,8 +193,8 @@ public:
 				default:
 					Logger::Log("AzureKinect") << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
 					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-					appStatus->SetCameraColorHeight(576);
-					appStatus->SetCameraColorWidth(640);
+					appStatus->SetCameraDepthHeight(576);
+					appStatus->SetCameraDepthWidth(640);
 					newWidth = 640;
 					break;
 			}
