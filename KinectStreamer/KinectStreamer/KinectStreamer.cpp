@@ -70,6 +70,11 @@ int main()
 		// instantiate the correct camera
 		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus);
 
+		// parse configuration
+		depthCamera->SetCameraConfigurationFromAppStatus();
+
+		// set up callbacks
+
 		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
