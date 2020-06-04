@@ -33,8 +33,8 @@ class TCPStreamingServer
 	std::shared_ptr<ApplicationStatus> appStatus;
 
 public:
-	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->streamerPort)) {
-		Logger::Log("Streamer") << "Listening on " << appStatus->streamerPort << std::endl;
+	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetStreamerPort())) {
+		Logger::Log("Streamer") << "Listening on " << appStatus->GetStreamerPort() << std::endl;
 	};
 
 	~TCPStreamingServer()
@@ -66,7 +66,7 @@ public:
 
 			// next line is technically not necessary, but
 			// we are doing it for book keeping
-			appStatus->isStreaming = false;
+			appStatus->SetStreamingStatus(false);
 
 			// gets done with thread
 			sThread = nullptr;
@@ -79,26 +79,18 @@ public:
 			{
 				// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
 				clientsStatistics[client].packetsDropped += clientsQs[client].size();
-
-
 				client->close();
-
-
 			}
 			catch (std::exception e)
 			{
-				Logger::Log("Streamer") << "Error closing connection w/ Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << std::endl;
-
+				Logger::Log("Streamer") << "Error closing connection w/ Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << std::endl;
 			}
 
-			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << ":"
+			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
+			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << ":"
 				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
 				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
-
 		}
-
-
 
 		// erase list of clients
 		clients.clear();
@@ -185,13 +177,13 @@ private:
 	// this method implements the main thread for TCPStreamingServer
 	void thread_main()
 	{
-		Logger::Log("Streamer") << "Waiting for connections" << std::endl;
-		appStatus->isStreaming = true;
+		Logger::Log("Streamer") << "Waiting for connections on port " << appStatus->GetStreamerPort() << std::endl;
+		appStatus->SetStreamingStatus(true);
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 		
 		// make sure others knows that the thread is not running
-		appStatus->isStreaming = false;
+		appStatus->SetStreamingStatus(false);
 		Logger::Log("Streamer") << "Thread exited successfully" << std::endl;
 	}
 
@@ -241,8 +233,8 @@ private:
 				{
 					clientsStatistics[client].packetsDropped++;
 
-					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " disconnected" << std::endl;
-					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << client->remote_endpoint().port() << " --> "
+					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
+					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " --> "
 						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
 						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 					

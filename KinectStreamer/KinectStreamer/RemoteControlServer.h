@@ -119,7 +119,7 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->controlPort))
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
 	
 		using namespace std::placeholders; // for  _1, _2, ...
@@ -132,7 +132,6 @@ public:
 		remoteCommandsCallbacks["changeGain"] = changeGainCallback;
 		remoteCommandsCallbacks["ping"] = std::bind(&RemoteControlServer::pingRequest, this, _1, _2);
 
-		Logger::Log("Remote") << "Listening on " << appStatus->controlPort << std::endl;
 
 	};
 	~RemoteControlServer()
@@ -253,7 +252,8 @@ private:
 	// this method implements the main thread for TCPStreamingServer
 	void thread_main()
 	{
-		Logger::Log("Remote") << "Waiting for connections" << std::endl;
+
+		Logger::Log("Remote") << "Waiting for connections on port " << appStatus->GetControlPort() << std::endl;
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 	}
@@ -354,23 +354,8 @@ private:
 		if (client->isConnected())
 		{
 
-			rapidjson::Document pongMessage;
-			pongMessage.SetObject();
+			rapidjson::Document pongMessage = appStatus->GetApplicationStatusJSON();
 			pongMessage.AddMember("type", "pong", pongMessage.GetAllocator());
-			rapidjson::Document::AllocatorType& allocator = pongMessage.GetAllocator();
-
-			// locks while reading recording info
-			std::lock_guard<std::mutex> guard(appStatus->statusChangeLock);
-			{
-				pongMessage.AddMember("streaming", appStatus->isStreaming, allocator);
-				pongMessage.AddMember("cameraRunning", appStatus->isCameraRunning, allocator);
-				pongMessage.AddMember("recording", appStatus->isRecordingColor || appStatus->isRecordingDepth, allocator);
-				pongMessage.AddMember("recordingColor", appStatus->isRecordingColor , allocator);
-				pongMessage.AddMember("recordingDepth", appStatus->isRecordingDepth, allocator);
-				pongMessage.AddMember("recordingDepthPath", rapidjson::Value().SetString(appStatus->recordingDepthPath.c_str(), appStatus->recordingDepthPath.length(), allocator), allocator);
-				pongMessage.AddMember("recordingColorPath", rapidjson::Value().SetString(appStatus->recordingColorPath.c_str(), appStatus->recordingColorPath.length(), allocator), allocator);
-				pongMessage.AddMember("port", appStatus->streamerPort, allocator);
-			}
 			rapidjson::StringBuffer buffer;
 			rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
 			pongMessage.Accept(writer);

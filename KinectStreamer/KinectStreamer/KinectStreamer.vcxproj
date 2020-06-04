@@ -187,7 +187,9 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ApplicationStatus.cpp" />
     <ClCompile Include="AzureKinect.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="KinectStreamer.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
     <ClCompile Include="TCPStreamingServer.cpp" />
@@ -196,6 +198,7 @@
   <ItemGroup>
     <ClInclude Include="ApplicationStatus.h" />
     <ClInclude Include="AzureKinect.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="RemoteControlServer.h" />

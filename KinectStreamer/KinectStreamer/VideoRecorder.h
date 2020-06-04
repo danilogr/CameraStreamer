@@ -232,22 +232,7 @@ class VideoRecorder
 		--framesLeft;
 	}
 
-	// This method updates appStatus (ApplicationStatus) so that Ping/Pong messages contain the right
-	// information about recording status
-	void UpdateAppStatus(const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
-	{
-		std::lock_guard<std::mutex> guard(appStatus->statusChangeLock);
-		{
-			appStatus->isRecordingColor = externalIsRecordingColor;
-			appStatus->isRecordingDepth = externalIsRecordingDepth;
-			appStatus->recordingColorPath = colorPath;
-			appStatus->recordingDepthPath = depthPath;
-		}
-	}
-
 public:
-
-
 
 	VideoRecorder(std::shared_ptr<ApplicationStatus> appStatus, const std::string& filePrefix = "StandardCamera") :
 	appStatus(appStatus), acceptNewTasks(false), internalIsRecordingColor(false), internalIsRecordingDepth(false),
@@ -350,30 +335,30 @@ public:
 		}
 
 		// is the camera streaming at all?
-		if (!appStatus->isCameraRunning)
+		if (!appStatus->IsCameraRunning())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record without a camera..." << std::endl;
 			return false;
 		}
 
 		// can we record? what's the resolution so far
-		if (color && (appStatus->streamingColorHeight == 0 || appStatus->streamingColorWidth == 0))
+		if (color && (appStatus->GetStreamingColorHeight() == 0 || appStatus->GetStreamingColorWidth() == 0))
 		{
 			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
 			return false;
 		}
 
-		if (depth && (appStatus->streamingDepthHeight == 0 || appStatus->streamingDepthWidth == 0))
+		if (depth && (appStatus->GetStreamingDepthHeight() == 0 || appStatus->GetStreamingDepthWidth() == 0))
 		{
 			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
 			return false;
 		}
 
 		// yay, we are good to record!
-		externalColorHeight = appStatus->streamingColorHeight;
-		externalColorWidth  = appStatus->streamingColorWidth;
-		externalDepthHeight = appStatus->streamingDepthHeight;
-		externalDepthWidth  = appStatus->streamingDepthWidth;
+		externalColorHeight = appStatus->GetStreamingColorHeight();
+		externalColorWidth  = appStatus->GetStreamingColorWidth();
+		externalDepthHeight = appStatus->GetStreamingDepthHeight();
+		externalDepthWidth  = appStatus->GetStreamingDepthWidth();
 
 		// are we recording to the same path?
 		// (this might happen if the camera gets unplugged and plugged back again)
@@ -422,12 +407,9 @@ public:
 		}
 
 		// tell others that the VideoRecorder thread can start receiving frames
-		appStatus->_redirectFramesToRecorder = true;
 		externalIsRecordingColor = color;
 		externalIsRecordingDepth = depth;
-
-		// let others know that we are recording
-		UpdateAppStatus(colorVideoPath, depthVideoPath);
+		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
 
 		// now we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
@@ -453,15 +435,12 @@ public:
 			Logger::Log("Recorder") << "Request to stop recording processed succesfully!" << std::endl;
 
 			// we can already tell cameras to stop sending us frames
-			appStatus->_redirectFramesToRecorder = false;
+			appStatus->UpdateRecordingStatus(false, false, false);
 
 			// we can also stop receiving frames
 			externalIsRecordingColor = false;
 			externalIsRecordingDepth = false;
 
-			// stops recording externally
-			UpdateAppStatus();
-			
 			// stops recording internally
 			io_service.post(std::bind(&VideoRecorder::InternalStopRecording, this));
 			return true;

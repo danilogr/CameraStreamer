@@ -1,26 +1,45 @@
 #pragma once
 
-#include "Logger.h"
-#include <k4a/k4a.hpp>
+// std
 #include <functional>
 #include <thread>
 #include <memory>
 #include <chrono>
 #include <vector>
 
+// our framework
+#include "Logger.h"
+#include "ApplicationStatus.h"
+#include "Frame.h"
+#include "Camera.h"
+
+// kinect sdk
+#include <k4a/k4a.hpp>
+
+// json for the fast point cloud
 #include <opencv2/opencv.hpp>
 
-#include "Frame.h"
-#include "ApplicationStatus.h"
+/**
+  AzureKinect is a Camera device that interfaces with
+  the k4a API. 
 
-class AzureKinect
+  Current support: color and depth frames
+
+  Configuration settings implemented:
+  * type: "k4a"
+  * requestColor: true
+  * requestDepth: true
+  * colorWidth x colorHeight: 1280x720, 1920x1080, 2560x1440, 2048x1536, 4096x3072 (15fps)
+  * depthWidth x depthHeight: 302x288, 512x512, 640x576, 1024x1024 (15fps)
+  
+  Configuration settings currently not supported:
+  * serialNumber: We currently grab the first k4a device available
+*/
+class AzureKinect : public Camera
 {
-	std::shared_ptr<ApplicationStatus> appStatus;
 
-	std::shared_ptr<std::thread> sThread;
+	// internal implementation of the handle
 	k4a::device kinectDevice;
-	bool thread_running;
-	bool runningCameras;
 
 	k4a_device_configuration_t kinectConfiguration;
 	k4a::calibration kinectCameraCalibration;
@@ -28,27 +47,21 @@ class AzureKinect
 
 	k4a_calibration_intrinsic_parameters_t* intrinsics_color;
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
-
-	int currentExposure = 0;
-	int currentGain = 0;
-	std::chrono::milliseconds getFrameTimeout;
-
 	std::string kinectDeviceSerial;
-
-	// timestamp, color, depth
-	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
-	typedef std::function<void()> KinectConnectedCallback;
-	typedef std::function<void()> KinectDisconnectedCallback;
 
 
 public:
 
-	FrameReadyCallback onFramesReady;
-	KinectConnectedCallback onKinectConnect;
-	KinectDisconnectedCallback onKinectDisconnect;
+	/**
+	  This method creates a shared pointer to this camera implementation
+ 	  */
+	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus)
+	{
+		return std::make_shared<AzureKinect>(appStatus);
+	}
 
-	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), thread_running(false), runningCameras(false), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
-		intrinsics_color(nullptr), intrinsics_depth(nullptr), getFrameTimeout(1000)
+	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : Camera(appStatus), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
+		intrinsics_color(nullptr), intrinsics_depth(nullptr)
 	{
 	}
 
@@ -57,32 +70,10 @@ public:
 		Stop();
 	}
 
-	bool isRunning()
+	virtual void Stop()
 	{
-		return (sThread && sThread->joinable());
-	}
-
-	// Returns true if kinect is opened and streaming video
-	bool isStreaming()
-	{
-		return runningCameras;
-	}
-
-	void Stop()
-	{
-
-		// if we are running
-		if (thread_running)
-		{
-			thread_running = false;     // stops the loop in case it is running
-			kinectDeviceSerial.clear(); // erases serial
-
-			if (sThread && sThread->joinable())
-				sThread->join();
-
-			// makes sure that sthread doesn't point to anything
-			sThread = nullptr;
-		}
+		// stop thread first
+		Camera::Stop();
 
 		// frees resources
 		if (runningCameras)
@@ -94,19 +85,158 @@ public:
 		kinectDevice.close();
 	}
 
-	void Run(k4a_device_configuration_t kinectConfig)
+	virtual void SetCameraConfigurationFromCustomDatastructure(void* cameraSpecificConfiguration)
 	{
-		if (!thread_running && !sThread)
-		{ 
-			// saves the configuration
-			kinectConfiguration = kinectConfig;
+		kinectConfiguration = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
+	}
 
-			// starts thread
-			sThread.reset(new std::thread(std::bind(&AzureKinect::thread_main, this)));
+	virtual void SetCameraConfigurationFromAppStatus(bool resetConfiguration)
+	{
+
+		bool canRun30fps = true;
+
+		// blank slate
+		if (resetConfiguration)
+			kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+
+		// first figure out which cameras have been loaded
+		if (true || appStatus->IsColorCameraEnabled())
+		{
+			kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
+
+			const int requestedWidth = appStatus->GetCameraColorWidth();
+			const int requestedHeight = appStatus->GetCameraColorHeight();
+			int newWidth = requestedWidth;
+			
+			switch (requestedHeight)
+			{
+				case 720:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+					newWidth = 1280;
+				break;
+
+				case 1080:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1080P;
+					newWidth = 1920;
+					break;
+
+				case 1440:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1440P;
+					newWidth = 2560;
+					break;
+
+				case 1536:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1536P;
+					newWidth = 2048;
+					break;
+
+				case 2160:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_2160P;
+					newWidth = 3840;
+					break;
+				case 3072:
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_3072P;
+					newWidth = 4096;
+					canRun30fps = false;
+					break;
+
+				default:
+					Logger::Log("AzureKinect") << "Color camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+					appStatus->SetCameraColorHeight(720);
+					appStatus->SetCameraColorWidth(1280);
+					newWidth = 1280;
+					break;
+			}
+
+			// adjusting requested resolution to match an accepted resolution
+			if (requestedWidth != newWidth)
+			{
+				// add warning?
+				appStatus->SetCameraColorWidth(newWidth);
+			}
+
+		}
+		else {
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_OFF;
+		}
+
+		// then figure out depth
+		if (true || appStatus->IsDepthCameraEnabled())
+		{
+			// we will decided on the mode (wide vs narrow) based on the resolution
+
+			//kinectConfiguration.depth_mode
+			const int requestedWidth = appStatus->GetCameraDepthWidth();
+			const int requestedHeight = appStatus->GetCameraDepthHeight();
+			int newWidth = requestedWidth;
+
+			switch (requestedHeight)
+			{
+				case 288:
+					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
+					newWidth = 320;
+					break;
+				case 512:
+					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+					newWidth = 512;
+					break;
+				case 576:
+					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
+					newWidth = 640;
+					break;
+				case 1024:
+					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED;
+					newWidth = 1024;
+					canRun30fps = false;
+					break;
+				default:
+					Logger::Log("AzureKinect") << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
+					appStatus->SetCameraDepthHeight(576);
+					appStatus->SetCameraDepthWidth(640);
+					newWidth = 640;
+					break;
+			}
+
+			// adjusting requested resolution to match an accepted resolution
+			if (requestedWidth != newWidth)
+			{
+				// add warning?
+				appStatus->SetCameraDepthWidth(newWidth);
+			}
+
+			
+		} else {
+			// camera is off
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_OFF;
+		}
+
+		// if both cameras are enabled, we will make sure that frames are synchronized
+		if (appStatus->IsColorCameraEnabled() && appStatus->IsDepthCameraEnabled())
+		{
+			kinectConfiguration.synchronized_images_only = true;
+		}
+
+		// are we able to run at 30 fps?
+		if (canRun30fps)
+		{
+			kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_30;
+		}
+		else {
+			// the second fastest speed it can run is 15fps
+			kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_15;
+			Logger::Log("AzureKinect") << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
+		}
+
+		// what about the device?
+		if (!appStatus->UseFirstCameraAvailable())
+		{
+			Logger::Log("AzureKinect") << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
 		}
 	}
 
-	bool AdjustGainBy(int gain_level)
+	virtual bool AdjustGainBy(int gain_level)
 	{
 		int proposedGain = currentGain + gain_level;
 		if (proposedGain < 0)
@@ -130,7 +260,7 @@ public:
 		}
 	}
 
-	bool AdjustExposureBy(int exposure_level)
+	virtual bool AdjustExposureBy(int exposure_level)
 	{
 		int proposedExposure = currentExposure + exposure_level;
 		if (proposedExposure > 1)
@@ -154,11 +284,6 @@ public:
 			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << proposedExposure << std::endl;
 		}
 		
-	}
-
-	const std::string& getSerial()
-	{
-		return kinectDeviceSerial;
 	}
 
 
@@ -185,12 +310,12 @@ private:
 		// let's update the serial number
 		try
 		{
-			kinectDeviceSerial = kinectDevice.get_serialnum();
+			cameraSerialNumber = kinectDevice.get_serialnum();
 		}
 		catch (const k4a::error & e)
 		{
 			Logger::Log("AzureKinect") << "Could not open default device..." << std::endl;
-			kinectDeviceSerial = "Unknown";
+			cameraSerialNumber = "Unknown";
 		}
 
 		return true;
@@ -250,16 +375,28 @@ private:
 
 	}
 
-	void thread_main()
+	virtual void CameraLoop()
 	{
 		Logger::Log("AzureKinect") << "Started Azure Kinect polling thread: " << std::this_thread::get_id << std::endl;
-		thread_running = true;
 		bool print_camera_parameters = true;
+		bool didWeEverInitializeTheCamera = false;
+		bool didWeCallConnectedCallback = false; // if the thread is stopped but we did execute the connected callback, then we will execute the disconnected callback to maintain consistency
+		unsigned long long framesCaptured = 0;
+		unsigned long long totalTries = 0;
 
 		while (thread_running)
 		{
+			// start again ...
+			didWeEverInitializeTheCamera = false;
+			didWeCallConnectedCallback = false;
+			framesCaptured = 0;
+			totalTries = 0;
 
+			//
+			// Step #1) OPEN CAMERA
+			//
 			// stay in a loop until we can open the device and the cameras
+			//
 			while (thread_running && !runningCameras)
 			{
 
@@ -271,12 +408,13 @@ private:
 					Logger::Log("AzureKinect") << "Trying again..." << std::endl;
 				}
 
+				//  if we stop the application while waiting...
 				if (!thread_running)
 				{
 					return;
 				}
 
-				Logger::Log("AzureKinect") << "Opened kinect device id: " << kinectDeviceSerial << std::endl;
+				Logger::Log("AzureKinect") << "Opened kinect device id: " << cameraSerialNumber << std::endl;
 
 				// opening cameras
 				try
@@ -296,7 +434,7 @@ private:
 						kinectCameraCalibration = kinectDevice.get_calibration(kinectConfiguration.depth_mode, kinectConfiguration.color_resolution);
 						kinectCameraTransformation = k4a::transformation(kinectCameraCalibration);
 					}
-					catch (const k4a::error& error)
+					catch (const k4a::error & error)
 					{
 						Logger::Log("AzureKinect") << "Error obtaining camera parameter!" << std::endl;
 						kinectDevice.stop_cameras();
@@ -311,9 +449,12 @@ private:
 					Logger::Log("AzureKinect") << "Trying again in 1 second..." << std::endl;
 					std::this_thread::sleep_for(std::chrono::seconds(1));
 				}
+				else {
+					didWeEverInitializeTheCamera = true;
+				}
 			}
 
-			if (print_camera_parameters)
+			if (runningCameras && print_camera_parameters)
 			{
 				// printing out camera specifics
 				Logger::Log("AzureKinect") << "[Depth] resolution width: " << kinectCameraCalibration.depth_camera_calibration.resolution_width << std::endl;
@@ -353,120 +494,137 @@ private:
 				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
 				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
 				Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
-				
+
 				// saves table
 				saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
 
 				print_camera_parameters = false;
 			}
 
-			// updates app with stream status
-			appStatus->streamingColorWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
-			appStatus->streamingColorHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
-			appStatus->streamingDepthWidth  = kinectCameraCalibration.color_camera_calibration.resolution_width;
-			appStatus->streamingDepthHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
 
-			// time to start reading frames and streaming
-			unsigned long long framesCaptured = 0;
-			unsigned int triesBeforeRestart = 5;
-			unsigned long long totalTries = 0;
-			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
-			appStatus->isCameraRunning = true;
-
-
-			// invokes the kinect started callback
-			if (onKinectConnect)
-				onKinectConnect();
-
+			//
+			// Step #2) START, LOOP FOR FRAMES, STOP
+			//
 			auto start = std::chrono::high_resolution_clock::now();
-
-			try
+			if (didWeEverInitializeTheCamera)
 			{
+				// time to start reading frames and streaming
+				unsigned int triesBeforeRestart = 5;
+				totalTries = 0;
 
-				while (thread_running)
+				// updates app with capture and stream status
+				appStatus->UpdateCaptureStatus(true, true,
+					kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height,
+					kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height, // might change depending on config
+					kinectCameraCalibration.depth_camera_calibration.resolution_width, kinectCameraCalibration.depth_camera_calibration.resolution_height,
+					kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
+
+				// starts
+				Logger::Log("AzureKinect") << "Started streaming" << std::endl;
+
+				// invokes the kinect started callback if the thread is running
+				if (thread_running && onCameraConnect)
 				{
-					k4a::capture currentCapture; // this object garantess a release at the end of the 
+					didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+					onCameraConnect();
+				}
 
-					if (kinectDevice.get_capture(&currentCapture, getFrameTimeout))
+				try
+				{
+
+					while (thread_running)
 					{
-						// get color frame
-						k4a::image colorFrame = currentCapture.get_color_image();
-						//colorFrame.get_i
+						k4a::capture currentCapture; // this object garantess a release at the end of the 
 
-						// get depth frame
-						k4a::image depthFrame = currentCapture.get_depth_image();
-						k4a::image largeDepthFrame = kinectCameraTransformation.depth_image_to_color_camera(depthFrame);
-
-						// transform color to depth
-						//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
-
-						// copies images to Frame
-						std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
-						memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
-
-						std::shared_ptr<Frame> sharedDepthFrame = Frame::Create(largeDepthFrame.get_width_pixels(), largeDepthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
-						memcpy(sharedDepthFrame->data, largeDepthFrame.get_buffer(), sharedDepthFrame->size());
-
-						// invoke callback
-						if (onFramesReady)
-							onFramesReady(colorFrame.get_device_timestamp(), sharedColorFrame, sharedDepthFrame);
-
-						// counts frames and restarts chances to get a new frame
-						framesCaptured++;
-						triesBeforeRestart = 5;
-					}
-					else {
-						Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
-						--triesBeforeRestart;
-						++totalTries;
-
-						if (triesBeforeRestart == 0)
+						if (kinectDevice.get_capture(&currentCapture, getFrameTimeout))
 						{
-							Logger::Log("AzureKinect") << "Tried to get a frame 5 times but failed! Restarting system in 1 second..." << std::endl;
-							std::this_thread::sleep_for(std::chrono::seconds(1));
-							if (kinectDevice)
+							// get color frame
+							k4a::image colorFrame = currentCapture.get_color_image();
+							//colorFrame.get_i
+
+							// get depth frame
+							k4a::image depthFrame = currentCapture.get_depth_image();
+							k4a::image largeDepthFrame = kinectCameraTransformation.depth_image_to_color_camera(depthFrame);
+
+							// transform color to depth
+							//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
+
+							// copies images to Frame
+							std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
+							memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
+
+							std::shared_ptr<Frame> sharedDepthFrame = Frame::Create(largeDepthFrame.get_width_pixels(), largeDepthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
+							memcpy(sharedDepthFrame->data, largeDepthFrame.get_buffer(), sharedDepthFrame->size());
+
+							// invoke callback
+							if (onFramesReady)
+								onFramesReady(colorFrame.get_device_timestamp(), sharedColorFrame, sharedDepthFrame);
+
+							// counts frames and restarts chances to get a new frame
+							framesCaptured++;
+							triesBeforeRestart = 5;
+						}
+						else {
+							Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
+							--triesBeforeRestart;
+							++totalTries;
+
+							if (triesBeforeRestart == 0)
 							{
-								kinectDevice.stop_cameras();
-								kinectDevice.close();
+								Logger::Log("AzureKinect") << "Tried to get a frame 5 times but failed! Restarting system in 1 second..." << std::endl;
+								std::this_thread::sleep_for(std::chrono::seconds(1));
+								if (kinectDevice)
+								{
+									kinectDevice.stop_cameras();
+									kinectDevice.close();
+								}
+								runningCameras = false;
+								break; // breaks out of the loop
 							}
-							runningCameras = false;
-							break;
 						}
 					}
 				}
-			}
-			catch (const k4a::error& e)
-			{
-				Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds." << std::endl;
-				
-				if (kinectDevice)
+				catch (const k4a::error & e)
 				{
+					Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds." << std::endl;
+
+					if (kinectDevice)
+					{
+						kinectDevice.stop_cameras();
+						kinectDevice.close();
+					}
+
 					kinectDevice.stop_cameras();
-					kinectDevice.close();
+					runningCameras = false;
+					appStatus->UpdateCaptureStatus(false, false);
+
+					// waits 5 seconds before trying again
+					std::this_thread::sleep_for(std::chrono::seconds(5));
 				}
 
-				kinectDevice.stop_cameras();
-				runningCameras = false;
-				appStatus->isCameraRunning = false;
-
-				// waits 5 seconds before trying again
-				std::this_thread::sleep_for(std::chrono::seconds(5));
-			} 
-
-			// are we running cameras?
-
-			appStatus->isCameraRunning = false;
-			if (runningCameras)
-			{
-				kinectDevice.stop_cameras();
-				runningCameras = false;
 			}
 
-			auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
-			Logger::Log("AzureKinect") << "Captured " << framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
+			//
+			// Step #3) Shutdown
+			//
+			if (didWeEverInitializeTheCamera)
+			{
+				// are we running cameras? stop them!
+				appStatus->UpdateCaptureStatus(false, false);
+				if (runningCameras)
+				{
+					kinectDevice.stop_cameras();
+					runningCameras = false;
+				}
 
-			if (onKinectDisconnect)
-				onKinectDisconnect();
+				// report usage
+				auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
+				Logger::Log("AzureKinect") << "Captured " << framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
+
+				// calls the camera disconnect callback if we called onCameraConnect()
+				if (didWeCallConnectedCallback && onCameraDisconnect)
+					onCameraDisconnect();
+			}
 
 			// waits one second before restarting...
 			if (thread_running)
