@@ -8,7 +8,6 @@
 #include <sstream>
 #include <functional>
 #include <filesystem>
-#include <experimental/filesystem> // Header file for pre-standard implementation
 #include <memory>
 #include <mutex>
 #include <set>
@@ -397,7 +396,7 @@ public:
 			depthFileName << filePrefix << "_Depth_Take-" << externalDepthTakeNumber << "_Time-" << timestampNow << ".depth.artemis";
 		
 			// figure out paths
-			std::experimental::filesystem::path colorVideoP(colorFolderPath), depthVideoP(depthFolderPath);
+			std::filesystem::path colorVideoP(colorFolderPath), depthVideoP(depthFolderPath);
 			colorVideoP.append(colorFileName.str());
 			depthVideoP.append(depthFileName.str());
 
