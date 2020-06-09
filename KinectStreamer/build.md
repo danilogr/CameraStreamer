@@ -4,4 +4,4 @@ KinectStreamer relies on several open source projects such as [Azure Kinect](htt
 
 After installing and integrating `vcpkg` through the instructions available [here](https://github.com/microsoft/vcpkg), you can install the required libraries with the following command:
 
-`vcpkg install realsense2:x64-windows azure-kinect-sensor-sdk:x64-window opencv:x64-windows boost:x64-windows`
+`vcpkg install realsense2:x64-windows azure-kinect-sensor-sdk:x64-window opencv:x64-windows boost:x64-windows rapidjson:x64-windows`
