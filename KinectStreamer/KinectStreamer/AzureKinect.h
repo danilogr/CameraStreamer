@@ -253,11 +253,14 @@ public:
 			kinectDevice.set_color_control(K4A_COLOR_CONTROL_GAIN, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>((float)proposedGain * 25.5f));
 			currentGain = proposedGain;
 			Logger::Log("AzureKinect") << "Gain level: " << currentGain << std::endl;
+			return true;
 		}
 		catch (const k4a::error & e)
 		{
 			Logger::Log("AzureKinect") << "Could not adjust gain level to : " << proposedGain << std::endl;
+			return false;
 		}
+		
 	}
 
 	virtual bool AdjustExposureBy(int exposure_level)
@@ -278,10 +281,12 @@ public:
 				1000000.0f));
 			currentExposure = proposedExposure;
 			Logger::Log("AzureKinect") << "Exposure level: " << currentExposure << std::endl;
+			return true;
 		}
 		catch (const k4a::error& e)
 		{
 			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << proposedExposure << std::endl;
+			return false;
 		}
 		
 	}
@@ -549,6 +554,7 @@ private:
 							// transform color to depth
 							//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
 
+						
 							// copies images to Frame
 							std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
 							memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
@@ -586,7 +592,24 @@ private:
 				}
 				catch (const k4a::error & e)
 				{
-					Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds." << std::endl;
+					Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
+
+					if (kinectDevice)
+					{
+						kinectDevice.stop_cameras();
+						kinectDevice.close();
+					}
+
+					kinectDevice.stop_cameras();
+					runningCameras = false;
+					appStatus->UpdateCaptureStatus(false, false);
+
+					// waits 5 seconds before trying again
+					std::this_thread::sleep_for(std::chrono::seconds(5));
+				}
+				catch (const std::bad_alloc& e)
+				{
+					Logger::Log("AzureKinect") << "Fatal error! Running out of memory! Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
 
 					if (kinectDevice)
 					{
