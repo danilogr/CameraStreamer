@@ -81,6 +81,8 @@ bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 		{
 			Logger::Log("Config") << "Could not open configuration file: " << filepath << std::endl;
 			successReading = false;
+			parsedConfigurationFile = rapidjson::Document();
+			parsedConfigurationFile.SetObject();
 		}
 		else // reads a file if one is available
 		{
@@ -131,6 +133,8 @@ bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
 		if (successReading)
 			Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
 	}
+
+	return successReading;
 }
 
 
@@ -139,7 +143,9 @@ void  ApplicationStatus::ParseConfiguration(bool warn)
 {
 	// trick to always use default elements in case parts of the document are missing
 	rapidjson::Value emptyDoc;
+	emptyDoc.SetObject();
 	rapidjson::Value currentDoc;
+	currentDoc.SetObject();
 
 	// ports
 	ReadJSONDefaultInt(parsedConfigurationFile, "streamerPort", streamerPort, 3614, true);
