@@ -662,16 +662,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e22e87b1cd560364eb519840719fc48b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lengthX: 640
-  lengthY: 576
-  focalLengthX: 504.458
-  focalLengthY: 504.438
+  lengthX: 1280
+  lengthY: 720
+  focalLengthX: 640.839
+  focalLengthY: 365.14
   fovY: 75
   fovX: 65
   clippingPlaneMin: 0.5
   clippingPlaneMax: 3.86
-  principalPointX: 328.616
-  principalPointY: 344.08
+  principalPointX: 640.839
+  principalPointY: 365.14
   UpdateView: 0
 --- !u!1 &1878950441
 GameObject:
