@@ -153,7 +153,7 @@ public:
 	CameraDisconnectedCallback onCameraDisconnect;
 
 	// constructor 
-	Camera(std::shared_ptr<ApplicationStatus> appStatus) : appStatus(appStatus), thread_running(false), runningCameras(false), getFrameTimeout(1000)
+	Camera(std::shared_ptr<ApplicationStatus> appStatus) : currentExposure(0), currentGain(0), appStatus(appStatus), thread_running(false), runningCameras(false), getFrameTimeout(1000)
 	{
 
 	}
