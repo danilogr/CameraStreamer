@@ -7,9 +7,6 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Events;
-//using OpenCvSharp;
-//using ImageTools.IO.Jpeg;
-//using ImageTools;
 
 
 
@@ -26,7 +23,7 @@ public class ReconstructionTCPClient : MonoBehaviour
     public MeshReadyEvent MeshReady;
     public bool TestLocalNetwork;
     #endregion
-    
+
     #region public members
 
     //public PcxReconstructionReceiver ReconstructionReceiver;
@@ -57,7 +54,23 @@ public class ReconstructionTCPClient : MonoBehaviour
     private Thread clientReceiveThread;
     private CommunicationStatistics statisticsReporter;
     private string LogName;
+
+    // libjpeg decoder
+    IntPtr decoderHandle;
+    bool decoderAvailabe = false;
+    const int decodingFlags = LibJPEGTurbo.TJFLAG_ACCURATEDCT | LibJPEGTurbo.TJFLAG_BOTTOMUP;
     #endregion
+
+
+    /// <summary>
+    /// Returns true if the video stream was already decoded to RGB
+    /// </summary>
+    /// <returns></returns>
+    public bool isFastDecoderAvailable()
+    {
+        return decoderAvailabe;
+    }
+
 
     void Awake()
     {
@@ -81,6 +94,25 @@ public class ReconstructionTCPClient : MonoBehaviour
     // Connects to the server when enabled
     void OnEnable()
     {
+        // tries to allocate decoder
+        decoderAvailabe = true;
+        try
+        {
+            decoderHandle = LibJPEGTurbo.tjInitDecompress();
+            if (decoderHandle == IntPtr.Zero)
+            {
+                // we found the library, but LibJPEGTurbo failed
+                Debug.LogError(string.Format("{0}Could not start LibJPEGTurbo (Internal Error)! Using Unity's built-in decoder (slow)...!", LogName));
+                decoderAvailabe = false;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(string.Format("{0}Could not start LibJPEGTurbo! Using Unity's built-in decoder (slow)...!{1}", LogName, e));
+            decoderAvailabe = false;
+        }
+
+
         killThreadRequested = false;
         ConnectToTcpServer();
     }
@@ -90,6 +122,13 @@ public class ReconstructionTCPClient : MonoBehaviour
     {
         CloseConnection();
         LogName = "[ReconstructionTCPClient] - ";
+
+        // frees decoders and buffers
+        if (decoderHandle != null && decoderHandle != IntPtr.Zero)
+        {
+            LibJPEGTurbo.tjDestroy(decoderHandle);
+            decoderHandle = IntPtr.Zero;
+        }
     }
 
     // Update is called once per frame
@@ -124,8 +163,6 @@ public class ReconstructionTCPClient : MonoBehaviour
             }
 
             t = null;
-            
-
         }
 
     }
@@ -143,7 +180,8 @@ public class ReconstructionTCPClient : MonoBehaviour
                 clientReceiveThread = new Thread(new ThreadStart(ListenForData));
                 clientReceiveThread.IsBackground = true;
                 clientReceiveThread.Start();
-            } else
+            }
+            else
             {
                 Debug.LogWarning(LogName + "Already connected. Disconnect before connecting!");
             }
@@ -198,7 +236,7 @@ public class ReconstructionTCPClient : MonoBehaviour
                     packetsDropped = 0;
                     packetsReceived = 0;
 
-                        // Get a stream object for reading
+                    // Get a stream object for reading
                     while (!killThreadRequested)
                     {
                         // Testing the Color Receiving
@@ -274,9 +312,36 @@ public class ReconstructionTCPClient : MonoBehaviour
 
                         if (!FreezeCanonical)
                         {
-                            lock (bufferQueue)
+
+                            byte[] decodedJpegBytes;
+
+                            // decodes the jpeg if a decoder is available
+                            if (decoderAvailabe)
                             {
-                                bufferQueue.Enqueue(new Tuple<int, int, byte[], byte[]>((int)width, (int)height, rgbbytes, depthbytes));
+                                // while we have frames, decode them
+                                int jpegWidth = 0, jpegHeight = 0, jpegSubsample = 0;
+                                if (LibJPEGTurbo.tjDecompressHeader2(decoderHandle, rgbbytes, rgbbytes.LongLength, ref jpegWidth, ref jpegHeight, ref jpegSubsample) == 0)
+                                {
+                                    decodedJpegBytes = new byte[jpegWidth * jpegHeight * 3];
+
+                                    if (LibJPEGTurbo.tjDecompress2(decoderHandle, rgbbytes, rgbbytes.LongLength, decodedJpegBytes, jpegWidth, 0, jpegHeight, (int)LibJPEGTurbo.TJPF.TJPF_RGB, decodingFlags) == 0)
+                                    {
+                                        // increment decoder counter
+                                        //++decodedFrames;
+                                        lock (bufferQueue)
+                                        {
+                                            bufferQueue.Enqueue(new Tuple<int, int, byte[], byte[]>((int)width, (int)height, depthbytes, decodedJpegBytes));
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+
+                                lock (bufferQueue)
+                                {
+                                    bufferQueue.Enqueue(new Tuple<int, int, byte[], byte[]>((int)width, (int)height, depthbytes, rgbbytes));
+                                }
                             }
                         }
 

@@ -24,7 +24,7 @@ public class ReconstructionVisualizer : MonoBehaviour
 {
     public GameObject RGBTextureObject;
     public GameObject DepthTextureObject;
-    public float pointSize = 0.005f;
+
 
     Renderer colorRenderer, depthRenderer;
     MeshFilter depthMeshFilter;
@@ -34,10 +34,12 @@ public class ReconstructionVisualizer : MonoBehaviour
     Texture2D projectionTexture;
 
     Mesh pointCloudMesh;
-  
+
     [System.NonSerialized]
     private Vector3[] pointCloudVertices;
 
+    [Tooltip("Check True if using libjpegturbo if the color frame is encoded as RGB. Otherwise, leave it false for JPEG frames")]
+    public bool isColorDecoded = false;
 
     private void Awake()
     {
@@ -62,14 +64,14 @@ public class ReconstructionVisualizer : MonoBehaviour
             indexFormat = UnityEngine.Rendering.IndexFormat.UInt32,
         };
 
-        string path = "Assets/Resources/xy_table.json";
+        string path = "Assets/Resources/kinect_fastpointcloud_1280x720.json";
         StreamReader reader = new StreamReader(path);
         KinectJsonFormat kjs = JsonUtility.FromJson<KinectJsonFormat>(reader.ReadToEnd());
 
-        Debug.Log("Reading Kinect " + kjs.table.cols + "x" + kjs.table.rows +" Table from (" + path + ")" );
+        Debug.Log("Reading Kinect " + kjs.table.cols + "x" + kjs.table.rows + " Table from (" + path + ")");
 
         Color[] colors = new Color[kjs.table.cols * kjs.table.rows];
-        
+
         for (int i = 0; i < colors.Length; i++)
         {
             colors[i].r = kjs.table.data[2 * i];
@@ -113,7 +115,7 @@ public class ReconstructionVisualizer : MonoBehaviour
         for (int i = 0; i < pointCloudVertices.Length; i++)
             indices[i] = i;
 
-        // make sure vertices are dynamic​
+        // make sure vertices are dynamic?
         pointCloudMesh.MarkDynamic();
         pointCloudMesh.vertices = pointCloudVertices;
 
@@ -138,7 +140,7 @@ public class ReconstructionVisualizer : MonoBehaviour
     }
 
 
-    public void onMeshReady(int width, int height, byte[] colorBuffer, byte[] depthBuffer)
+    public void onMeshReady(int width, int height, byte[] depthBuffer, byte[] colorBuffer)
     {
         //Debug.Log(string.Format("Received a picture of size {0}x{1}: {2} bytes", width, height, colorBuffer.Length));
         // allocates depth texture if not previsouly allocated
@@ -153,14 +155,9 @@ public class ReconstructionVisualizer : MonoBehaviour
             depthRenderer.material.SetTexture("_DepthTex", depthTexture);
             // associate texture with shader
             depthRenderer.material.SetTexture("_ProjectionTex", projectionTexture);
-            depthRenderer.material.SetFloat("_PointSize", pointSize);
 
-            // creates a new texture
-            colorTexture = new Texture2D(width, height)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Point,
-            };
+            colorTexture = new Texture2D(width, height, TextureFormat.RGB24, false);
+
 
             colorRenderer.material.mainTexture = colorTexture;
             depthRenderer.material.SetTexture("_ColorTex", colorTexture);
@@ -173,30 +170,31 @@ public class ReconstructionVisualizer : MonoBehaviour
             {
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Point,
-            }; 
+            };
             depthRenderer.material.SetTexture("_DepthTex", depthTexture);
-            depthRenderer.material.SetFloat("_PointSize", pointSize);
             // associate texture with shader
 
             // creates a new texture
-            colorTexture = new Texture2D(width, height)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Point,
-            };
+            colorTexture = new Texture2D(width, height, TextureFormat.RGB24, false);
 
             colorRenderer.material.mainTexture = colorTexture;
             depthRenderer.material.SetTexture("_ColorTex", colorTexture);
         }
 
         // load color texture
-        colorTexture.LoadImage(colorBuffer, false);
+        if (isColorDecoded)
+        {
+            colorTexture.LoadRawTextureData(colorBuffer);
+            colorTexture.Apply();
+        }
+        else
+            colorTexture.LoadImage(colorBuffer, false);
 
 
         // load depth texture
         depthTexture.LoadRawTextureData(depthBuffer);
         depthTexture.Apply();
-       // depthTextur
+        // depthTextur
     }
 
 

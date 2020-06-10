@@ -8,8 +8,8 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: DepthRenderMaterial
-  m_Shader: {fileID: 4800000, guid: 86915977ef12d2b4e9f3c403a03e686a, type: 3}
-  m_ShaderKeywords: 
+  m_Shader: {fileID: 4800000, guid: b042cb39e870f3d4495e26281abd52ff, type: 3}
+  m_ShaderKeywords: _PINHOLECAMERA_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -84,6 +84,7 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _PinholeCamera: 1
     - _PointSize: 15.43
     - _PrincipalPointX: 328.616
     - _PrincipalPointY: 344.08
