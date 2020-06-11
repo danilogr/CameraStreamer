@@ -59,7 +59,6 @@ struct CameraExtrinsics
  */
 struct CameraParameters
 {
-
 	CameraIntrinsics intrinsics;
 	CameraExtrinsics extrinsics;
 
@@ -211,19 +210,6 @@ public:
 	
 	// Adjust the camera exposure
 	virtual bool AdjustExposureBy(int exposure_level) = 0;
-
-
-	//
-	// There are two ways of setting camera settings
-	//
-
-	// Setting camera specifics from the configuration file
-	// if resetConfiguration is true then the camera implementation
-	// may reset its custom data structure
-	virtual void SetCameraConfigurationFromAppStatus(bool resetConfiguration = true) = 0;
-
-	// Setting camera specifics from the a custom structure implemented by the camera
-	virtual void SetCameraConfigurationFromCustomDatastructure(void* cameraSpecificConfiguration) = 0;
 
 	// Camera paremeters
 	CameraParameters calibration;

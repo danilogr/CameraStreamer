@@ -109,6 +109,15 @@ void AzureKinect::CameraLoop()
 		while (thread_running && !runningCameras)
 		{
 
+			// try reading configuration
+			while (!SetCameraConfigurationFromAppStatus())
+			{
+				// waits one second
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+				Logger::Log("AzureKinect") << "Trying again in 5 seconds..." << std::endl;
+
+			}
+
 			// try opening the device
 			while (!OpenDefaultKinect() && thread_running)
 			{
@@ -168,6 +177,7 @@ void AzureKinect::CameraLoop()
 			// printing out camera specifics
 			Logger::Log("AzureKinect") << "[Depth] resolution width: " << kinectCameraCalibration.depth_camera_calibration.resolution_width << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] resolution height: " << kinectCameraCalibration.depth_camera_calibration.resolution_height << std::endl;
+			Logger::Log("AzureKinect") << "[Depth] metric radius: " << kinectCameraCalibration.depth_camera_calibration.metric_radius << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] principal point x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cx << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] principal point y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cy << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] focal length x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.fx << std::endl;
@@ -183,10 +193,12 @@ void AzureKinect::CameraLoop()
 			Logger::Log("AzureKinect") << "[Depth] center of distortion in Z=1 plane, y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cody << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] tangential distortion coefficient x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
 			Logger::Log("AzureKinect") << "[Depth] tangential distortion coefficient y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
-			Logger::Log("AzureKinect") << "[Depth] metric radius: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
+			Logger::Log("AzureKinect") << "[Depth] metric radius (intrinsics): " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
 
+			
 			Logger::Log("AzureKinect") << "[Color] resolution width: " << kinectCameraCalibration.color_camera_calibration.resolution_width << std::endl;
 			Logger::Log("AzureKinect") << "[Color] resolution height: " << kinectCameraCalibration.color_camera_calibration.resolution_height << std::endl;
+			Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.metric_radius << std::endl;
 			Logger::Log("AzureKinect") << "[Color] principal point x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cx << std::endl;
 			Logger::Log("AzureKinect") << "[Color] principal point y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cy << std::endl;
 			Logger::Log("AzureKinect") << "[Color] focal length x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.fx << std::endl;
@@ -202,8 +214,8 @@ void AzureKinect::CameraLoop()
 			Logger::Log("AzureKinect") << "[Color] center of distortion in Z=1 plane, y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cody << std::endl;
 			Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
 			Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
-			Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
-
+			Logger::Log("AzureKinect") << "[Color] metric radius (intrinsics): " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
+			
 			// saves table
 			saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
 
@@ -360,4 +372,153 @@ void AzureKinect::CameraLoop()
 		}
 
 	}
+}
+
+
+bool AzureKinect::SetCameraConfigurationFromAppStatus()
+{
+
+	bool canRun30fps = true;
+
+	// blank slate
+	kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
+
+	// first figure out which cameras have been loaded
+	if (true || appStatus->IsColorCameraEnabled())
+	{
+		kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
+
+		const int requestedWidth = appStatus->GetCameraColorWidth();
+		const int requestedHeight = appStatus->GetCameraColorHeight();
+		int newWidth = requestedWidth;
+
+		switch (requestedHeight)
+		{
+		case 720:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+			newWidth = 1280;
+			break;
+
+		case 1080:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1080P;
+			newWidth = 1920;
+			break;
+
+		case 1440:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1440P;
+			newWidth = 2560;
+			break;
+
+		case 1536:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1536P;
+			newWidth = 2048;
+			break;
+
+		case 2160:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_2160P;
+			newWidth = 3840;
+			break;
+		case 3072:
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_3072P;
+			newWidth = 4096;
+			canRun30fps = false;
+			break;
+
+		default:
+			Logger::Log("AzureKinect") << "Color camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
+			appStatus->SetCameraColorHeight(720);
+			appStatus->SetCameraColorWidth(1280);
+			newWidth = 1280;
+			break;
+		}
+
+		// adjusting requested resolution to match an accepted resolution
+		if (requestedWidth != newWidth)
+		{
+			// add warning?
+			appStatus->SetCameraColorWidth(newWidth);
+		}
+
+	}
+	else {
+		kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_OFF;
+	}
+
+	// then figure out depth
+	if (true || appStatus->IsDepthCameraEnabled())
+	{
+		// we will decided on the mode (wide vs narrow) based on the resolution
+
+		//kinectConfiguration.depth_mode
+		const int requestedWidth = appStatus->GetCameraDepthWidth();
+		const int requestedHeight = appStatus->GetCameraDepthHeight();
+		int newWidth = requestedWidth;
+
+		switch (requestedHeight)
+		{
+		case 288:
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
+			newWidth = 320;
+			break;
+		case 512:
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
+			newWidth = 512;
+			break;
+		case 576:
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
+			newWidth = 640;
+			break;
+		case 1024:
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED;
+			newWidth = 1024;
+			canRun30fps = false;
+			break;
+		default:
+			Logger::Log("AzureKinect") << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
+			appStatus->SetCameraDepthHeight(576);
+			appStatus->SetCameraDepthWidth(640);
+			newWidth = 640;
+			break;
+		}
+
+		// adjusting requested resolution to match an accepted resolution
+		if (requestedWidth != newWidth)
+		{
+			// add warning?
+			appStatus->SetCameraDepthWidth(newWidth);
+		}
+
+
+	}
+	else {
+		// camera is off
+		kinectConfiguration.depth_mode = K4A_DEPTH_MODE_OFF;
+	}
+
+	// if both cameras are enabled, we will make sure that frames are synchronized
+	if (appStatus->IsColorCameraEnabled() && appStatus->IsDepthCameraEnabled())
+	{
+		kinectConfiguration.synchronized_images_only = true;
+	}
+
+	// are we able to run at 30 fps?
+	if (canRun30fps)
+	{
+		kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_30;
+	}
+	else {
+		// the second fastest speed it can run is 15fps
+		kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_15;
+		Logger::Log("AzureKinect") << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
+	}
+
+	// what about the device?
+	if (!appStatus->UseFirstCameraAvailable())
+	{
+		Logger::Log("AzureKinect") << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
+	}
+
+	return true;
 }

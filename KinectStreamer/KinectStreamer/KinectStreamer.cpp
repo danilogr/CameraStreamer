@@ -70,11 +70,7 @@ int main()
 		// instantiate the correct camera
 		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus);
 
-		// parse configuration
-		depthCamera->SetCameraConfigurationFromAppStatus();
-
 		// set up callbacks
-
 		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			server.ForwardToAll(color, depth);
@@ -89,18 +85,6 @@ int main()
 		// we could print messages when the camera gets connected / disconnected; not now
 		depthCamera->onCameraConnect = []()	{};
 		depthCamera->onCameraDisconnect = []() {};
-	
-		// this is a commented out example of how we can override camera settings using a 
-		// SDK specific data structure
-		//k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		//config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
-		//config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
-		//config.color_resolution = K4A_COLOR_RESOLUTION_720P;     // 1280x720
-		//config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
-		//config.synchronized_images_only = true;					 // depth and image should be synchronized
-
-		// start device, streaming server, and recording thread
-		//depthCamera.SetCameraConfigurationFromCustomDatastructure((void*)& config);
 		depthCamera->Run();
 		server.Run();
 		videoRecorderThread.Run();

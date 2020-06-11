@@ -85,156 +85,6 @@ public:
 		kinectDevice.close();
 	}
 
-	virtual void SetCameraConfigurationFromCustomDatastructure(void* cameraSpecificConfiguration)
-	{
-		kinectConfiguration = (*(k4a_device_configuration_t*)cameraSpecificConfiguration);
-	}
-
-	virtual void SetCameraConfigurationFromAppStatus(bool resetConfiguration)
-	{
-
-		bool canRun30fps = true;
-
-		// blank slate
-		if (resetConfiguration)
-			kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-
-		// first figure out which cameras have been loaded
-		if (true || appStatus->IsColorCameraEnabled())
-		{
-			kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
-
-			const int requestedWidth = appStatus->GetCameraColorWidth();
-			const int requestedHeight = appStatus->GetCameraColorHeight();
-			int newWidth = requestedWidth;
-			
-			switch (requestedHeight)
-			{
-				case 720:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
-					newWidth = 1280;
-				break;
-
-				case 1080:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1080P;
-					newWidth = 1920;
-					break;
-
-				case 1440:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1440P;
-					newWidth = 2560;
-					break;
-
-				case 1536:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_1536P;
-					newWidth = 2048;
-					break;
-
-				case 2160:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_2160P;
-					newWidth = 3840;
-					break;
-				case 3072:
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_3072P;
-					newWidth = 4096;
-					canRun30fps = false;
-					break;
-
-				default:
-					Logger::Log("AzureKinect") << "Color camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
-					kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
-					appStatus->SetCameraColorHeight(720);
-					appStatus->SetCameraColorWidth(1280);
-					newWidth = 1280;
-					break;
-			}
-
-			// adjusting requested resolution to match an accepted resolution
-			if (requestedWidth != newWidth)
-			{
-				// add warning?
-				appStatus->SetCameraColorWidth(newWidth);
-			}
-
-		}
-		else {
-			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_OFF;
-		}
-
-		// then figure out depth
-		if (true || appStatus->IsDepthCameraEnabled())
-		{
-			// we will decided on the mode (wide vs narrow) based on the resolution
-
-			//kinectConfiguration.depth_mode
-			const int requestedWidth = appStatus->GetCameraDepthWidth();
-			const int requestedHeight = appStatus->GetCameraDepthHeight();
-			int newWidth = requestedWidth;
-
-			switch (requestedHeight)
-			{
-				case 288:
-					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
-					newWidth = 320;
-					break;
-				case 512:
-					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
-					newWidth = 512;
-					break;
-				case 576:
-					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-					newWidth = 640;
-					break;
-				case 1024:
-					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED;
-					newWidth = 1024;
-					canRun30fps = false;
-					break;
-				default:
-					Logger::Log("AzureKinect") << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
-					kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-					appStatus->SetCameraDepthHeight(576);
-					appStatus->SetCameraDepthWidth(640);
-					newWidth = 640;
-					break;
-			}
-
-			// adjusting requested resolution to match an accepted resolution
-			if (requestedWidth != newWidth)
-			{
-				// add warning?
-				appStatus->SetCameraDepthWidth(newWidth);
-			}
-
-			
-		} else {
-			// camera is off
-			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_OFF;
-		}
-
-		// if both cameras are enabled, we will make sure that frames are synchronized
-		if (appStatus->IsColorCameraEnabled() && appStatus->IsDepthCameraEnabled())
-		{
-			kinectConfiguration.synchronized_images_only = true;
-		}
-
-		// are we able to run at 30 fps?
-		if (canRun30fps)
-		{
-			kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_30;
-		}
-		else {
-			// the second fastest speed it can run is 15fps
-			kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_15;
-			Logger::Log("AzureKinect") << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
-		}
-
-		// what about the device?
-		if (!appStatus->UseFirstCameraAvailable())
-		{
-			Logger::Log("AzureKinect") << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
-		}
-	}
 
 	virtual bool AdjustGainBy(int gain_level)
 	{
@@ -292,7 +142,7 @@ public:
 	}
 
 
-private:
+protected:
 
 	// opens the default kinect camera
 	bool OpenDefaultKinect();
@@ -301,6 +151,10 @@ private:
 
 	// camera loop responsible for receiving frames, transforming them, and invoking callbacks
 	virtual void CameraLoop();
+
+	// parses app status to configure device
+	bool SetCameraConfigurationFromAppStatus();
+	
 
 };
 

@@ -11,6 +11,7 @@
 #include <memory>
 #include <chrono>
 #include <vector>
+#include <set>
 
 // our framework
 #include "Logger.h"
@@ -46,6 +47,70 @@ class RealSense : public Camera
 	std::shared_ptr<rs2::temporal_filter> temp_filter;  // Temporal   - reduces temporal noise
 	std::shared_ptr<rs2::disparity_transform> depth_to_disparity;
 	std::shared_ptr<rs2::disparity_transform> disparity_to_depth;
+
+	rs2::config rs2Configuration;
+
+
+protected:
+
+	// method that finds a suitable camera given what is set in the app status
+	bool SetCameraConfigurationFromAppStatus();
+
+	// camera loop responsible for receiving frames, transforming them, and invoking callbacks
+	virtual void CameraLoop();
+
+
+public:
+
+	/**
+	  This method creates a shared pointer to this camera implementation
+	*/
+	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus)
+	{
+		return std::make_shared<RealSense>(appStatus);
+	}
+
+	/**
+	  Returns a set of all devices connected to the computer
+	*/
+	static const std::set<std::string>& ListDevices()
+	{
+		rs2::context ctx{};
+		rs2::device_list deviceList = ctx.query_devices();
+		
+		std::set<std::string> devices;
+		for (auto dev = deviceList.begin(); dev != deviceList.end(); ++dev)
+		{
+			devices.insert((*dev).get_info(RS2_CAMERA_INFO_SERIAL_NUMBER));
+		}
+
+		return devices;
+	}
+
+
+	RealSense(std::shared_ptr<ApplicationStatus> appStatus) : Camera(appStatus), realsensePipeline{}
+	{
+	}
+
+	~RealSense()
+	{
+		Stop();
+	}
+
+	virtual void Stop()
+	{
+		// stop thread first
+		Camera::Stop();
+
+		// frees resources
+		if (runningCameras)
+		{
+			//kinectDevice.stop_cameras();
+			runningCameras = false;
+		}
+
+		/kinectDevice.close();
+	}
 
 };
 
