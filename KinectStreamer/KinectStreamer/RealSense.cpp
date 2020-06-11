@@ -68,6 +68,7 @@ bool RealSense::SetCameraConfigurationFromAppStatus()
 
 void RealSense::CameraLoop()
 {
+	Logger::Log("RealSense2") << "Started Real Sense polling thread: " << std::this_thread::get_id << std::endl;
 
 }
 

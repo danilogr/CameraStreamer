@@ -90,7 +90,6 @@ void AzureKinect::CameraLoop()
 	bool print_camera_parameters = true;
 	bool didWeEverInitializeTheCamera = false;
 	bool didWeCallConnectedCallback = false; // if the thread is stopped but we did execute the connected callback, then we will execute the disconnected callback to maintain consistency
-	unsigned long long framesCaptured = 0;
 	unsigned long long totalTries = 0;
 
 	while (thread_running)
@@ -98,7 +97,7 @@ void AzureKinect::CameraLoop()
 		// start again ...
 		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
-		framesCaptured = 0;
+		statistics.framesCaptured = 0;				// frames captured in this session
 		totalTries = 0;
 
 		//
@@ -252,6 +251,8 @@ void AzureKinect::CameraLoop()
 
 			try
 			{
+				// start keeping track of incoming frames / failed frames
+				statistics.StartCounting();
 
 				while (thread_running)
 				{
@@ -282,13 +283,14 @@ void AzureKinect::CameraLoop()
 						if (onFramesReady)
 							onFramesReady(colorFrame.get_device_timestamp(), sharedColorFrame, sharedDepthFrame);
 
-						// counts frames and restarts chances to get a new frame
-						framesCaptured++;
+						// update info
+						++statistics.framesCaptured;
 						triesBeforeRestart = 5;
 					}
 					else {
 						Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
 						--triesBeforeRestart;
+						++statistics.framesFailedTotal;
 						++totalTries;
 
 						if (triesBeforeRestart == 0)
@@ -309,7 +311,7 @@ void AzureKinect::CameraLoop()
 			catch (const k4a::error& e)
 			{
 				Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
-
+				++statistics.framesFailedTotal;
 				if (kinectDevice)
 				{
 					kinectDevice.stop_cameras();
@@ -319,6 +321,7 @@ void AzureKinect::CameraLoop()
 				kinectDevice.stop_cameras();
 				runningCameras = false;
 				appStatus->UpdateCaptureStatus(false, false);
+				statistics.StopCounting();
 
 				// waits 5 seconds before trying again
 				std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -326,7 +329,7 @@ void AzureKinect::CameraLoop()
 			catch (const std::bad_alloc& e)
 			{
 				Logger::Log("AzureKinect") << "Fatal error! Running out of memory! Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
-
+				++statistics.framesFailedTotal;
 				if (kinectDevice)
 				{
 					kinectDevice.stop_cameras();
@@ -336,6 +339,7 @@ void AzureKinect::CameraLoop()
 				kinectDevice.stop_cameras();
 				runningCameras = false;
 				appStatus->UpdateCaptureStatus(false, false);
+				statistics.StopCounting();
 
 				// waits 5 seconds before trying again
 				std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -348,6 +352,9 @@ void AzureKinect::CameraLoop()
 		//
 		if (didWeEverInitializeTheCamera)
 		{
+			// stop statistics
+			statistics.StopCounting();
+
 			// are we running cameras? stop them!
 			appStatus->UpdateCaptureStatus(false, false);
 			if (runningCameras)
@@ -355,12 +362,13 @@ void AzureKinect::CameraLoop()
 				kinectDevice.stop_cameras();
 				runningCameras = false;
 			}
+			didWeEverInitializeTheCamera = false; // time to let it go
 
 			// report usage
-			auto durationInSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start).count();
-			Logger::Log("AzureKinect") << "Captured " << framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
+			auto durationInSeconds = statistics.durationInSeconds();
+			Logger::Log("AzureKinect") << "Captured " << statistics.framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)statistics.framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
 
-			// calls the camera disconnect callback if we called onCameraConnect()
+			// calls the camera disconnect callback if we called onCameraConnect() - consistency
 			if (didWeCallConnectedCallback && onCameraDisconnect)
 				onCameraDisconnect();
 		}

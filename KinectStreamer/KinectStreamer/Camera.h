@@ -67,6 +67,72 @@ struct CameraParameters
 	float metricRadius;
 };
 
+
+struct CameraStatistics
+{
+	// number of frames captured on the long run
+	unsigned long long framesCapturedTotal;
+	unsigned long long framesFailedTotal;
+	unsigned int sessions;
+	std::chrono::steady_clock::time_point startTimeTotal;
+	std::chrono::steady_clock::time_point endTimeTotal;
+
+	// number of frames captured in this session
+	unsigned long long framesCaptured;
+	std::chrono::steady_clock::time_point startTime;
+	std::chrono::steady_clock::time_point endTime;
+
+
+	CameraStatistics() : framesCapturedTotal(0), framesFailedTotal(0), sessions(0), framesCaptured(0), initialized(false), inSession(false) {}
+
+	void StartCounting()
+	{
+		// did we forget to stop counting?
+		if (inSession)
+		{
+			StopCounting(); // not super accurate, but whatevs
+		}
+
+		startTime = std::chrono::high_resolution_clock::now();
+
+		// this is the first time we are running the camera loop
+		// thus, we will set both the startTimeTotal and the startTime
+		if (!initialized)
+		{
+			initialized = true;
+			startTimeTotal = startTime;
+		}
+
+		inSession = true;
+	}
+
+	void StopCounting()
+	{
+		if (inSession)
+		{
+			endTime = std::chrono::high_resolution_clock::now();
+		
+			// add information to the long run
+			inSession = false;
+			endTimeTotal = endTime;
+			framesCapturedTotal += framesCaptured;
+		}
+	}
+
+	long long durationInSeconds()
+	{
+		return std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
+	}
+
+	long long totalDurationInSeconds()
+	{
+		return std::chrono::duration_cast<std::chrono::seconds>(endTimeTotal - startTimeTotal).count();
+	}
+
+private:
+	bool initialized, inSession;
+};
+
 /**
   The Camera class is an abstraction to all cameras supported by this application.
   In an ideal world, cameras would be loaded dynamically so that our application doesn't
@@ -214,12 +280,15 @@ public:
 	// Camera paremeters
 	CameraParameters calibration;
 
-	const std::string& getSerial()
+	// Camera statistics
+	CameraStatistics statistics;
+
+	const std::string& getSerial() const
 	{
 		return cameraSerialNumber;
 	}
 
-	const std::string& getCameraType()
+	const std::string& getCameraType() const
 	{
 		return cameraName;
 	}
