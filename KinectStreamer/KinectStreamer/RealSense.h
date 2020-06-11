@@ -109,7 +109,7 @@ public:
 			runningCameras = false;
 		}
 
-		/kinectDevice.close();
+		kinectDevice.close();
 	}
 
 };

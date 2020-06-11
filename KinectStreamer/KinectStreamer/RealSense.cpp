@@ -34,7 +34,9 @@ bool RealSense::SetCameraConfigurationFromAppStatus()
 		}
 
 		// get the first device available
-		rs2Configuration.enable_device(*devicesConnected.cbegin());
+		cameraSerialNumber = *devicesConnected.cbegin();
+		rs2Configuration.enable_device(cameraSerialNumber);
+		
 	}
 
 	// first figure out which cameras have been loaded
@@ -62,6 +64,7 @@ bool RealSense::SetCameraConfigurationFromAppStatus()
 	if (!rs2Configuration.can_resolve(realsensePipeline))
 	{
 		Logger::Log("RealSense2") << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
+		cameraSerialNumber.empty();
 		return false;
 	}
 }
@@ -69,6 +72,74 @@ bool RealSense::SetCameraConfigurationFromAppStatus()
 void RealSense::CameraLoop()
 {
 	Logger::Log("RealSense2") << "Started Real Sense polling thread: " << std::this_thread::get_id << std::endl;
+
+	bool didWeEverInitializeTheCamera = false;
+	// if the thread is stopped but we did execute the connected callback,
+	// then we will execute the disconnected callback to maintain consistency
+	bool didWeCallConnectedCallback = false; 
+	unsigned long long totalTries = 0;
+
+	while (thread_running)
+	{
+		// start again ...
+		didWeEverInitializeTheCamera = false;
+		didWeCallConnectedCallback = false;
+		totalTries = 0;
+
+		//
+		// Step #1) OPEN CAMERA
+		//
+		// stay in a loop until we can open the device and the cameras
+		// (or until someone requests thread to exit)
+		//
+		while (thread_running && !runningCameras)
+		{
+			// start with camera configuration
+			while (!SetCameraConfigurationFromAppStatus() && thread_running)
+			{
+				Logger::Log("RealSense2") << "Trying again in 5 seconds..." << std::endl;
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			}
+
+			//  if we stop the application while waiting...
+			if (!thread_running)
+			{
+				break;
+			}
+
+
+			// tries to start the streaming pipeline
+			while (!runningCameras && thread_running)
+			{
+				try
+				{
+					realsensePipeline.start(rs2Configuration);
+					runningCameras = true;
+				}
+				catch (const rs2::camera_disconnected_error& e)
+				{
+					Logger::Log("RealSense2") << "ERROR! Camera is not connected! Please, connect the camera! Trying again in 5 seconds..." << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(5));
+				}
+				catch (const std::runtime_error& e)
+				{
+					Logger::Log("RealSense2") << "ERROR! Could not start the camera: " << e.what()  << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(5));
+				}
+			}
+
+			//  if we stop the application while waiting...
+			if (!thread_running)
+			{
+				break;
+			}
+
+
+			Logger::Log("RealSense2") << "Opened RealSense device id: " << cameraSerialNumber << " connected through " << realsensePipeline.get_active_profile().get_device().get_info(RS2_CAMERA_INFO_USB_TYPE_DESCRIPTOR) << std::endl;
+
+
+		}
+	}
 
 }
 

@@ -94,6 +94,7 @@ struct CameraStatistics
 		}
 
 		startTime = std::chrono::high_resolution_clock::now();
+		framesCaptured = 0;
 
 		// this is the first time we are running the camera loop
 		// thus, we will set both the startTimeTotal and the startTime

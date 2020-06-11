@@ -97,7 +97,6 @@ void AzureKinect::CameraLoop()
 		// start again ...
 		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
-		statistics.framesCaptured = 0;				// frames captured in this session
 		totalTries = 0;
 
 		//
@@ -109,18 +108,18 @@ void AzureKinect::CameraLoop()
 		{
 
 			// try reading configuration
-			while (!SetCameraConfigurationFromAppStatus())
+			while (!SetCameraConfigurationFromAppStatus() && thread_running)
 			{
 				// waits one second
-				std::this_thread::sleep_for(std::chrono::seconds(5));
 				Logger::Log("AzureKinect") << "Trying again in 5 seconds..." << std::endl;
-
+				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
 
 			// try opening the device
 			while (!OpenDefaultKinect() && thread_running)
 			{
 				// waits one second
+
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 				Logger::Log("AzureKinect") << "Trying again..." << std::endl;
 			}
@@ -128,7 +127,7 @@ void AzureKinect::CameraLoop()
 			//  if we stop the application while waiting...
 			if (!thread_running)
 			{
-				return;
+				break;
 			}
 
 			Logger::Log("AzureKinect") << "Opened kinect device id: " << cameraSerialNumber << std::endl;
