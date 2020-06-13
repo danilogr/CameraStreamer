@@ -108,7 +108,7 @@ void AzureKinect::CameraLoop()
 		{
 
 			// try reading configuration
-			while (!SetCameraConfigurationFromAppStatus() && thread_running)
+			while (!LoadConfigurationSettings() && thread_running)
 			{
 				// waits one second
 				Logger::Log("AzureKinect") << "Trying again in 5 seconds..." << std::endl;
@@ -382,7 +382,7 @@ void AzureKinect::CameraLoop()
 }
 
 
-bool AzureKinect::SetCameraConfigurationFromAppStatus()
+bool AzureKinect::LoadConfigurationSettings()
 {
 
 	bool canRun30fps = true;
@@ -391,14 +391,17 @@ bool AzureKinect::SetCameraConfigurationFromAppStatus()
 	kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
 
 	// first figure out which cameras have been loaded
-	if (true || appStatus->IsColorCameraEnabled())
+	if (true || configuration->IsColorCameraEnabled())
 	{
 		kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
 
-		const int requestedWidth = appStatus->GetCameraColorWidth();
-		const int requestedHeight = appStatus->GetCameraColorHeight();
-		int newWidth = requestedWidth;
+		const int requestedWidth = configuration->GetCameraColorWidth();
+		const int requestedHeight = configuration->GetCameraColorHeight();
 
+		appStatus->SetCameraColorWidth(requestedWidth);
+		appStatus->SetCameraColorHeight(requestedHeight);
+		
+		int newWidth = requestedWidth;
 		switch (requestedHeight)
 		{
 		case 720:
@@ -442,10 +445,8 @@ bool AzureKinect::SetCameraConfigurationFromAppStatus()
 
 		// adjusting requested resolution to match an accepted resolution
 		if (requestedWidth != newWidth)
-		{
-			// add warning?
 			appStatus->SetCameraColorWidth(newWidth);
-		}
+		
 
 	}
 	else {
@@ -453,14 +454,16 @@ bool AzureKinect::SetCameraConfigurationFromAppStatus()
 	}
 
 	// then figure out depth
-	if (true || appStatus->IsDepthCameraEnabled())
+	if (true || configuration->IsDepthCameraEnabled())
 	{
-		// we will decided on the mode (wide vs narrow) based on the resolution
 
 		//kinectConfiguration.depth_mode
 		const int requestedWidth = appStatus->GetCameraDepthWidth();
 		const int requestedHeight = appStatus->GetCameraDepthHeight();
 		int newWidth = requestedWidth;
+
+		appStatus->SetCameraDepthWidth(requestedWidth);
+		appStatus->SetCameraDepthHeight(requestedHeight);
 
 		switch (requestedHeight)
 		{
@@ -505,7 +508,7 @@ bool AzureKinect::SetCameraConfigurationFromAppStatus()
 	}
 
 	// if both cameras are enabled, we will make sure that frames are synchronized
-	if (appStatus->IsColorCameraEnabled() && appStatus->IsDepthCameraEnabled())
+	if (true)//configuration->IsColorCameraEnabled() && configuration->IsDepthCameraEnabled())
 	{
 		kinectConfiguration.synchronized_images_only = true;
 	}
@@ -522,7 +525,7 @@ bool AzureKinect::SetCameraConfigurationFromAppStatus()
 	}
 
 	// what about the device?
-	if (!appStatus->UseFirstCameraAvailable())
+	if (!configuration->UseFirstCameraAvailable())
 	{
 		Logger::Log("AzureKinect") << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
 	}

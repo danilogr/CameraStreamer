@@ -202,6 +202,7 @@
     <ClCompile Include="ApplicationStatus.cpp" />
     <ClCompile Include="AzureKinect.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="KinectStreamer.cpp" />
     <ClCompile Include="RealSense.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
@@ -213,6 +214,7 @@
     <ClInclude Include="AzureKinect.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CompilerConfiguration.h" />
+    <ClInclude Include="Configuration.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="RealSense.h" />

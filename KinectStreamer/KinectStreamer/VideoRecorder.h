@@ -334,7 +334,7 @@ public:
 		}
 
 		// is the camera streaming at all?
-		if (!appStatus->IsCameraRunning())
+		if (!appStatus->IsAppCapturing())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record without a camera..." << std::endl;
 			return false;

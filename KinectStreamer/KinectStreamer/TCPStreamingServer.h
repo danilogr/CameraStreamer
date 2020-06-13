@@ -60,13 +60,13 @@ public:
 			// stops io service
 			io_service.stop();
 
-			// is it running ?
+			// is it running ? wait for it to finish
 			if (sThread && sThread->joinable())
 				sThread->join();
 
 			// next line is technically not necessary, but
 			// we are doing it for book keeping
-			appStatus->SetStreamingStatus(false);
+			appStatus->SetStreamingDisabled();
 
 			// gets done with thread
 			sThread = nullptr;
@@ -178,12 +178,17 @@ private:
 	void thread_main()
 	{
 		Logger::Log("Streamer") << "Waiting for connections on port " << appStatus->GetStreamerPort() << std::endl;
-		appStatus->SetStreamingStatus(true);
+		
+		// update application to tell wich streams are being enabled
+		appStatus->SetStreamingColorEnabled(true);
+		appStatus->SetStreamingDepthEnabled(true);
+
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 		
 		// make sure others knows that the thread is not running
-		appStatus->SetStreamingStatus(false);
+		appStatus->SetStreamingDisabled();
+
 		Logger::Log("Streamer") << "Thread exited successfully" << std::endl;
 	}
 

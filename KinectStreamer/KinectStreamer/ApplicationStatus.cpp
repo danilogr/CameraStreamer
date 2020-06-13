@@ -13,10 +13,6 @@
 #define ReadJSONDefaultBool(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid boolean! Using default: " << defaultvalue  << std::endl; } }
 #define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
 
-
-
-
-
 rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 {
 
@@ -25,23 +21,23 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 	rapidjson::Document::AllocatorType& allocator = applicationStatusJson.GetAllocator();
 	
 	// locks to make sure that the entire json object is consistent
-	std::lock_guard<std::mutex> guard(statusChangeLock);
+	std::lock_guard<std::mutex> guard(dataLock);
 	{
 		// camera settings
-		applicationStatusJson.AddMember("cameraRunning", isCameraColorRunning || isCameraDepthRunning, allocator);
+		applicationStatusJson.AddMember("cameraRunning", IsAppCapturing(), allocator);
 		applicationStatusJson.AddMember("cameraName", rapidjson::Value().SetString(cameraName.c_str(), cameraName.length(), allocator), allocator);
 		applicationStatusJson.AddMember("cameraSerial", rapidjson::Value().SetString(cameraSerial.c_str(), cameraSerial.length(), allocator), allocator);
 		applicationStatusJson.AddMember("cameraDepth", isCameraDepthRunning, allocator);
 		applicationStatusJson.AddMember("cameraColor", isCameraColorRunning, allocator);
-		applicationStatusJson.AddMember("cameraDepthWidth", cameraRequestedDepthWidth, allocator);
-		applicationStatusJson.AddMember("cameraDeptHeight", cameraRequestedDepthHeight, allocator);
-		applicationStatusJson.AddMember("cameraColorWidth", cameraRequestedColorWidth, allocator);
-		applicationStatusJson.AddMember("cameraColorHeight", cameraRequestedColorHeight, allocator);
+		applicationStatusJson.AddMember("cameraDepthWidth", cameraDepthWidth, allocator);
+		applicationStatusJson.AddMember("cameraDeptHeight", cameraDepthHeight, allocator);
+		applicationStatusJson.AddMember("cameraColorWidth", cameraColorWidth, allocator);
+		applicationStatusJson.AddMember("cameraColorHeight", cameraColorHeight, allocator);
 		
 		// streaming server
-		applicationStatusJson.AddMember("streaming", isStreamingColor || isStreamingDepth, allocator);	// true if streaming either color, depth, or both
-		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator);				// number of clients currently connected to the stream
-		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);						// FPS of the stream
+		applicationStatusJson.AddMember("streaming", IsAppStreaming(), allocator);	  // true if streaming either color, depth, or both
+		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator); // number of clients currently connected to the stream
+		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);	  // FPS of the stream
 		applicationStatusJson.AddMember("streamingColor", isStreamingColor, allocator);
 		applicationStatusJson.AddMember("streamingColorWidth", streamingColorWidth, allocator);
 		applicationStatusJson.AddMember("streamingColorFormat", rapidjson::Value().SetString(streamingColorFormat.c_str(), streamingColorFormat.length(), allocator), allocator);
@@ -65,122 +61,4 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 	}
 
 	return std::move(applicationStatusJson);
-}
-
-bool  ApplicationStatus::LoadConfiguration(const std::string& filepath)
-{
-	bool successReading = true;
-	// blocks anyone from reading from ApplicationStatus while we are reading from file
-	std::lock_guard<std::mutex> guard(statusChangeLock);
-	{
-		// let's read the entire configuration file to memory first
-		std::ifstream file(filepath, std::ios::binary | std::ios::ate);
-
-		// were we able to open it?
-		if (!file.is_open())
-		{
-			Logger::Log("Config") << "Could not open configuration file: " << filepath << std::endl;
-			successReading = false;
-			parsedConfigurationFile = rapidjson::Document();
-			parsedConfigurationFile.SetObject();
-		}
-		else // reads a file if one is available
-		{
-
-			// gets file size ( 100 mb should be enough; this is a basic safety check)
-			std::streamsize fsize = file.tellg();
-
-			// check file size
-			if (fsize > 100 * 1024 * 1024)
-			{
-				Logger::Log("Config") << "Configuration file is too big (> 100mb)! (" << filepath << ")" << std::endl;
-				successReading = false;
-				file.close();
-			} else {
-				// parses file to a buffer
-				file.seekg(0, std::ios::beg);
-				std::vector<char> configurationFileContent(fsize + 32, 0); // pads string with zeros
-				file.read(&configurationFileContent[0], fsize);
-				file.close();
-
-				// parses json
-				rapidjson::StringStream filestream(&configurationFileContent[0]);
-
-				try
-				{
-					rapidjson::ParseResult ok = parsedConfigurationFile.Parse((const char*)& configurationFileContent[0], fsize);
-
-					// I am really trying to understand what this API does
-					if (ok.IsError())
-					{
-						Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << ok.Code() << " at location " << ok.Offset() << std::endl << std::endl;
-						successReading = false;
-					}
-				}
-				catch (const std::exception & e)
-				{
-					Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << e.what() << std::endl << std::endl;
-					successReading = false;
-				}
-
-			}
-
-		}
-
-		// now that json parsing is done, time to read individual components
-		ParseConfiguration(successReading);
-
-		if (successReading)
-			Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
-	}
-
-	return successReading;
-}
-
-
-
-void  ApplicationStatus::ParseConfiguration(bool warn)
-{
-	// trick to always use default elements in case parts of the document are missing
-	rapidjson::Value emptyDoc;
-	emptyDoc.SetObject();
-	rapidjson::Value currentDoc;
-	currentDoc.SetObject();
-
-	// ports
-	ReadJSONDefaultInt(parsedConfigurationFile, "streamerPort", streamerPort, 3614, true);
-	ReadJSONDefaultInt(parsedConfigurationFile, "controlPort", controlPort, 6606, true);
-
-	// =======================================================================================
-	// camera
-	if (parsedConfigurationFile.HasMember("camera") && parsedConfigurationFile["camera"].IsObject())
-	{
-		currentDoc = parsedConfigurationFile["camera"].GetObject();
-	}
-	else {
-		currentDoc = emptyDoc;
-	}
-
-	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true);
-	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true, warn);
-	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraRequestedColorWidth, 1280, warn);
-	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraRequestedColorHeight, 720, warn);
-	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true, warn);
-	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraRequestedDepthWidth, 640, warn);
-	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraRequestedDepthHeight, 576, warn);
-
-	// should we force a specific camera serial number?
-	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string(), false);
-	if (!cameraSerial.empty())
-	{
-		useFirstCameraAvailable = false; // depending on camera implementation, this will force the application to use a specific camera
-	}
-
-}
-
-
-
-void  ApplicationStatus::SerializeConfiguration()
-{
-
 }

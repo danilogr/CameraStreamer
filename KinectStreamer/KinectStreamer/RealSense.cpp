@@ -5,7 +5,7 @@
 #include "CompilerConfiguration.h"
 #ifdef ENABLE_RS2
 
-bool RealSense::SetCameraConfigurationFromAppStatus()
+bool RealSense::LoadConfigurationSettings()
 {
 
 	// blank slate
@@ -95,7 +95,7 @@ void RealSense::CameraLoop()
 		while (thread_running && !runningCameras)
 		{
 			// start with camera configuration
-			while (!SetCameraConfigurationFromAppStatus() && thread_running)
+			while (!LoadConfigurationSettings() && thread_running)
 			{
 				Logger::Log("RealSense2") << "Trying again in 5 seconds..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(5));

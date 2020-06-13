@@ -9,6 +9,8 @@
 
 #include "Frame.h"
 #include "Logger.h"
+
+#include "Configuration.h"
 #include "ApplicationStatus.h"
 
 
@@ -161,8 +163,11 @@ protected:
 	// is the camera running?
 	bool runningCameras;
 
-	// most of the configuration comes from the AppStatus class
+	// all threads use a shared data structure to report their status
 	std::shared_ptr<ApplicationStatus> appStatus;
+
+	// configuration (from either a configuration file or a setting set by the user)
+	std::shared_ptr<Configuration> configuration;
 
 	// cameras have a thread that handles requesting frames
 	// Todo: we should create an abstract thread class for future uses
@@ -218,8 +223,8 @@ public:
 	// callback invoked when the camera disconnects
 	CameraDisconnectedCallback onCameraDisconnect;
 
-	// constructor 
-	Camera(std::shared_ptr<ApplicationStatus> appStatus) : currentExposure(0), currentGain(0), appStatus(appStatus), thread_running(false), runningCameras(false), getFrameTimeout(1000)
+	// constructor explicitly defining a configuration file (as well as appStatus)
+	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), runningCameras(false), getFrameTimeout(1000)
 	{
 
 	}

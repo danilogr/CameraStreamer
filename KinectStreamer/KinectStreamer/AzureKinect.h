@@ -55,12 +55,12 @@ public:
 	/**
 	  This method creates a shared pointer to this camera implementation
  	  */
-	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus)
+	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration)
 	{
-		return std::make_shared<AzureKinect>(appStatus);
+		return std::make_shared<AzureKinect>(appStatus, configuration);
 	}
 
-	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus) : Camera(appStatus), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
+	AzureKinect(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration), kinectConfiguration(K4A_DEVICE_CONFIG_INIT_DISABLE_ALL),
 		intrinsics_color(nullptr), intrinsics_depth(nullptr)
 	{
 	}
@@ -153,7 +153,7 @@ protected:
 	virtual void CameraLoop();
 
 	// parses app status to configure device
-	bool SetCameraConfigurationFromAppStatus();
+	bool LoadConfigurationSettings();
 	
 
 };
