@@ -224,7 +224,6 @@ void AzureKinect::CameraLoop()
 		//
 		// Step #2) START, LOOP FOR FRAMES, STOP
 		//
-		auto start = std::chrono::high_resolution_clock::now();
 		if (didWeEverInitializeTheCamera)
 		{
 			// time to start reading frames and streaming
@@ -272,7 +271,7 @@ void AzureKinect::CameraLoop()
 
 
 						// copies images to Frame
-						std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
+						std::shared_ptr<Frame> sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGR24);
 						memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
 
 						std::shared_ptr<Frame> sharedDepthFrame = Frame::Create(largeDepthFrame.get_width_pixels(), largeDepthFrame.get_height_pixels(), FrameType::Encoding::Mono16);

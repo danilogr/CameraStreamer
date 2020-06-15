@@ -49,23 +49,57 @@ struct FrameType
 
 };
 
-struct NFOVUnbinnedFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint16_t) * 1); } };
-struct RGBX2DepthFrameDim { constexpr static unsigned int Size() { return (640 * 576 * sizeof(uint8_t) * 3); } };
 
-struct RGBXFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint8_t) * 3); } };
-struct DRGBFrameDim720PFrameDim { constexpr static unsigned int Size() { return (1280 * 720 * sizeof(uint16_t) * 1); } };
-//struct SVGAColorFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 3); } };
-//struct SVGABWFrameDim { constexpr static unsigned int Size() { return (800 * 600 * sizeof(uint8_t) * 1); } };
-//struct VGAColorFrameDim { constexpr static unsigned int Size() { return (640 * 480 * sizeof(uint8_t) * 3); } };
-struct PassiveIRFrameDim { constexpr static unsigned int Size() { return (1024 * 1024 * sizeof(uint16_t) * 1); } };
+#define MemoryPoolDefinition(name, width, height, eltype, elcount) \
+struct Resolution##name##_FrameDim { constexpr static unsigned int Size() { return (width*height*sizeof(eltype)*elcount);}}; \
+typedef boost::singleton_pool<Resolution##name##_FrameDim, Resolution##name##_FrameDim::Size()> MemoryPool##name;
 
-typedef boost::singleton_pool<NFOVUnbinnedFrameDim, NFOVUnbinnedFrameDim::Size()> NFOVUnbinnedFrameMemoryPool;
-//typedef boost::singleton_pool<SVGABWFrameDim, SVGABWFrameDim::Size()> SVGABWMemoryPool;
-//typedef boost::singleton_pool<VGAColorFrameDim, VGAColorFrameDim::Size()> VGAMemoryPool;
-typedef boost::singleton_pool<PassiveIRFrameDim, PassiveIRFrameDim::Size()> PassiveIRFrameMemoryPool;
-typedef boost::singleton_pool<RGBXFrameDim720PFrameDim, RGBXFrameDim720PFrameDim::Size()> RGBXFrameDim720PMemoryPool;
-typedef boost::singleton_pool<RGBX2DepthFrameDim, RGBX2DepthFrameDim::Size()> RGBX2DepthMemoryPool;
-typedef boost::singleton_pool<DRGBFrameDim720PFrameDim, RGBX2DepthFrameDim::Size()> DRGBFrameDim720PMemoryPool;
+#define MemoryPoolAlloc(name) MemoryPool##name##::malloc()
+#define MemoryPoolFree(name, pointer) MemoryPool##name##::free(pointer)
+
+#define CaseAllocMem(name, data) case Resolution##name##_FrameDim::Size(): data = (unsigned char *) MemoryPoolAlloc(name); break;
+#define CaseFreeMem(name, data) case Resolution##name##_FrameDim::Size(): MemoryPoolFree(name, data); break;
+
+
+// k4a specific definitions
+MemoryPoolDefinition(K4ADepth, 640, 576, uint16_t, 1);
+MemoryPoolDefinition(K4ADepthWithColor, 640, 576, uint8_t, 3);
+
+MemoryPoolDefinition(K4APassiveInfrared, 1024, 1024, uint16_t, 1);
+MemoryPoolDefinition(K4APassiveInfraredWithColor, 1024, 1024, uint8_t, 3);
+
+// rs2 specific definitions
+MemoryPoolDefinition(RS2_WVGADepth, 848, 480, uint16_t, 1);
+MemoryPoolDefinition(RS2_WVGADepthWithColor, 848, 480, uint8_t, 3);
+
+// ultrasound specific resolutions
+MemoryPoolDefinition(VGABW, 640, 480, uint8_t, 1);
+MemoryPoolDefinition(SVGABW, 800, 600, uint8_t, 1);
+
+// generic resolutions
+MemoryPoolDefinition(VGA, 640, 480, uint8_t, 3);
+MemoryPoolDefinition(VGADepth, 640, 480, uint16_t, 1)
+
+MemoryPoolDefinition(SVGA, 800, 600, uint8_t, 3);
+MemoryPoolDefinition(SVGADepth, 800, 600, uint16_t, 1)
+
+MemoryPoolDefinition(720P, 1280, 720, uint8_t, 3);
+MemoryPoolDefinition(720PDepth, 1280, 720, uint16_t, 1);
+
+MemoryPoolDefinition(1080P, 1920, 1080, uint8_t, 3);
+MemoryPoolDefinition(1080PDepth, 1920, 1080, uint16_t, 1);
+
+MemoryPoolDefinition(1440P, 2560, 1440, uint8_t, 3);
+MemoryPoolDefinition(1440PDepth, 2560, 1440, uint16_t, 1);
+
+MemoryPoolDefinition(1536P, 2048, 1536, uint8_t, 3);
+MemoryPoolDefinition(1536PDepth, 2048, 1536, uint16_t, 1);
+
+MemoryPoolDefinition(2160P, 3840, 2160, uint8_t, 3);
+MemoryPoolDefinition(2160PDepth, 3840, 2160, uint16_t, 1);
+
+MemoryPoolDefinition(3072P, 4096, 3072, uint8_t, 3);
+MemoryPoolDefinition(3072PDepth, 4096, 3072, uint16_t, 1);
 
 
 class Frame : boost::noncopyable
@@ -76,25 +110,37 @@ protected:
 	{
 		switch (size())
 		{
-		case NFOVUnbinnedFrameDim::Size():
-			data = (unsigned char*)NFOVUnbinnedFrameMemoryPool::malloc();
-			break;
+			// k4a specific
+			CaseAllocMem(K4ADepth, data)
+			CaseAllocMem(K4ADepthWithColor, data)
+			CaseAllocMem(K4APassiveInfrared, data)
+			CaseAllocMem(K4APassiveInfraredWithColor, data)
 
-		case PassiveIRFrameDim::Size():
-			data = (unsigned char*)PassiveIRFrameMemoryPool::malloc();
-			break;
+			// real-sense 2 specific
+			CaseAllocMem(RS2_WVGADepth, data)
+			CaseAllocMem(RS2_WVGADepthWithColor, data)
 
-		case RGBXFrameDim720PFrameDim::Size():
-			data = (unsigned char*)RGBXFrameDim720PMemoryPool::malloc();
-			break;
+			// application specific
+			CaseAllocMem(VGABW, data)
+			CaseAllocMem(SVGABW, data)
 
-		case RGBX2DepthFrameDim::Size():
-			data = (unsigned char*)RGBX2DepthMemoryPool::malloc();
-			break;
-
-		case DRGBFrameDim720PFrameDim::Size():
-			data = (unsigned char*)DRGBFrameDim720PMemoryPool::malloc();
-			break;
+			// generic resolutions
+			CaseAllocMem(VGA, data)
+			CaseAllocMem(VGADepth, data)
+			CaseAllocMem(SVGA, data)
+			CaseAllocMem(SVGADepth, data)
+			CaseAllocMem(720P, data)
+			CaseAllocMem(720PDepth, data)
+			CaseAllocMem(1080P, data)
+			CaseAllocMem(1080PDepth, data)
+			CaseAllocMem(1440P, data)
+			CaseAllocMem(1440PDepth, data)
+			CaseAllocMem(1536P, data)
+			CaseAllocMem(1536PDepth, data)
+			CaseAllocMem(2160P, data)
+			CaseAllocMem(2160PDepth, data)
+			CaseAllocMem(3072P, data)
+			CaseAllocMem(3072PDepth, data)
 
 		default:
 			data = new unsigned char[size()];
@@ -143,31 +189,44 @@ public:
 	virtual ~Frame()
 	{
 		if (customDataAlloc) return; // no dellocation required
+		if (encoding == FrameType::Encoding::Custom) delete[] data;
 
 		switch (size())
 		{
-		case NFOVUnbinnedFrameDim::Size():
-			NFOVUnbinnedFrameMemoryPool::free(data);
-			break;
+			// k4a specific
+			CaseFreeMem(K4ADepth, data)
+			CaseFreeMem(K4ADepthWithColor, data)
+			CaseFreeMem(K4APassiveInfrared, data)
+			CaseFreeMem(K4APassiveInfraredWithColor, data)
 
-		case PassiveIRFrameDim::Size():
-			PassiveIRFrameMemoryPool::free(data);
-			break;
+			// real-sense 2 specific
+			CaseFreeMem(RS2_WVGADepth, data)
+			CaseFreeMem(RS2_WVGADepthWithColor, data)
 
-	 	case RGBXFrameDim720PFrameDim::Size():
-			RGBXFrameDim720PMemoryPool::free(data);
-			break;
+			// application specific
+			CaseFreeMem(VGABW, data)
+			CaseFreeMem(SVGABW, data)
 
-		case RGBX2DepthFrameDim::Size():
-			RGBX2DepthMemoryPool::free(data);
-			break;
-
-		case DRGBFrameDim720PFrameDim::Size():
-			DRGBFrameDim720PMemoryPool::free(data);
-			break;
+			// generic resolutions
+			CaseFreeMem(VGA, data)
+			CaseFreeMem(VGADepth, data)
+			CaseFreeMem(SVGA, data)
+			CaseFreeMem(SVGADepth, data)
+			CaseFreeMem(720P, data)
+			CaseFreeMem(720PDepth, data)
+			CaseFreeMem(1080P, data)
+			CaseFreeMem(1080PDepth, data)
+			CaseFreeMem(1440P, data)
+			CaseFreeMem(1440PDepth, data)
+			CaseFreeMem(1536P, data)
+			CaseFreeMem(1536PDepth, data)
+			CaseFreeMem(2160P, data)
+			CaseFreeMem(2160PDepth, data)
+			CaseFreeMem(3072P, data)
+			CaseFreeMem(3072PDepth, data)
 
 		default:
-			delete data;
+			delete[] data;
 		}
 		data = nullptr;
 	}
