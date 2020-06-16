@@ -140,7 +140,7 @@ void AzureKinect::CameraLoop()
 
 			Logger::Log("AzureKinect") << "Opened kinect device id: " << cameraSerialNumber << std::endl;
 
-			// opening cameras
+			// starting cameras based on configuration
 			try
 			{
 				kinectDevice.start_cameras(&kinectConfiguration);
@@ -152,12 +152,53 @@ void AzureKinect::CameraLoop()
 				Logger::Log("AzureKinect") << "Error opening cameras!" << std::endl;
 			}
 
+			// loading camera configuration to memory
 			if (IsAnyCameraEnabled())
 			{
 				try
 				{
-					kinectCameraCalibration = kinectDevice.get_calibration(kinectConfiguration.depth_mode, kinectConfiguration.color_resolution);
+					kinectCameraCalibration    = kinectDevice.get_calibration(kinectConfiguration.depth_mode, kinectConfiguration.color_resolution);
 					kinectCameraTransformation = k4a::transformation(kinectCameraCalibration);
+
+					if (depthCameraEnabled)
+					{
+						depthCameraParameters.resolutionWidth = kinectCameraCalibration.depth_camera_calibration.resolution_width;
+						depthCameraParameters.resolutionHeight = kinectCameraCalibration.depth_camera_calibration.resolution_height;
+						depthCameraParameters.metricRadius = kinectCameraCalibration.depth_camera_calibration.metric_radius;
+						depthCameraParameters.intrinsics.cx = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cx;
+						depthCameraParameters.intrinsics.cy = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cy;
+						depthCameraParameters.intrinsics.fx = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.fx;
+						depthCameraParameters.intrinsics.fy = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.fy;
+						depthCameraParameters.intrinsics.k1 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k1;
+						depthCameraParameters.intrinsics.k2 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k2;
+						depthCameraParameters.intrinsics.k3 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k3;
+						depthCameraParameters.intrinsics.k4 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k4;
+						depthCameraParameters.intrinsics.k5 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k5;
+						depthCameraParameters.intrinsics.k6 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k6;
+						depthCameraParameters.intrinsics.p1 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p1;
+						depthCameraParameters.intrinsics.p2 = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p2;
+						depthCameraParameters.intrinsics.metricRadius = kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.metric_radius;
+					}
+
+					if (colorCameraEnabled)
+					{
+						colorCameraParameters.resolutionWidth = kinectCameraCalibration.color_camera_calibration.resolution_width;
+						colorCameraParameters.resolutionHeight = kinectCameraCalibration.color_camera_calibration.resolution_height;
+						colorCameraParameters.metricRadius = kinectCameraCalibration.color_camera_calibration.metric_radius;
+						colorCameraParameters.intrinsics.cx = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cx;
+						colorCameraParameters.intrinsics.cy = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cy;
+						colorCameraParameters.intrinsics.fx = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.fx;
+						colorCameraParameters.intrinsics.fy = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.fy;
+						colorCameraParameters.intrinsics.k1 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k1;
+						colorCameraParameters.intrinsics.k2 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k2;
+						colorCameraParameters.intrinsics.k3 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k3;
+						colorCameraParameters.intrinsics.k4 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k4;
+						colorCameraParameters.intrinsics.k5 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k5;
+						colorCameraParameters.intrinsics.k6 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k6;
+						colorCameraParameters.intrinsics.p1 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p1;
+						colorCameraParameters.intrinsics.p2 = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p2;
+						colorCameraParameters.intrinsics.metricRadius = kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius;
+					}
 				}
 				catch (const k4a::error& error)
 				{
@@ -168,6 +209,7 @@ void AzureKinect::CameraLoop()
 				}
 			}
 
+			// error openning all cameras?
 			if (!IsAnyCameraEnabled())
 			{
 				// we have to close the device and try again
@@ -176,65 +218,16 @@ void AzureKinect::CameraLoop()
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 			else {
+				// reminder that we have to wrap things in the end, even if
+				// no frames were captured
 				didWeEverInitializeTheCamera = true;
 			}
 		}
 
-		if (IsAnyCameraEnabled() && print_camera_parameters)
+		// save camera transformation table the first time this thread goes through this loop
+		if (thread_running && colorCameraEnabled && depthCameraEnabled && print_camera_parameters)
 		{
-			// printing out camera specifics
-			if (depthCameraEnabled)
-			{
-				Logger::Log("AzureKinect") << "[Depth] resolution width: " << kinectCameraCalibration.depth_camera_calibration.resolution_width << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] resolution height: " << kinectCameraCalibration.depth_camera_calibration.resolution_height << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] metric radius: " << kinectCameraCalibration.depth_camera_calibration.metric_radius << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] principal point x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cx << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] principal point y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cy << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] focal length x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.fx << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] focal length y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.fy << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] radial distortion coefficients:" << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k1: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k1 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k2: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k2 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k3: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k3 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k4: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k4 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k5: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k5 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] k6: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.k6 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] center of distortion in Z=1 plane, x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.codx << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] center of distortion in Z=1 plane, y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.cody << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] tangential distortion coefficient x: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] tangential distortion coefficient y: " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
-				Logger::Log("AzureKinect") << "[Depth] metric radius (intrinsics): " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
-			}
-			
-			if (colorCameraEnabled)
-			{
-				Logger::Log("AzureKinect") << "[Color] resolution width: " << kinectCameraCalibration.color_camera_calibration.resolution_width << std::endl;
-				Logger::Log("AzureKinect") << "[Color] resolution height: " << kinectCameraCalibration.color_camera_calibration.resolution_height << std::endl;
-				Logger::Log("AzureKinect") << "[Color] metric radius: " << kinectCameraCalibration.color_camera_calibration.metric_radius << std::endl;
-				Logger::Log("AzureKinect") << "[Color] principal point x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cx << std::endl;
-				Logger::Log("AzureKinect") << "[Color] principal point y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cy << std::endl;
-				Logger::Log("AzureKinect") << "[Color] focal length x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.fx << std::endl;
-				Logger::Log("AzureKinect") << "[Color] focal length y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.fy << std::endl;
-				Logger::Log("AzureKinect") << "[Color] radial distortion coefficients:" << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k1: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k1 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k2: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k2 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k3: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k3 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k4: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k4 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k5: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k5 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] k6: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.k6 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] center of distortion in Z=1 plane, x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.codx << std::endl;
-				Logger::Log("AzureKinect") << "[Color] center of distortion in Z=1 plane, y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.cody << std::endl;
-				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient x: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p1 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] tangential distortion coefficient y: " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.p2 << std::endl;
-				Logger::Log("AzureKinect") << "[Color] metric radius (intrinsics): " << kinectCameraCalibration.color_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
-			}
-
-			// saves table if both cameras are enabled
-			if (colorCameraEnabled && depthCameraEnabled)
-			{
-				saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
-			}
-
+			saveTransformationTable(kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
 			print_camera_parameters = false;
 		}
 
@@ -242,7 +235,12 @@ void AzureKinect::CameraLoop()
 		//
 		// Step #2) START, LOOP FOR FRAMES, STOP
 		//
-		if (didWeEverInitializeTheCamera)
+
+		// start keeping track of incoming frames / failed frames
+		statistics.StartCounting();
+
+		// loop to capture frames
+		if (thread_running && IsAnyCameraEnabled())
 		{
 			// time to start reading frames and streaming
 			unsigned int triesBeforeRestart = 5;
@@ -264,7 +262,7 @@ void AzureKinect::CameraLoop()
 				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : kinectCameraCalibration.depth_camera_calibration.resolution_height);
 
 			// starts
-			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
+			Logger::Log("AzureKinect") << "Started capturing" << std::endl;
 
 			// invokes the kinect started callback if the thread is running
 			if (thread_running && onCameraConnect)
@@ -275,8 +273,6 @@ void AzureKinect::CameraLoop()
 
 			try
 			{
-				// start keeping track of incoming frames / failed frames
-				statistics.StartCounting();
 
 				while (thread_running)
 				{
@@ -298,7 +294,7 @@ void AzureKinect::CameraLoop()
 							//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
 
 							// copies images to Frame
-							sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGR24);
+							sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
 							memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
 						}
 
@@ -331,7 +327,7 @@ void AzureKinect::CameraLoop()
 					else {
 						Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
 						--triesBeforeRestart;
-						++statistics.framesFailedTotal;
+						++statistics.framesFailed;
 						++totalTries;
 
 						if (triesBeforeRestart == 0)
@@ -353,14 +349,13 @@ void AzureKinect::CameraLoop()
 			catch (const k4a::error& e)
 			{
 				Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
-				++statistics.framesFailedTotal;
+				++statistics.framesFailed;
 				if (kinectDevice)
 				{
 					kinectDevice.stop_cameras();
 					kinectDevice.close();
 				}
 
-				kinectDevice.stop_cameras();
 				depthCameraEnabled = false;
 				colorCameraEnabled = false;
 				appStatus->UpdateCaptureStatus(false, false);
@@ -372,14 +367,13 @@ void AzureKinect::CameraLoop()
 			catch (const std::bad_alloc& e)
 			{
 				Logger::Log("AzureKinect") << "Fatal error! Running out of memory! Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
-				++statistics.framesFailedTotal;
+				++statistics.framesFailed;
 				if (kinectDevice)
 				{
 					kinectDevice.stop_cameras();
 					kinectDevice.close();
 				}
 
-				kinectDevice.stop_cameras();
 				depthCameraEnabled = false;
 				colorCameraEnabled = false;
 				appStatus->UpdateCaptureStatus(false, false);
@@ -394,30 +388,25 @@ void AzureKinect::CameraLoop()
 		//
 		// Step #3) Shutdown
 		//
-		if (didWeEverInitializeTheCamera)
+
+		// stop statistics
+		statistics.StopCounting();
+
+		// let other threads know that we are not capturing anymore
+		appStatus->UpdateCaptureStatus(false, false);
+
+		// stop cameras that might be running
+		if (IsAnyCameraEnabled())
 		{
-			// stop statistics
-			statistics.StopCounting();
-
-			// are we running cameras? stop them!
-			appStatus->UpdateCaptureStatus(false, false);
-			if (IsAnyCameraEnabled())
-			{
-				kinectDevice.stop_cameras();
-				depthCameraEnabled = false;
-				colorCameraEnabled = false;
-			}
-			didWeEverInitializeTheCamera = false; // time to let it go
-
-			// report usage
-			auto durationInSeconds = statistics.durationInSeconds();
-			Logger::Log("AzureKinect") << "Captured " << statistics.framesCaptured << " frames in " << durationInSeconds << " seconds (" << ((double)statistics.framesCaptured / (double)durationInSeconds) << " fps) - Timed out: " << totalTries << " times" << std::endl;
-
-			// calls the camera disconnect callback if we called onCameraConnect() - consistency
-			if (didWeCallConnectedCallback && onCameraDisconnect)
-				onCameraDisconnect();
+			kinectDevice.stop_cameras();
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
 		}
 
+		// calls the camera disconnect callback if we called onCameraConnect() - consistency
+		if (didWeCallConnectedCallback && onCameraDisconnect)
+			onCameraDisconnect();
+		
 		// waits one second before restarting...
 		if (thread_running)
 		{
@@ -437,7 +426,7 @@ bool AzureKinect::LoadConfigurationSettings()
 	kinectConfiguration = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
 
 	// first figure out which cameras have been loaded
-	if (true || configuration->IsColorCameraEnabled())
+	if (configuration->IsColorCameraEnabled())
 	{
 		kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
 
@@ -500,12 +489,12 @@ bool AzureKinect::LoadConfigurationSettings()
 	}
 
 	// then figure out depth
-	if (true || configuration->IsDepthCameraEnabled())
+	if (configuration->IsDepthCameraEnabled())
 	{
 
 		//kinectConfiguration.depth_mode
-		const int requestedWidth = appStatus->GetCameraDepthWidth();
-		const int requestedHeight = appStatus->GetCameraDepthHeight();
+		const int requestedWidth = configuration->GetCameraDepthWidth();
+		const int requestedHeight = configuration->GetCameraDepthHeight();
 		int newWidth = requestedWidth;
 
 		appStatus->SetCameraDepthWidth(requestedWidth);

@@ -93,9 +93,26 @@ int main()
 
 		};
 
-		// we could print messages when the camera gets connected / disconnected; not now
-		depthCamera->onCameraConnect = []()	{};
-		depthCamera->onCameraDisconnect = []() {};
+		
+		// prints device intrinsics the first time
+		bool printedIntrinsicsOnce = false;
+		depthCamera->onCameraConnect = [&]()
+		{
+			if (!printedIntrinsicsOnce && depthCamera)
+			{
+				depthCamera->PrintCameraIntrinsics();
+				printedIntrinsicsOnce = true;
+			}
+		};
+
+		depthCamera->onCameraDisconnect = [&]()
+		{
+			if (depthCamera)
+			{ 
+				Logger::Log("Camera") << "Captured " << depthCamera->statistics.framesCaptured << " frames in " << depthCamera->statistics.durationInSeconds() << " seconds (" << ((double)depthCamera->statistics.framesCaptured / (double)depthCamera->statistics.durationInSeconds()) << " fps) - Fails: " << depthCamera->statistics.framesFailed << " times" << std::endl;
+			}
+		};
+
 		depthCamera->Run();
 		server.Run();
 		videoRecorderThread.Run();

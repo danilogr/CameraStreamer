@@ -81,11 +81,12 @@ struct CameraStatistics
 
 	// number of frames captured in this session
 	unsigned long long framesCaptured;
+	unsigned long long framesFailed;
 	std::chrono::steady_clock::time_point startTime;
 	std::chrono::steady_clock::time_point endTime;
 
 
-	CameraStatistics() : framesCapturedTotal(0), framesFailedTotal(0), sessions(0), framesCaptured(0), initialized(false), inSession(false) {}
+	CameraStatistics() : framesCapturedTotal(0), framesFailedTotal(0), sessions(0), framesCaptured(0), framesFailed(0), initialized(false), inSession(false) {}
 
 	void StartCounting()
 	{
@@ -97,6 +98,7 @@ struct CameraStatistics
 
 		startTime = std::chrono::high_resolution_clock::now();
 		framesCaptured = 0;
+		framesFailed = 0;
 
 		// this is the first time we are running the camera loop
 		// thus, we will set both the startTimeTotal and the startTime
@@ -106,6 +108,7 @@ struct CameraStatistics
 			startTimeTotal = startTime;
 		}
 
+		++sessions;
 		inSession = true;
 	}
 
@@ -119,6 +122,7 @@ struct CameraStatistics
 			inSession = false;
 			endTimeTotal = endTime;
 			framesCapturedTotal += framesCaptured;
+			framesFailedTotal += framesFailed;
 		}
 	}
 
@@ -303,6 +307,48 @@ public:
 	// Prints camera parameters
 	virtual void PrintCameraIntrinsics()
 	{
+		if (depthCameraEnabled)
+		{
+			Logger::Log("Camera") << "[Depth] resolution width: " << depthCameraParameters.resolutionWidth << std::endl;
+			Logger::Log("Camera") << "[Depth] resolution height: " << depthCameraParameters.resolutionHeight << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius: " << depthCameraParameters.metricRadius << std::endl;
+			Logger::Log("Camera") << "[Depth] principal point x: " << depthCameraParameters.intrinsics.cx << std::endl;
+			Logger::Log("Camera") << "[Depth] principal point y: " << depthCameraParameters.intrinsics.cy << std::endl;
+			Logger::Log("Camera") << "[Depth] focal length x: " << depthCameraParameters.intrinsics.fx << std::endl;
+			Logger::Log("Camera") << "[Depth] focal length y: " << depthCameraParameters.intrinsics.fy << std::endl;
+			Logger::Log("Camera") << "[Depth] radial distortion coefficients:" << std::endl;
+			Logger::Log("Camera") << "[Depth] k1: " << depthCameraParameters.intrinsics.k1 << std::endl;
+			Logger::Log("Camera") << "[Depth] k2: " << depthCameraParameters.intrinsics.k2 << std::endl;
+			Logger::Log("Camera") << "[Depth] k3: " << depthCameraParameters.intrinsics.k3 << std::endl;
+			Logger::Log("Camera") << "[Depth] k4: " << depthCameraParameters.intrinsics.k4 << std::endl;
+			Logger::Log("Camera") << "[Depth] k5: " << depthCameraParameters.intrinsics.k5 << std::endl;
+			Logger::Log("Camera") << "[Depth] k6: " << depthCameraParameters.intrinsics.k6 << std::endl;
+			Logger::Log("Camera") << "[Depth] tangential distortion coefficient x: " << depthCameraParameters.intrinsics.p1 << std::endl;
+			Logger::Log("Camera") << "[Depth] tangential distortion coefficient y: " << depthCameraParameters.intrinsics.p2 << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius (intrinsics): " << depthCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+
+		}
+
+		if (colorCameraEnabled)
+		{
+			Logger::Log("Camera") << "[Color] resolution width: " << colorCameraParameters.resolutionWidth << std::endl;
+			Logger::Log("Camera") << "[Color] resolution height: " << colorCameraParameters.resolutionHeight << std::endl;
+			Logger::Log("Camera") << "[Color] metric radius: " << colorCameraParameters.metricRadius << std::endl;
+			Logger::Log("Camera") << "[Color] principal point x: " << colorCameraParameters.intrinsics.cx << std::endl;
+			Logger::Log("Camera") << "[Color] principal point y: " << colorCameraParameters.intrinsics.cy << std::endl;
+			Logger::Log("Camera") << "[Color] focal length x: " << colorCameraParameters.intrinsics.fx << std::endl;
+			Logger::Log("Camera") << "[Color] focal length y: " << colorCameraParameters.intrinsics.fy << std::endl;
+			Logger::Log("Camera") << "[Color] radial distortion coefficients:" << std::endl;
+			Logger::Log("Camera") << "[Color] k1: " << colorCameraParameters.intrinsics.k1 << std::endl;
+			Logger::Log("Camera") << "[Color] k2: " << colorCameraParameters.intrinsics.k2 << std::endl;
+			Logger::Log("Camera") << "[Color] k3: " << colorCameraParameters.intrinsics.k3 << std::endl;
+			Logger::Log("Camera") << "[Color] k4: " << colorCameraParameters.intrinsics.k4 << std::endl;
+			Logger::Log("Camera") << "[Color] k5: " << colorCameraParameters.intrinsics.k5 << std::endl;
+			Logger::Log("Camera") << "[Color] k6: " << colorCameraParameters.intrinsics.k6 << std::endl;
+			Logger::Log("Camera") << "[Color] tangential distortion coefficient x: " << colorCameraParameters.intrinsics.p1 << std::endl;
+			Logger::Log("Camera") << "[Color] tangential distortion coefficient y: " << colorCameraParameters.intrinsics.p2 << std::endl;
+			Logger::Log("Camera") << "[Color] metric radius (intrinsics): " << colorCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+		}
 	}
 
 	// Camera paremeters
