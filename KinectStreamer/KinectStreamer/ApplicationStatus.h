@@ -151,12 +151,15 @@ public:
 	 * Updates the application status internally (streaming)
 	 */
 	void UpdateCaptureStatus(bool isColorCameraRunning, bool isDepthCameraRunning,
+		const std::string& sn = std::string(),
 		int colorCameraWidth = 0, int colorCameraHeight = 0,
 		int depthCameraWidth = 0, int depthCameraHeight = 0,
 		int streamWidth = 0, int streamHeight = 0)
 	{
-
 		std::lock_guard<std::mutex> guard(dataLock);
+
+		// camera serial number
+		this->cameraSerial = sn;
 
 		// cameras running
 		this->isCameraColorRunning = isColorCameraRunning;

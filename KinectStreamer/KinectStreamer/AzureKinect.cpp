@@ -98,14 +98,12 @@ void AzureKinect::CameraLoop()
 	bool print_camera_parameters = true;
 	bool didWeEverInitializeTheCamera = false;
 	bool didWeCallConnectedCallback = false; // if the thread is stopped but we did execute the connected callback, then we will execute the disconnected callback to maintain consistency
-	unsigned long long totalTries = 0;
 
 	while (thread_running)
 	{
 		// start again ...
 		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
-		totalTries = 0;
 
 		//
 		// Step #1) OPEN CAMERA
@@ -118,7 +116,6 @@ void AzureKinect::CameraLoop()
 			// try reading configuration
 			while (!LoadConfigurationSettings() && thread_running)
 			{
-				// waits one second
 				Logger::Log("AzureKinect") << "Trying again in 5 seconds..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
@@ -127,7 +124,6 @@ void AzureKinect::CameraLoop()
 			while (!OpenDefaultKinect() && thread_running)
 			{
 				// waits one second
-
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 				Logger::Log("AzureKinect") << "Trying again..." << std::endl;
 			}
@@ -214,6 +210,8 @@ void AzureKinect::CameraLoop()
 			{
 				// we have to close the device and try again
 				kinectDevice.close();
+				colorCameraEnabled = false;
+				depthCameraEnabled = false;
 				Logger::Log("AzureKinect") << "Trying again in 1 second..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
@@ -244,33 +242,34 @@ void AzureKinect::CameraLoop()
 		{
 			// time to start reading frames and streaming
 			unsigned int triesBeforeRestart = 5;
-			totalTries = 0;
 
 			// updates app with capture and stream status
-			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled,
+			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,
 				
 				// color camera
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_width : 0,
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : 0,
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : 0,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : 0,
 				
 				// depth camera
-				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_width : 0,
-				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_height : 0,
+				depthCameraEnabled ? depthCameraParameters.resolutionWidth : 0,
+				depthCameraEnabled ? depthCameraParameters.resolutionHeight : 0,
 
 				// streaming (color resolution when  color is available, depth resolution otherwise)
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_width : kinectCameraCalibration.depth_camera_calibration.resolution_width,
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : kinectCameraCalibration.depth_camera_calibration.resolution_height);
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : depthCameraParameters.resolutionWidth,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : depthCameraParameters.resolutionHeight);
 
 			// starts
 			Logger::Log("AzureKinect") << "Started capturing" << std::endl;
 
-			// invokes the kinect started callback if the thread is running
+			// invokes camera connect callback
 			if (thread_running && onCameraConnect)
 			{
 				didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
 				onCameraConnect();
 			}
 
+
+			// capture loop
 			try
 			{
 
@@ -328,7 +327,6 @@ void AzureKinect::CameraLoop()
 						Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
 						--triesBeforeRestart;
 						++statistics.framesFailed;
-						++totalTries;
 
 						if (triesBeforeRestart == 0)
 						{

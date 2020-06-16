@@ -15,11 +15,13 @@
 
 // our framework
 #include "Logger.h"
+#include "Configuration.h"
 #include "ApplicationStatus.h"
 #include "Frame.h"
 #include "Camera.h"
 
 // real sense sdk
+#define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING 1 // see https://github.com/IntelRealSense/librealsense/issues/6283
 #include <librealsense2/rs.hpp>
 
 /**
@@ -42,9 +44,9 @@ class RealSense : public Camera
 	std::shared_ptr<rs2::device> device;
 	std::shared_ptr<rs2::playback> playback;
 
-	std::shared_ptr<rs2::decimation_filter> dec_filter; // Decimation - reduces depth frame density
-	std::shared_ptr<rs2::spatial_filter> spat_filter;   // Spatial    - edge-preserving spatial smoothing
-	std::shared_ptr<rs2::temporal_filter> temp_filter;  // Temporal   - reduces temporal noise
+	std::shared_ptr<rs2::decimation_filter> dec_filter;				// Decimation - reduces depth frame density
+	std::shared_ptr<rs2::spatial_filter> spat_filter;				// Spatial    - edge-preserving spatial smoothing
+	std::shared_ptr<rs2::temporal_filter> temp_filter;				// Temporal   - reduces temporal noise
 	std::shared_ptr<rs2::disparity_transform> depth_to_disparity;
 	std::shared_ptr<rs2::disparity_transform> disparity_to_depth;
 
@@ -65,9 +67,9 @@ public:
 	/**
 	  This method creates a shared pointer to this camera implementation
 	*/
-	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus)
+	static std::shared_ptr<Camera> Create(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration)
 	{
-		return std::make_shared<RealSense>(appStatus);
+		return std::make_shared<RealSense>(appStatus, configuration);
 	}
 
 	/**
@@ -88,7 +90,8 @@ public:
 	}
 
 
-	RealSense(std::shared_ptr<ApplicationStatus> appStatus) : Camera(appStatus), realsensePipeline{}
+
+	RealSense(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration), realsensePipeline{}
 	{
 	}
 
@@ -103,14 +106,27 @@ public:
 		Camera::Stop();
 
 		// frees resources
-		if (runningCameras)
+		if (IsAnyCameraEnabled())
 		{
-			//kinectDevice.stop_cameras();
-			runningCameras = false;
+			realsensePipeline.stop();
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
 		}
 
-		kinectDevice.close();
 	}
+
+
+	virtual bool AdjustGainBy(int gain_level)
+	{
+		return false;
+
+	}
+
+	virtual bool AdjustExposureBy(int exposure_level)
+	{
+		return false;
+	}
+
 
 };
 

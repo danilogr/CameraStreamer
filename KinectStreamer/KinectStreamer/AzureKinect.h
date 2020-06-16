@@ -123,7 +123,7 @@ public:
 		}
 		else if (proposedExposure < -11)
 		{
-			proposedExposure = -11;
+			proposedExposure = -11; 
 		}
 
 		try

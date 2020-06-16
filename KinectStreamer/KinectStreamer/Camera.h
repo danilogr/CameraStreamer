@@ -32,10 +32,11 @@ struct CameraIntrinsics
 	float p2;            // Tangential distortion coefficient 2 */
 	float p1;            // Tangential distortion coefficient 1 */
 	float metricRadius;  // Metric radius */
+	float metricScale;   // Scale to transform measurements into meters (only makes sense for depth cameras)
 
 	CameraIntrinsics() : cx(0), cy(0), fx(0), fy(0),
 		k1(0), k2(0), k3(0), k4(0), k5(0), k6(0), p2(0), p1(0),
-		metricRadius(0)
+		metricRadius(0), metricScale(0)
 	{
 
 	}
@@ -326,6 +327,7 @@ public:
 			Logger::Log("Camera") << "[Depth] tangential distortion coefficient x: " << depthCameraParameters.intrinsics.p1 << std::endl;
 			Logger::Log("Camera") << "[Depth] tangential distortion coefficient y: " << depthCameraParameters.intrinsics.p2 << std::endl;
 			Logger::Log("Camera") << "[Depth] metric radius (intrinsics): " << depthCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius (to meters): " << depthCameraParameters.intrinsics.metricScale << std::endl << std::endl;
 
 		}
 

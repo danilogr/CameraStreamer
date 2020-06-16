@@ -15,7 +15,7 @@ bool RealSense::LoadConfigurationSettings()
 	const std::set<std::string>& devicesConnected = RealSense::ListDevices();
 
 	// do we have a specific serial number we are looking for?
-	if (!appStatus->UseFirstCameraAvailable())
+	if (!configuration->UseFirstCameraAvailable())
 	{
 		if (devicesConnected.find(appStatus->GetCameraSN()) == devicesConnected.cend())
 		{
@@ -40,20 +40,18 @@ bool RealSense::LoadConfigurationSettings()
 	}
 
 	// first figure out which cameras have been loaded
-	if (true || appStatus->IsColorCameraEnabled())
+	if (configuration->IsColorCameraEnabled())
 	{
-		rs2Configuration.enable_stream(RS2_STREAM_COLOR, appStatus->GetCameraColorWidth(), appStatus->GetCameraColorHeight(), RS2_FORMAT_BGR8, 30);
+		rs2Configuration.enable_stream(RS2_STREAM_COLOR, configuration->GetCameraColorWidth(), configuration->GetCameraColorHeight(), RS2_FORMAT_BGR8, 30);
 	}
 	else {
 		rs2Configuration.disable_stream(RS2_STREAM_COLOR);
 	}
 
 	// then figure out depth
-	if (true || appStatus->IsDepthCameraEnabled())
+	if (configuration->IsDepthCameraEnabled())
 	{
-		const int requestedWidth = appStatus->GetCameraDepthWidth();
-		const int requestedHeight = appStatus->GetCameraDepthHeight();
-		rs2Configuration.enable_stream(RS2_STREAM_DEPTH, appStatus->GetCameraDepthWidth(), appStatus->GetCameraDepthHeight(), RS2_FORMAT_Z16, 30);
+		rs2Configuration.enable_stream(RS2_STREAM_DEPTH, configuration->GetCameraDepthWidth(), configuration->GetCameraDepthHeight(), RS2_FORMAT_Z16, 30);
 	}
 	else {
 		// camera is off
@@ -64,9 +62,23 @@ bool RealSense::LoadConfigurationSettings()
 	if (!rs2Configuration.can_resolve(realsensePipeline))
 	{
 		Logger::Log("RealSense2") << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
-		cameraSerialNumber.empty();
+		cameraSerialNumber = std::string();
 		return false;
 	}
+
+
+	if (configuration->IsDepthCameraEnabled())
+	{
+		// add filters (todo: make them configurable)
+		dec_filter = std::make_shared<rs2::decimation_filter>(1.0f); // Decimation - reduces depth frame density
+		spat_filter = std::make_shared<rs2::spatial_filter>();       // Spatial    - edge-preserving spatial smoothing
+		temp_filter = std::make_shared<rs2::temporal_filter>();      // Temporal   - reduces temporal noise
+
+		depth_to_disparity = std::make_shared<rs2::disparity_transform>(true);
+		disparity_to_depth = std::make_shared<rs2::disparity_transform>(false);
+	}
+
+	return true;
 }
 
 void RealSense::CameraLoop()
@@ -79,12 +91,17 @@ void RealSense::CameraLoop()
 	bool didWeCallConnectedCallback = false; 
 	unsigned long long totalTries = 0;
 
+	// align to color filter
+	rs2::align align_to_color(RS2_STREAM_COLOR);
+
+
 	while (thread_running)
 	{
 		// start again ...
 		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
 		totalTries = 0;
+		device = nullptr;
 
 		//
 		// Step #1) OPEN CAMERA
@@ -92,8 +109,9 @@ void RealSense::CameraLoop()
 		// stay in a loop until we can open the device and the cameras
 		// (or until someone requests thread to exit)
 		//
-		while (thread_running && !runningCameras)
+		while (thread_running && !IsAnyCameraEnabled())
 		{
+
 			// start with camera configuration
 			while (!LoadConfigurationSettings() && thread_running)
 			{
@@ -109,56 +127,319 @@ void RealSense::CameraLoop()
 
 
 			// tries to start the streaming pipeline
-			while (!runningCameras && thread_running)
+			while (!IsAnyCameraEnabled() && thread_running)
 			{
 				try
 				{
 					realsensePipeline.start(rs2Configuration);
-					runningCameras = true;
+					
+					// get device
+					device = std::make_shared<rs2::device>(realsensePipeline.get_active_profile().get_device());
+
+					// sanity check
+					if (!device)
+						throw std::runtime_error("device is a nullptr");
+
+					// get camera intrinsics
+					auto streams = realsensePipeline.get_active_profile().get_streams();
+
+					colorCameraEnabled = configuration->IsColorCameraEnabled();
+					depthCameraEnabled = configuration->IsDepthCameraEnabled();
+					bool foundColorCamera = false, foundDepthCamera = false;
+
+					// read all incoming streams
+					for (const auto& stream : streams)
+					{
+						if (stream.stream_type() == RS2_STREAM_DEPTH || stream.stream_type() == RS2_STREAM_COLOR)
+						{
+							if (stream.stream_type() == RS2_STREAM_DEPTH)
+							{
+								foundDepthCamera = true;
+								// Get depth scale which is used to convert the measurements into millimeters
+								depthCameraParameters.intrinsics.metricScale = realsensePipeline.get_active_profile().get_device().first<rs2::depth_sensor>().get_depth_scale();
+							}
+
+							if (stream.stream_type() == RS2_STREAM_COLOR)
+								foundColorCamera = true;
+
+							if ((colorCameraEnabled && foundColorCamera) || (depthCameraEnabled && foundDepthCamera))
+							{
+								auto intrinsics = stream.as<rs2::video_stream_profile>().get_intrinsics();
+								CameraParameters &cameraParameters = (stream.stream_type() == RS2_STREAM_DEPTH) ? depthCameraParameters : colorCameraParameters;
+
+								cameraParameters.intrinsics.fx = intrinsics.fx;
+								cameraParameters.intrinsics.fx = intrinsics.fy;
+								cameraParameters.intrinsics.cx = intrinsics.ppx;  
+								cameraParameters.intrinsics.cy = intrinsics.ppy;
+
+								cameraParameters.intrinsics.k1 = intrinsics.coeffs[0];
+								cameraParameters.intrinsics.k2 = intrinsics.coeffs[1];
+								cameraParameters.intrinsics.k3 = intrinsics.coeffs[2];
+								cameraParameters.intrinsics.k4 = intrinsics.coeffs[3];
+								cameraParameters.intrinsics.k5 = intrinsics.coeffs[4];
+								//cameraParameters.intrinsics.k6 = intrinsics.coeffs[5];
+
+								cameraParameters.resolutionHeight = intrinsics.height;
+								cameraParameters.resolutionWidth  = intrinsics.width;
+							}
+						}
+
+					}
+
+					if (colorCameraEnabled && !foundColorCamera)
+						throw std::runtime_error("Could not enable color camera! Check configuration! Can your device/connection support the requested settings?");
+
+					if (depthCameraEnabled && !foundDepthCamera)
+						throw std::runtime_error("Could not enable depth camera! Check configuration! Can your device/connection support the requested settings?");
+
+
+					// update camera serial number based on selected camera
+					cameraSerialNumber = device->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);					
 				}
 				catch (const rs2::camera_disconnected_error& e)
 				{
 					Logger::Log("RealSense2") << "ERROR! Camera is not connected! Please, connect the camera! Trying again in 5 seconds..." << std::endl;
+					device = nullptr;
+					colorCameraEnabled = false;
+					depthCameraEnabled = false;
 					std::this_thread::sleep_for(std::chrono::seconds(5));
 				}
 				catch (const std::runtime_error& e)
 				{
 					Logger::Log("RealSense2") << "ERROR! Could not start the camera: " << e.what()  << std::endl;
-					std::this_thread::sleep_for(std::chrono::seconds(5));
+					device = nullptr;
+					colorCameraEnabled = false;
+					depthCameraEnabled = false;
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+					break;
 				}
 			}
 
-			//  if we stopped the application while waiting...
-			if (!thread_running)
+			// error openning all cameras?
+			if (!IsAnyCameraEnabled())
 			{
-				break;
+				// we have to close the device and try again
+				realsensePipeline.stop();
+				colorCameraEnabled = false;
+				depthCameraEnabled = false;
+				device = nullptr;
+				Logger::Log("AzureKinect") << "Trying again in 1 second..." << std::endl;
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+			else {
+				// reminder that we have to wrap things in the end, even if
+				// no frames were captured
+				didWeEverInitializeTheCamera = true;
 			}
 
-
-			Logger::Log("RealSense2") << "Opened RealSense device id: " << cameraSerialNumber << " connected through " << realsensePipeline.get_active_profile().get_device().get_info(RS2_CAMERA_INFO_USB_TYPE_DESCRIPTOR) << std::endl;
-			didWeEverInitializeTheCamera = true;
-
+			Logger::Log("RealSense2") << "Opened RealSense device id: " << cameraSerialNumber << std::endl;
 		}
 
 		//
 		// Step #2) START, LOOP FOR FRAMES, STOP
 		//
-		if (didWeEverInitializeTheCamera)
+
+		// start keeping track of incoming frames / failed frames
+		statistics.StartCounting();
+
+		// loop to capture frames
+		if (thread_running && IsAnyCameraEnabled())
 		{
 			// time to start reading frames and streaming
 			unsigned int triesBeforeRestart = 5;
 			totalTries = 0;
 
 			// updates app with capture and stream status
-			appStatus->UpdateCaptureStatus(true, true,
-				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height,
-				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height, // might change depending on config
-				kinectCameraCalibration.depth_camera_calibration.resolution_width, kinectCameraCalibration.depth_camera_calibration.resolution_height,
-				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
+			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,
+
+				// color camera
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : 0,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : 0,
+
+				// depth camera
+				depthCameraEnabled ? depthCameraParameters.resolutionWidth : 0,
+				depthCameraEnabled ? depthCameraParameters.resolutionHeight : 0,
+
+				// streaming (color resolution when  color is available, depth resolution otherwise)
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : depthCameraParameters.resolutionWidth,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : depthCameraParameters.resolutionHeight);
 
 			// starts
-			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
+			Logger::Log("AzureKinect") << "Started capturing" << std::endl;
 
+			// invokes camera connect callback
+			if (thread_running && onCameraConnect)
+			{
+				didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+				onCameraConnect();
+			}
+
+			// capture loop
+			while (thread_running)
+			{
+				try
+				{
+					while (thread_running)
+					{
+						rs2::frameset capture = realsensePipeline.wait_for_frames();
+
+						std::shared_ptr<Frame> sharedColorFrame, sharedDepthFrame;
+
+						// todo: get camera timestamp (so that we can syncronize cameras through their hardware)
+						// timestamp = colorFrame.get_device_timestamp();
+						std::chrono::microseconds timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+
+						// align both frames to color
+						if (colorCameraEnabled && depthCameraEnabled)
+						{
+							capture = align_to_color.process(capture);
+						}
+
+
+						// capture color
+						if (colorCameraEnabled)
+						{
+							// get color frame
+							rs2::video_frame colorFrame = capture.get_color_frame();
+
+							// copies image to our very own frame
+							sharedColorFrame = Frame::Create(colorFrame.get_width(), colorFrame.get_height(), FrameType::Encoding::BGR24);
+							if (!sharedColorFrame)
+								throw std::bad_alloc();
+
+							assert(colorFrame.get_data_size() == sharedColorFrame->size()); // sanity check for debugging
+							memcpy(sharedColorFrame->data, colorFrame.get_data(), sharedColorFrame->size());
+						}
+
+						// get depth frame
+						if (depthCameraEnabled)
+						{
+							rs2::depth_frame depthFrame = capture.get_depth_frame();
+							rs2::depth_frame filteredDepthFrame = depthFrame;
+
+							// filters
+							filteredDepthFrame = dec_filter->process(filteredDepthFrame);
+							filteredDepthFrame = depth_to_disparity->process(filteredDepthFrame);
+							filteredDepthFrame = spat_filter->process(filteredDepthFrame);
+							filteredDepthFrame = temp_filter->process(filteredDepthFrame);
+							filteredDepthFrame = disparity_to_depth->process(filteredDepthFrame);
+
+							sharedDepthFrame = Frame::Create(depthFrame.get_width(), depthFrame.get_height(), FrameType::Encoding::Mono16);
+							if (!sharedDepthFrame)
+								throw std::bad_alloc();
+
+							assert(depthFrame.get_data_size() == sharedDepthFrame->size()); // sanity check for debugging
+							memcpy(sharedDepthFrame->data, depthFrame.get_data(), sharedDepthFrame->size());
+						}
+
+						// invoke callback
+						if (onFramesReady)
+							onFramesReady(timestamp, sharedColorFrame, sharedDepthFrame);
+
+						// update info
+						++statistics.framesCaptured;
+						triesBeforeRestart = 5;
+					}
+
+				}
+				catch (const rs2::camera_disconnected_error& e)
+				{
+					++statistics.framesFailed;
+					Logger::Log("RealSense2") << "Error! Camera disconnected!... Trying again in 1 second! (" << e.what() << ")" << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+				}
+				catch (const rs2::recoverable_error& e)
+				{
+					++statistics.framesFailed;
+					--triesBeforeRestart;
+
+					if (triesBeforeRestart == 0)
+					{
+						Logger::Log("RealSense2") << "Tried to get a frame 5 times but failed ("<< e.what() << ")! Restarting system in 1 second..." << std::endl;
+						std::this_thread::sleep_for(std::chrono::seconds(1));
+						
+						if (IsAnyCameraEnabled())
+						{
+							realsensePipeline.stop();
+						}
+
+						depthCameraEnabled = false;
+						colorCameraEnabled = false;
+
+						break; // breaks out of the loop
+					}
+					else {
+						Logger::Log("RealSense2") << "Error! " << e.what() << "!..  Trying again in 1 second!" << std::endl;
+						std::this_thread::sleep_for(std::chrono::seconds(1));
+					}
+
+				}
+				catch (const rs2::unrecoverable_error& e)
+				{
+					++statistics.framesFailed;
+					Logger::Log("RealSense2") << "Fatal Error! " << e.what() << ")! Restarting system in 5 second..." << std::endl;
+
+					if (IsAnyCameraEnabled())
+					{
+						realsensePipeline.stop();
+					}
+
+					depthCameraEnabled = false;
+					colorCameraEnabled = false;
+
+					break; // breaks out of the loop
+				}
+				catch (const std::bad_alloc& e)
+				{
+					++statistics.framesFailed;
+					Logger::Log("RealSense2") << "FATAL ERROR! No memory left! Restarting device in 10 seconds! (" << e.what() << ")" << std::endl;
+
+					if (IsAnyCameraEnabled())
+					{
+						realsensePipeline.stop();
+					}
+
+					depthCameraEnabled = false;
+					colorCameraEnabled = false;
+					appStatus->UpdateCaptureStatus(false, false);
+					statistics.StopCounting();
+
+					// waits 5 seconds before trying again
+					std::this_thread::sleep_for(std::chrono::seconds(10));
+
+					// breaks loop
+					break;
+				}
+			}
+
+		}
+
+		//
+		// Step #3) Shutdown
+		//
+
+		// stop statistics
+		statistics.StopCounting();
+
+		// let other threads know that we are not capturing anymore
+		appStatus->UpdateCaptureStatus(false, false);
+
+		// stop cameras that might be running
+		if (IsAnyCameraEnabled())
+		{
+			realsensePipeline.stop();
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
+		}
+
+		// calls the camera disconnect callback if we called onCameraConnect() - consistency
+		if (didWeCallConnectedCallback && onCameraDisconnect)
+			onCameraDisconnect();
+
+		// waits one second before restarting...
+		if (thread_running)
+		{
+			Logger::Log("RealSense2") << "Restarting device..." << std::endl;
 		}
 
 

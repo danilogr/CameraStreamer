@@ -9,4 +9,4 @@
 
 
 #define ENABLE_K4A 1 // azure kinect cameras
-//#define ENABLE_RS2 1 // real sense api
+#define ENABLE_RS2 1 // real sense api
