@@ -24,27 +24,28 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 	std::lock_guard<std::mutex> guard(dataLock);
 	{
 		// camera settings
-		applicationStatusJson.AddMember("cameraRunning", IsAppCapturing(), allocator);
-		applicationStatusJson.AddMember("cameraName", rapidjson::Value().SetString(cameraName.c_str(), cameraName.length(), allocator), allocator);
-		applicationStatusJson.AddMember("cameraSerial", rapidjson::Value().SetString(cameraSerial.c_str(), cameraSerial.length(), allocator), allocator);
-		applicationStatusJson.AddMember("cameraDepth", isCameraDepthRunning, allocator);
-		applicationStatusJson.AddMember("cameraColor", isCameraColorRunning, allocator);
-		applicationStatusJson.AddMember("cameraDepthWidth", cameraDepthWidth, allocator);
-		applicationStatusJson.AddMember("cameraDeptHeight", cameraDepthHeight, allocator);
-		applicationStatusJson.AddMember("cameraColorWidth", cameraColorWidth, allocator);
-		applicationStatusJson.AddMember("cameraColorHeight", cameraColorHeight, allocator);
+		applicationStatusJson.AddMember("capturing", IsAppCapturing(), allocator);
+		applicationStatusJson.AddMember("captureDeviceName", rapidjson::Value().SetString(cameraName.c_str(), cameraName.length(), allocator), allocator);
+		applicationStatusJson.AddMember("captureDeviceSerial", rapidjson::Value().SetString(cameraSerial.c_str(), cameraSerial.length(), allocator), allocator);
+		applicationStatusJson.AddMember("capturingDepth", isCameraDepthRunning, allocator);
+		applicationStatusJson.AddMember("capturingColor", isCameraColorRunning, allocator);
+		applicationStatusJson.AddMember("captureDepthWidth", cameraDepthWidth, allocator);
+		applicationStatusJson.AddMember("captureDeptHeight", cameraDepthHeight, allocator);
+		applicationStatusJson.AddMember("captureColorWidth", cameraColorWidth, allocator);
+		applicationStatusJson.AddMember("captureColorHeight", cameraColorHeight, allocator);
 		
 		// streaming server
 		applicationStatusJson.AddMember("streaming", IsAppStreaming(), allocator);	  // true if streaming either color, depth, or both
 		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator); // number of clients currently connected to the stream
 		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);	  // FPS of the stream
 		applicationStatusJson.AddMember("streamingColor", isStreamingColor, allocator);
-		applicationStatusJson.AddMember("streamingColorWidth", streamingColorWidth, allocator);
+		applicationStatusJson.AddMember("streamingColorWidth", streamingWidth, allocator);
+		applicationStatusJson.AddMember("streamingColorHeight", streamingHeight, allocator);
 		applicationStatusJson.AddMember("streamingColorFormat", rapidjson::Value().SetString(streamingColorFormat.c_str(), streamingColorFormat.length(), allocator), allocator);
 		applicationStatusJson.AddMember("streamingColorBitrate", streamingColorBitrate, allocator);
 		applicationStatusJson.AddMember("streamingDepth", isStreamingColor, allocator);
-		applicationStatusJson.AddMember("streamingDepthWidth", streamingDepthWidth, allocator);
-		applicationStatusJson.AddMember("streamingDepthHeight", streamingDepthHeight, allocator);
+		applicationStatusJson.AddMember("streamingDepthWidth", streamingWidth, allocator);
+		applicationStatusJson.AddMember("streamingDepthHeight", streamingHeight, allocator);
 		applicationStatusJson.AddMember("streamingDepthFormat", rapidjson::Value().SetString(streamingDepthFormat.c_str(), streamingDepthFormat.length(), allocator), allocator);
 		applicationStatusJson.AddMember("streamingDepthBitrate", streamingDepthBitrate, allocator);
 

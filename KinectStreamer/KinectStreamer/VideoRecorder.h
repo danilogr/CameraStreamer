@@ -341,23 +341,23 @@ public:
 		}
 
 		// can we record? what's the resolution so far
-		if (color && (appStatus->GetStreamingColorHeight() == 0 || appStatus->GetStreamingColorWidth() == 0))
+		if (color && appStatus->IsColorCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
 			return false;
 		}
 
-		if (depth && (appStatus->GetStreamingDepthHeight() == 0 || appStatus->GetStreamingDepthWidth() == 0))
+		if (depth && appStatus->IsDepthCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
 			return false;
 		}
 
 		// yay, we are good to record!
-		externalColorHeight = appStatus->GetStreamingColorHeight();
-		externalColorWidth  = appStatus->GetStreamingColorWidth();
-		externalDepthHeight = appStatus->GetStreamingDepthHeight();
-		externalDepthWidth  = appStatus->GetStreamingDepthWidth();
+		externalColorHeight = appStatus->GetStreamingHeight();
+		externalColorWidth  = appStatus->GetStreamingWidth();
+		externalDepthHeight = appStatus->GetStreamingHeight();
+		externalDepthWidth  = appStatus->GetStreamingWidth();
 
 		// are we recording to the same path?
 		// (this might happen if the camera gets unplugged and plugged back again)
@@ -408,12 +408,14 @@ public:
 		// tell others that the VideoRecorder thread can start receiving frames
 		externalIsRecordingColor = color;
 		externalIsRecordingDepth = depth;
-		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
 
-		// now we start recording internally
+		// we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
 		io_service.post(std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight));
 		
+		// we start accepting frame requests
+		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
+
 		// logs what just happened
 		Logger::Log("Recorder") << "Request to record to " << colorVideoPath << " and "  <<  depthVideoPath << " processed succesfully!" << std::endl;
 			

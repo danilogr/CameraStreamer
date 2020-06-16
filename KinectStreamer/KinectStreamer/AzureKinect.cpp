@@ -183,7 +183,7 @@ void AzureKinect::CameraLoop()
 		if (IsAnyCameraEnabled() && print_camera_parameters)
 		{
 			// printing out camera specifics
-			if (colorCameraEnabled)
+			if (depthCameraEnabled)
 			{
 				Logger::Log("AzureKinect") << "[Depth] resolution width: " << kinectCameraCalibration.depth_camera_calibration.resolution_width << std::endl;
 				Logger::Log("AzureKinect") << "[Depth] resolution height: " << kinectCameraCalibration.depth_camera_calibration.resolution_height << std::endl;
@@ -206,7 +206,7 @@ void AzureKinect::CameraLoop()
 				Logger::Log("AzureKinect") << "[Depth] metric radius (intrinsics): " << kinectCameraCalibration.depth_camera_calibration.intrinsics.parameters.param.metric_radius << std::endl << std::endl;
 			}
 			
-			if (depthCameraEnabled)
+			if (colorCameraEnabled)
 			{
 				Logger::Log("AzureKinect") << "[Color] resolution width: " << kinectCameraCalibration.color_camera_calibration.resolution_width << std::endl;
 				Logger::Log("AzureKinect") << "[Color] resolution height: " << kinectCameraCalibration.color_camera_calibration.resolution_height << std::endl;
@@ -255,17 +255,13 @@ void AzureKinect::CameraLoop()
 				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_width : 0,
 				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : 0,
 				
-				// color streaming
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_width : 0,
-				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : 0,
-
 				// depth camera
 				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_width : 0,
 				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_height : 0,
 
-				// depth streaming
-				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_width : 0,
-				depthCameraEnabled ? kinectCameraCalibration.depth_camera_calibration.resolution_height : 0);
+				// streaming (color resolution when  color is available, depth resolution otherwise)
+				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_width : kinectCameraCalibration.depth_camera_calibration.resolution_width,
+				colorCameraEnabled ? kinectCameraCalibration.color_camera_calibration.resolution_height : kinectCameraCalibration.depth_camera_calibration.resolution_height);
 
 			// starts
 			Logger::Log("AzureKinect") << "Started streaming" << std::endl;

@@ -68,9 +68,17 @@ public:
 	void UpdateAppStatusFromConfig(const Configuration& config)
 	{
 		std::lock_guard<std::mutex> guard(dataLock);
+
+		// camera
 		cameraName = config.GetCameraName();
+
+		// tcp servers
 		controlPort = config.GetControlPort();
 		streamerPort = config.GetStreamerPort();
+
+		// streaming protocol
+		streamingColorFormat = config.GetStreamingColorFormat();
+		streamingDepthFormat = config.GetStreamingDepthFormat();
 	}
 
 	// ============================================================================
@@ -144,9 +152,8 @@ public:
 	 */
 	void UpdateCaptureStatus(bool isColorCameraRunning, bool isDepthCameraRunning,
 		int colorCameraWidth = 0, int colorCameraHeight = 0,
-		int colorStreamWidth = 0, int colorStreamHeight = 0,
 		int depthCameraWidth = 0, int depthCameraHeight = 0,
-		int depthStreamWidth = 0, int depthStreamHeight = 0)
+		int streamWidth = 0, int streamHeight = 0)
 	{
 
 		std::lock_guard<std::mutex> guard(dataLock);
@@ -162,10 +169,8 @@ public:
 		this->cameraDepthHeight = depthCameraHeight;
 
 		// resolution stream
-		this->streamingColorWidth  = colorStreamWidth;
-		this->streamingColorHeight = colorStreamHeight;
-		this->streamingDepthWidth = depthStreamWidth;
-		this->streamingDepthHeight  = depthStreamHeight;
+		this->streamingWidth  = streamWidth;
+		this->streamingHeight = streamHeight;
 
 	}
 

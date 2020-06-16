@@ -24,11 +24,14 @@ protected:
 	// streamer: if steramingThrottleFPS is true, what is the max FPS that we accept / allow ?
 	int streamingMaxFPS;
 
+	// streamer: default streaming width and height
+	int streamingWidth, streamingHeight;
+
 	// streamer: default streaming width and height for the color camera
-	int streamingColorWidth, streamingColorHeight;
+//	int streamingColorWidth, streamingColorHeight;
 
 	// streamer: default steraming width and height for the depth camera
-	int streamingDepthWidth, streamingDepthHeight;
+//	int streamingDepthWidth, streamingDepthHeight;
 
 	// streamer: default streaming format for all clients (e.g., color: jpeg, depth: raw 16bit)
 	std::string streamingColorFormat, streamingDepthFormat;
@@ -78,8 +81,9 @@ public:
 
 	Configuration() : streamerPort(0), controlPort(0),
 	streamingThrottleFPS(false), streamingMaxFPS(60),
-	streamingColorWidth(0), streamingColorHeight(0),
-	streamingDepthWidth(0), streamingDepthHeight(0),
+	streamingWidth(0), streamingHeight(0),
+	//streamingColorWidth(0), streamingColorHeight(0),
+	//streamingDepthWidth(0), streamingDepthHeight(0),
 	isStreamingColor(false), isStreamingDepth(false),
 	requestDepthCamera(true), requestColorCamera(true),
 	cameraDepthWidth(0), cameraDepthHeight(0),
@@ -124,10 +128,16 @@ public:
 	void SetStreamingDepthEnabled(bool value) { isStreamingDepth = value; }
 	bool GetStreamingDepthEnabled() const { return isStreamingDepth; }
 	
-	int GetStreamingColorHeight() const { return streamingColorHeight; }
-	int GetStreamingColorWidth() const { return streamingColorWidth; }
-	int GetStreamingDepthHeight() const { return streamingDepthHeight; }
-	int GetStreamingDepthWidth() const { return streamingDepthWidth; }
+	int GetStreamingHeight() const { return streamingHeight; }
+	int GetStreamingWidth() const { return streamingWidth; }
+
+	const std::string& GetStreamingColorFormat() const { return streamingColorFormat; }
+	const std::string& GetStreamingDepthFormat() const { return streamingDepthFormat; }
+
+	//int GetStreamingColorHeight() const { return streamingColorHeight; }
+	//int GetStreamingColorWidth() const { return streamingColorWidth; }
+	//int GetStreamingDepthHeight() const { return streamingDepthHeight; }
+	//int GetStreamingDepthWidth() const { return streamingDepthWidth; }
 	
 	void SetStreamingMaxFPS(int value) { streamingMaxFPS = value;  }
 	int GetStreamingMaxFPS() const { return streamingMaxFPS; }

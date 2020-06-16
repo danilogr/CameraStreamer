@@ -82,8 +82,10 @@ int main()
 		// set up callbacks
 		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
+			// streams to client
 			server.ForwardToAll(color, depth);
 
+			// saves to file 
 			if (appStatusPtr.isRedirectingFramesToRecorder())
 			{
 				videoRecorderThread.RecordFrame(color, depth);

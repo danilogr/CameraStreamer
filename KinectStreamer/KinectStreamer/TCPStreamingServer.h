@@ -215,6 +215,13 @@ private:
 		appStatus->SetStreamingColorEnabled(streamingColor);
 		appStatus->SetStreamingDepthEnabled(streamingDepth);
 
+		Logger::Log("Streamer") << "Streaming " <<
+		(streamingColor && streamingDepth ? "color and depth" : 
+		(streamingColor ? "color" : "depth")) <<
+		(streamingDepth ? "depth" : "") <<
+		" at a resolution of " <<
+		configuration->GetStreamingWidth() << 'x' << configuration->GetStreamingHeight() << std::endl;
+
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections
 		

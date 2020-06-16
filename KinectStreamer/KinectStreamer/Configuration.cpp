@@ -14,49 +14,6 @@
 #define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
 
 
-/*rapidjson::Document&& Configuration::GetApplicationStatusJSON()
-{
-
-	rapidjson::Document applicationStatusJson;
-	applicationStatusJson.SetObject();
-	rapidjson::Document::AllocatorType& allocator = applicationStatusJson.GetAllocator();
-	
-	// locks to make sure that the entire json object is consistent
-	std::lock_guard<std::mutex> guard(configurationChangeLock);
-	{
-		// camera settings
-		applicationStatusJson.AddMember("cameraRunning", isCameraColorRunning || isCameraDepthRunning, allocator);
-		applicationStatusJson.AddMember("cameraName", rapidjson::Value().SetString(cameraName.c_str(), cameraName.length(), allocator), allocator);
-		applicationStatusJson.AddMember("cameraSerial", rapidjson::Value().SetString(cameraSerial.c_str(), cameraSerial.length(), allocator), allocator);
-		applicationStatusJson.AddMember("cameraDepth", isCameraDepthRunning, allocator);
-		applicationStatusJson.AddMember("cameraColor", isCameraColorRunning, allocator);
-		applicationStatusJson.AddMember("cameraDepthWidth", cameraRequestedDepthWidth, allocator);
-		applicationStatusJson.AddMember("cameraDeptHeight", cameraRequestedDepthHeight, allocator);
-		applicationStatusJson.AddMember("cameraColorWidth", cameraRequestedColorWidth, allocator);
-		applicationStatusJson.AddMember("cameraColorHeight", cameraRequestedColorHeight, allocator);
-		
-		// streaming server
-		applicationStatusJson.AddMember("streaming", isStreamingColor || isStreamingDepth, allocator);	// true if streaming either color, depth, or both
-		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator);				// number of clients currently connected to the stream
-		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);						// FPS of the stream
-		applicationStatusJson.AddMember("streamingColor", isStreamingColor, allocator);
-		applicationStatusJson.AddMember("streamingColorWidth", streamingColorWidth, allocator);
-		applicationStatusJson.AddMember("streamingColorFormat", rapidjson::Value().SetString(streamingColorFormat.c_str(), streamingColorFormat.length(), allocator), allocator);
-		applicationStatusJson.AddMember("streamingColorBitrate", streamingColorBitrate, allocator);
-		applicationStatusJson.AddMember("streamingDepth", isStreamingColor, allocator);
-		applicationStatusJson.AddMember("streamingDepthWidth", streamingDepthWidth, allocator);
-		applicationStatusJson.AddMember("streamingDepthHeight", streamingDepthHeight, allocator);
-		applicationStatusJson.AddMember("streamingDepthFormat", rapidjson::Value().SetString(streamingDepthFormat.c_str(), streamingDepthFormat.length(), allocator), allocator);
-		applicationStatusJson.AddMember("streamingDepthBitrate", streamingDepthBitrate, allocator);
-
-		// application ports
-		applicationStatusJson.AddMember("port", streamerPort, allocator);
-		applicationStatusJson.AddMember("controlPort", controlPort, allocator);
-	}
-
-	return std::move(applicationStatusJson);
-}*/
-
 bool  Configuration::LoadConfiguration(const std::string& filepath)
 {
 	bool successReading = true;
@@ -153,11 +110,20 @@ void  Configuration::ParseConfiguration(bool warn)
 
 	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true);
 	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true, warn);
-	ReadJSONDefaultInt(currentDoc, "colorWidth", cameraColorWidth, 1280, warn);
-	ReadJSONDefaultInt(currentDoc, "colorHeight", cameraColorHeight, 720, warn);
+	
+	if (requestColorCamera)
+	{
+		ReadJSONDefaultInt(currentDoc, "colorWidth", cameraColorWidth, 1280, warn);
+		ReadJSONDefaultInt(currentDoc, "colorHeight", cameraColorHeight, 720, warn);
+	}
+
 	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true, warn);
-	ReadJSONDefaultInt(currentDoc, "depthWidth", cameraDepthWidth, 640, warn);
-	ReadJSONDefaultInt(currentDoc, "depthHeight", cameraDepthHeight, 576, warn);
+
+	if (requestDepthCamera)
+	{
+		ReadJSONDefaultInt(currentDoc, "depthWidth", cameraDepthWidth, 640, warn);
+		ReadJSONDefaultInt(currentDoc, "depthHeight", cameraDepthHeight, 576, warn);
+	}
 
 	// should we force a specific camera serial number?
 	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string(), false);
@@ -178,11 +144,23 @@ void  Configuration::ParseConfiguration(bool warn)
 	}
 
 	ReadJSONDefaultBool(currentDoc, "streamColor", isStreamingColor, true, warn);
-	//ReadJSONDefaultInt(currentDoc, "colorWidth", cameraColorWidth, 1280, warn);
-	//ReadJSONDefaultInt(currentDoc, "colorHeight", cameraColorHeight, 720, warn);
+	//ReadJSONDefaultIntNotSupported(currentDoc, "width", streamingWidth, 1280, warn);
+	//ReadJSONDefaultIntNotSupported(currentDoc, "height", streamingHeight, 720, warn);
 	ReadJSONDefaultBool(currentDoc, "streamDepth", isStreamingDepth, true, warn);
-	//ReadJSONDefaultInt(currentDoc, "depthWidth", cameraDepthWidth, 640, warn);
-	//ReadJSONDefaultInt(currentDoc, "depthHeight", cameraDepthHeight, 576, warn);
+
+	if (requestColorCamera)
+	{
+		streamingWidth = cameraColorWidth;
+		streamingHeight = cameraColorHeight;
+	}
+	else {
+		streamingWidth = cameraDepthWidth;
+		streamingHeight = cameraDepthHeight;
+	}
+	
+	// default streaming protocol
+	streamingColorFormat = "jpeg";
+	streamingColorFormat = "raw16";
 
 	// validate streaming entries
 	if (isStreamingColor && !requestColorCamera)

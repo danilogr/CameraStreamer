@@ -306,7 +306,7 @@ public:
 	}
 
 	// Camera paremeters
-	CameraParameters calibration;
+	CameraParameters depthCameraParameters, colorCameraParameters;
 
 	// Camera statistics
 	CameraStatistics statistics;
