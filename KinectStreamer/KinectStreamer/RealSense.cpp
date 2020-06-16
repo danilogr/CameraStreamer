@@ -168,7 +168,7 @@ void RealSense::CameraLoop()
 								CameraParameters &cameraParameters = (stream.stream_type() == RS2_STREAM_DEPTH) ? depthCameraParameters : colorCameraParameters;
 
 								cameraParameters.intrinsics.fx = intrinsics.fx;
-								cameraParameters.intrinsics.fx = intrinsics.fy;
+								cameraParameters.intrinsics.fy = intrinsics.fy;
 								cameraParameters.intrinsics.cx = intrinsics.ppx;  
 								cameraParameters.intrinsics.cy = intrinsics.ppy;
 

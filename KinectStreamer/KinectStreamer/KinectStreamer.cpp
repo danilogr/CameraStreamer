@@ -26,7 +26,9 @@
 #include "VideoRecorder.h"
 
 // 4) specific cameras supported
+#include "CompilerConfiguration.h"
 #include "AzureKinect.h"
+#include "RealSense.h"
 
 
 using namespace std;
@@ -54,7 +56,19 @@ int main()
 	appStatus->SetControlPort(6606);
 
 	// structure that lists supported cameras -> points to their constructors
-	map<string, std::shared_ptr<Camera> (*)(std::shared_ptr<ApplicationStatus>, std::shared_ptr<Configuration>)> SupportedCamerasSet = { {"k4a", &AzureKinect::Create} };
+	typedef  std::map<string, std::shared_ptr<Camera>(*)(std::shared_ptr<ApplicationStatus>, std::shared_ptr<Configuration>)> CameraNameToConstructorMap;
+	CameraNameToConstructorMap SupportedCamerasSet = {
+		
+		// Azure Kinect support
+		#ifdef ENABLE_K4A
+		{"k4a", &AzureKinect::Create},
+		#endif
+
+		// RealSense2 support
+		#ifdef ENABLE_RS2
+		{"rs2", &RealSense::Create},
+		#endif
+	};
 
 	// read configuration file if one is present
 	configuration->LoadConfiguration("config.json");

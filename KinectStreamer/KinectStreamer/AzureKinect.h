@@ -1,5 +1,11 @@
 #pragma once
 
+// are we compilling support to this camera into our application?
+#include "CompilerConfiguration.h"
+#ifdef ENABLE_K4A
+
+
+
 // std
 #include <functional>
 #include <thread>
@@ -108,7 +114,7 @@ public:
 		}
 		catch (const k4a::error & e)
 		{
-			Logger::Log("AzureKinect") << "Could not adjust gain level to : " << proposedGain << std::endl;
+			Logger::Log("AzureKinect") << "Could not adjust gain level to: " << proposedGain << "("<< e.what() << ")" << std::endl;
 			return false;
 		}
 		
@@ -136,7 +142,7 @@ public:
 		}
 		catch (const k4a::error& e)
 		{
-			Logger::Log("AzureKinect") << "Could not adjust exposure level to : " << proposedExposure << std::endl;
+			Logger::Log("AzureKinect") << "Could not adjust exposure level to: " << proposedExposure << "(" << e.what() << ")" << std::endl;
 			return false;
 		}
 		
@@ -160,3 +166,4 @@ protected:
 };
 
 
+#endif

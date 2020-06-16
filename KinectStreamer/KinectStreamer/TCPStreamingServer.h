@@ -130,8 +130,17 @@ public:
 		{
 			imgWidth = color->getWidth();
 			imgHeight = color->getHeight();
-			cv::Mat colorImage(imgHeight, imgWidth, CV_8UC4, color->getData());
-			cv::imencode(".jpg", colorImage, encodedColorImage);
+
+			// todo: better, flexible fix in the future?
+			if (color->getPixelLen() == 3)
+			{ 
+				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC3, color->getData());
+				cv::imencode(".jpg", colorImage, encodedColorImage);
+			}
+			else {
+				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC4, color->getData());
+				cv::imencode(".jpg", colorImage, encodedColorImage);
+			}
 		}
 
 		if (streamingDepth)

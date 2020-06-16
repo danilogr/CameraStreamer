@@ -1,4 +1,6 @@
 #include "AzureKinect.h"
+
+#ifdef ENABLE_K4A
 #include <sstream>
 
 bool AzureKinect::OpenDefaultKinect()
@@ -15,7 +17,7 @@ bool AzureKinect::OpenDefaultKinect()
 	}
 	catch (const k4a::error& e)
 	{
-		Logger::Log("AzureKinect") << "Could not open default device..." << std::endl;
+		Logger::Log("AzureKinect") << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
 		return false;
 	}
 
@@ -26,7 +28,7 @@ bool AzureKinect::OpenDefaultKinect()
 	}
 	catch (const k4a::error& e)
 	{
-		Logger::Log("AzureKinect") << "Could not open default device..." << std::endl;
+		Logger::Log("AzureKinect") << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
 		cameraSerialNumber = "Unknown";
 	}
 
@@ -145,7 +147,7 @@ void AzureKinect::CameraLoop()
 			}
 			catch (const k4a::error& error)
 			{
-				Logger::Log("AzureKinect") << "Error opening cameras!" << std::endl;
+				Logger::Log("AzureKinect") << "Error opening cameras!" << "(" << error.what() << ")" << std::endl; 
 			}
 
 			// loading camera configuration to memory
@@ -198,7 +200,7 @@ void AzureKinect::CameraLoop()
 				}
 				catch (const k4a::error& error)
 				{
-					Logger::Log("AzureKinect") << "Error obtaining camera parameter!" << std::endl;
+					Logger::Log("AzureKinect") << "Error obtaining camera parameter!" << "(" << error.what() << ")" << std::endl;
 					kinectDevice.stop_cameras();
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
@@ -565,3 +567,5 @@ bool AzureKinect::LoadConfigurationSettings()
 
 	return true;
 }
+
+#endif
