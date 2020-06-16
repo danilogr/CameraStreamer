@@ -108,7 +108,7 @@ int main()
 			if (!depthCamera) return;
 
 			// we are already running
-			if (depthCamera->isStreaming())
+			if (depthCamera->IsAnyCameraEnabled())
 			{
 				Logger::Log("Remote") << "(startKinect) Kinect is already running!" << std::endl;
 				return;
@@ -124,7 +124,7 @@ int main()
 			// sanity check
 			if (!depthCamera) return;
 
-			if (!depthCamera->isRunning())
+			if (!depthCamera->IsThreadRunning())
 			{
 				Logger::Log("Remote") << "(stopKinect) Kinect is not running!" << std::endl;
 				return;

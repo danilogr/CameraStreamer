@@ -128,7 +128,7 @@ void RealSense::CameraLoop()
 				}
 			}
 
-			//  if we stop the application while waiting...
+			//  if we stopped the application while waiting...
 			if (!thread_running)
 			{
 				break;
@@ -136,9 +136,32 @@ void RealSense::CameraLoop()
 
 
 			Logger::Log("RealSense2") << "Opened RealSense device id: " << cameraSerialNumber << " connected through " << realsensePipeline.get_active_profile().get_device().get_info(RS2_CAMERA_INFO_USB_TYPE_DESCRIPTOR) << std::endl;
-
+			didWeEverInitializeTheCamera = true;
 
 		}
+
+		//
+		// Step #2) START, LOOP FOR FRAMES, STOP
+		//
+		if (didWeEverInitializeTheCamera)
+		{
+			// time to start reading frames and streaming
+			unsigned int triesBeforeRestart = 5;
+			totalTries = 0;
+
+			// updates app with capture and stream status
+			appStatus->UpdateCaptureStatus(true, true,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height, // might change depending on config
+				kinectCameraCalibration.depth_camera_calibration.resolution_width, kinectCameraCalibration.depth_camera_calibration.resolution_height,
+				kinectCameraCalibration.color_camera_calibration.resolution_width, kinectCameraCalibration.color_camera_calibration.resolution_height);
+
+			// starts
+			Logger::Log("AzureKinect") << "Started streaming" << std::endl;
+
+		}
+
+
 	}
 
 }

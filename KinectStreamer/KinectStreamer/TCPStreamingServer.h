@@ -42,7 +42,7 @@ public:
 		Stop();
 	}
 
-	bool isRunning()
+	bool IsThreadRunning()
 	{
 		return (sThread && sThread->joinable());
 	}
@@ -55,7 +55,7 @@ public:
 	void Stop()
 	{
 
-		if (isRunning())
+		if (IsThreadRunning())
 		{
 			// stops io service
 			io_service.stop();

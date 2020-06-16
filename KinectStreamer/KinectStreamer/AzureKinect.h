@@ -76,10 +76,11 @@ public:
 		Camera::Stop();
 
 		// frees resources
-		if (runningCameras)
+		if (IsAnyCameraEnabled())
 		{
 			kinectDevice.stop_cameras();
-			runningCameras = false;
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
 		}
 
 		kinectDevice.close();

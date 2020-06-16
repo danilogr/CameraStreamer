@@ -147,6 +147,8 @@ private:
 class Camera
 {
 
+public:
+
 protected:
 	// camera properties that help us identify the type of camera
 	// when using the abstract Camera interface
@@ -160,8 +162,8 @@ protected:
 	// timeouts?
 	std::chrono::milliseconds getFrameTimeout;
 
-	// is the camera running?
-	bool runningCameras;
+	// which camera is running?
+	bool depthCameraEnabled, colorCameraEnabled;
 
 	// all threads use a shared data structure to report their status
 	std::shared_ptr<ApplicationStatus> appStatus;
@@ -173,7 +175,6 @@ protected:
 	// Todo: we should create an abstract thread class for future uses
 	std::shared_ptr<std::thread> sThread;
 	bool thread_running;
-
 
 	// Virtual Methods to start and stop the camera
 	virtual void CameraLoop() = 0;
@@ -196,9 +197,12 @@ protected:
 			sThread = nullptr;
 
 			// were devices running?
-			if (runningCameras)
+			if (IsAnyCameraEnabled())
 			{
-				runningCameras = false;
+				depthCameraEnabled = false;
+				colorCameraEnabled = false;
+
+				// todo: update status here?
 			}
 
 
@@ -224,7 +228,7 @@ public:
 	CameraDisconnectedCallback onCameraDisconnect;
 
 	// constructor explicitly defining a configuration file (as well as appStatus)
-	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), runningCameras(false), getFrameTimeout(1000)
+	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), depthCameraEnabled(false), colorCameraEnabled(false), getFrameTimeout(1000)
 	{
 
 	}
@@ -234,16 +238,17 @@ public:
 		Stop();
 	}
 
-	bool isRunning()
+	bool IsThreadRunning()
 	{
 		return (sThread && sThread->joinable());
 	}
 
 	// Returns true if kinect is opened and streaming video
-	bool isStreaming()
+	bool IsAnyCameraEnabled()
 	{
-		return runningCameras;
+		return colorCameraEnabled || depthCameraEnabled;
 	}
+
 
 	// responsible for stopping the thread
 	virtual void Stop()
@@ -282,6 +287,11 @@ public:
 	
 	// Adjust the camera exposure
 	virtual bool AdjustExposureBy(int exposure_level) = 0;
+
+	// Prints camera parameters
+	virtual void PrintCameraIntrinsics()
+	{
+	}
 
 	// Camera paremeters
 	CameraParameters calibration;

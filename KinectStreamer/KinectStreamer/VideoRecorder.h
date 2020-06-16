@@ -247,21 +247,21 @@ public:
 		Stop();
 	}
 
-	bool isRunning()
+	bool IsThreadRunning()
 	{
 		return (sThread && sThread->joinable());
 	}
 
 	void Run()
 	{
-		if (!isRunning())
+		if (!IsThreadRunning())
 			sThread.reset(new std::thread(std::bind(&VideoRecorder::VideoRecorderThreadLoop, this)));
 	}
 
 	void Stop()
 	{
 		// can't stop what is not running ;)
-		if (!isRunning()) return;
+		if (!IsThreadRunning()) return;
 
 		// the videorecorder thread has to stop itself to make sure
 		// that we are done recording all video files

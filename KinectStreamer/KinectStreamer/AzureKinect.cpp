@@ -104,7 +104,7 @@ void AzureKinect::CameraLoop()
 		//
 		// stay in a loop until we can open the device and the cameras
 		//
-		while (thread_running && !runningCameras)
+		while (thread_running && !IsAnyCameraEnabled())
 		{
 
 			// try reading configuration
@@ -136,14 +136,15 @@ void AzureKinect::CameraLoop()
 			try
 			{
 				kinectDevice.start_cameras(&kinectConfiguration);
-				runningCameras = true;
+				colorCameraEnabled = configuration->IsColorCameraEnabled();
+				depthCameraEnabled = configuration->IsDepthCameraEnabled();
 			}
 			catch (const k4a::error& error)
 			{
 				Logger::Log("AzureKinect") << "Error opening cameras!" << std::endl;
 			}
 
-			if (runningCameras)
+			if (IsAnyCameraEnabled())
 			{
 				try
 				{
@@ -154,11 +155,12 @@ void AzureKinect::CameraLoop()
 				{
 					Logger::Log("AzureKinect") << "Error obtaining camera parameter!" << std::endl;
 					kinectDevice.stop_cameras();
-					runningCameras = false;
+					colorCameraEnabled = false;
+					depthCameraEnabled = false;
 				}
 			}
 
-			if (!runningCameras)
+			if (!IsAnyCameraEnabled())
 			{
 				// we have to close the device and try again
 				kinectDevice.close();
@@ -170,7 +172,7 @@ void AzureKinect::CameraLoop()
 			}
 		}
 
-		if (runningCameras && print_camera_parameters)
+		if (IsAnyCameraEnabled() && print_camera_parameters)
 		{
 			// printing out camera specifics
 			Logger::Log("AzureKinect") << "[Depth] resolution width: " << kinectCameraCalibration.depth_camera_calibration.resolution_width << std::endl;
@@ -300,7 +302,8 @@ void AzureKinect::CameraLoop()
 								kinectDevice.stop_cameras();
 								kinectDevice.close();
 							}
-							runningCameras = false;
+							depthCameraEnabled = false;
+							colorCameraEnabled = false;
 							break; // breaks out of the loop
 						}
 					}
@@ -317,7 +320,8 @@ void AzureKinect::CameraLoop()
 				}
 
 				kinectDevice.stop_cameras();
-				runningCameras = false;
+				depthCameraEnabled = false;
+				colorCameraEnabled = false;
 				appStatus->UpdateCaptureStatus(false, false);
 				statistics.StopCounting();
 
@@ -335,7 +339,8 @@ void AzureKinect::CameraLoop()
 				}
 
 				kinectDevice.stop_cameras();
-				runningCameras = false;
+				depthCameraEnabled = false;
+				colorCameraEnabled = false;
 				appStatus->UpdateCaptureStatus(false, false);
 				statistics.StopCounting();
 
@@ -355,10 +360,11 @@ void AzureKinect::CameraLoop()
 
 			// are we running cameras? stop them!
 			appStatus->UpdateCaptureStatus(false, false);
-			if (runningCameras)
+			if (IsAnyCameraEnabled())
 			{
 				kinectDevice.stop_cameras();
-				runningCameras = false;
+				depthCameraEnabled = false;
+				colorCameraEnabled = false;
 			}
 			didWeEverInitializeTheCamera = false; // time to let it go
 
