@@ -63,10 +63,10 @@ typedef boost::singleton_pool<Resolution##name##_FrameDim, Resolution##name##_Fr
 
 // k4a specific definitions
 MemoryPoolDefinition(K4ADepth, 640, 576, uint16_t, 1);
-MemoryPoolDefinition(K4ADepthWithColor, 640, 576, uint8_t, 3);
+MemoryPoolDefinition(K4ADepthWithColor, 640, 576, uint8_t, 4);
 
 MemoryPoolDefinition(K4APassiveInfrared, 1024, 1024, uint16_t, 1);
-MemoryPoolDefinition(K4APassiveInfraredWithColor, 1024, 1024, uint8_t, 3);
+MemoryPoolDefinition(K4APassiveInfraredWithColor, 1024, 1024, uint8_t, 4);
 
 // rs2 specific definitions
 MemoryPoolDefinition(RS2_WVGADepth, 848, 480, uint16_t, 1);
@@ -84,21 +84,27 @@ MemoryPoolDefinition(SVGA, 800, 600, uint8_t, 3);
 MemoryPoolDefinition(SVGADepth, 800, 600, uint16_t, 1)
 
 MemoryPoolDefinition(720P, 1280, 720, uint8_t, 3);
+MemoryPoolDefinition(720PRGBA, 1280, 720, uint8_t, 4);
 MemoryPoolDefinition(720PDepth, 1280, 720, uint16_t, 1);
 
 MemoryPoolDefinition(1080P, 1920, 1080, uint8_t, 3);
+MemoryPoolDefinition(1080PRGBA, 1920, 1080, uint8_t, 4);
 MemoryPoolDefinition(1080PDepth, 1920, 1080, uint16_t, 1);
 
 MemoryPoolDefinition(1440P, 2560, 1440, uint8_t, 3);
+MemoryPoolDefinition(1440PRGBA, 2560, 1440, uint8_t, 4);
 MemoryPoolDefinition(1440PDepth, 2560, 1440, uint16_t, 1);
 
 MemoryPoolDefinition(1536P, 2048, 1536, uint8_t, 3);
+MemoryPoolDefinition(1536PRGBA, 2048, 1536, uint8_t, 4);
 MemoryPoolDefinition(1536PDepth, 2048, 1536, uint16_t, 1);
 
 MemoryPoolDefinition(2160P, 3840, 2160, uint8_t, 3);
+MemoryPoolDefinition(2160PRGBA, 3840, 2160, uint8_t, 4);
 MemoryPoolDefinition(2160PDepth, 3840, 2160, uint16_t, 1);
 
 MemoryPoolDefinition(3072P, 4096, 3072, uint8_t, 3);
+MemoryPoolDefinition(3072PRGBA, 4096, 3072, uint8_t, 4);
 MemoryPoolDefinition(3072PDepth, 4096, 3072, uint16_t, 1);
 
 
@@ -111,36 +117,42 @@ protected:
 		switch (size())
 		{
 			// k4a specific
-			CaseAllocMem(K4ADepth, data)
-			CaseAllocMem(K4ADepthWithColor, data)
-			CaseAllocMem(K4APassiveInfrared, data)
-			CaseAllocMem(K4APassiveInfraredWithColor, data)
+			CaseAllocMem(K4ADepth, data);
+			CaseAllocMem(K4ADepthWithColor, data);
+			CaseAllocMem(K4APassiveInfrared, data);
+			CaseAllocMem(K4APassiveInfraredWithColor, data);
 
 			// real-sense 2 specific
-			CaseAllocMem(RS2_WVGADepth, data)
-			CaseAllocMem(RS2_WVGADepthWithColor, data)
+			CaseAllocMem(RS2_WVGADepth, data);
+			CaseAllocMem(RS2_WVGADepthWithColor, data);
 
 			// application specific
-			CaseAllocMem(VGABW, data)
-			CaseAllocMem(SVGABW, data)
+			CaseAllocMem(VGABW, data);
+			CaseAllocMem(SVGABW, data);
 
 			// generic resolutions
-			CaseAllocMem(VGA, data)
-			CaseAllocMem(VGADepth, data)
-			CaseAllocMem(SVGA, data)
-			CaseAllocMem(SVGADepth, data)
-			CaseAllocMem(720P, data)
-			CaseAllocMem(720PDepth, data)
-			CaseAllocMem(1080P, data)
-			CaseAllocMem(1080PDepth, data)
-			CaseAllocMem(1440P, data)
-			CaseAllocMem(1440PDepth, data)
-			CaseAllocMem(1536P, data)
-			CaseAllocMem(1536PDepth, data)
-			CaseAllocMem(2160P, data)
-			CaseAllocMem(2160PDepth, data)
-			CaseAllocMem(3072P, data)
-			CaseAllocMem(3072PDepth, data)
+			CaseAllocMem(VGA, data);
+			CaseAllocMem(VGADepth, data);
+			CaseAllocMem(SVGA, data);
+			CaseAllocMem(SVGADepth, data);
+			CaseAllocMem(720P, data);
+			CaseAllocMem(720PRGBA, data);
+			CaseAllocMem(720PDepth, data);
+			CaseAllocMem(1080P, data);
+			CaseAllocMem(1080PRGBA, data);
+			CaseAllocMem(1080PDepth, data);
+			CaseAllocMem(1440P, data);
+			CaseAllocMem(1440PRGBA, data);
+			CaseAllocMem(1440PDepth, data);
+			CaseAllocMem(1536P, data);
+			CaseAllocMem(1536PRGBA, data);
+			CaseAllocMem(1536PDepth, data);
+			CaseAllocMem(2160P, data);
+			CaseAllocMem(2160PRGBA, data);
+			CaseAllocMem(2160PDepth, data);
+			CaseAllocMem(3072P, data);
+			CaseAllocMem(3072PRGBA, data);
+			CaseAllocMem(3072PDepth, data);
 
 		default:
 			data = new unsigned char[size()];
@@ -194,36 +206,42 @@ public:
 		switch (size())
 		{
 			// k4a specific
-			CaseFreeMem(K4ADepth, data)
-			CaseFreeMem(K4ADepthWithColor, data)
-			CaseFreeMem(K4APassiveInfrared, data)
-			CaseFreeMem(K4APassiveInfraredWithColor, data)
+			CaseFreeMem(K4ADepth, data);
+			CaseFreeMem(K4ADepthWithColor, data);
+			CaseFreeMem(K4APassiveInfrared, data);
+			CaseFreeMem(K4APassiveInfraredWithColor, data);
 
 			// real-sense 2 specific
-			CaseFreeMem(RS2_WVGADepth, data)
-			CaseFreeMem(RS2_WVGADepthWithColor, data)
+			CaseFreeMem(RS2_WVGADepth, data);
+			CaseFreeMem(RS2_WVGADepthWithColor, data);
 
 			// application specific
-			CaseFreeMem(VGABW, data)
-			CaseFreeMem(SVGABW, data)
+			CaseFreeMem(VGABW, data);
+			CaseFreeMem(SVGABW, data);
 
 			// generic resolutions
-			CaseFreeMem(VGA, data)
-			CaseFreeMem(VGADepth, data)
-			CaseFreeMem(SVGA, data)
-			CaseFreeMem(SVGADepth, data)
-			CaseFreeMem(720P, data)
-			CaseFreeMem(720PDepth, data)
-			CaseFreeMem(1080P, data)
-			CaseFreeMem(1080PDepth, data)
-			CaseFreeMem(1440P, data)
-			CaseFreeMem(1440PDepth, data)
-			CaseFreeMem(1536P, data)
-			CaseFreeMem(1536PDepth, data)
-			CaseFreeMem(2160P, data)
-			CaseFreeMem(2160PDepth, data)
-			CaseFreeMem(3072P, data)
-			CaseFreeMem(3072PDepth, data)
+			CaseFreeMem(VGA, data);
+			CaseFreeMem(VGADepth, data);
+			CaseFreeMem(SVGA, data);
+			CaseFreeMem(SVGADepth, data);
+			CaseFreeMem(720P, data);
+			CaseFreeMem(720PRGBA, data);
+			CaseFreeMem(720PDepth, data);
+			CaseFreeMem(1080P, data);
+			CaseFreeMem(1080PRGBA, data);
+			CaseFreeMem(1080PDepth, data);
+			CaseFreeMem(1440P, data);
+			CaseFreeMem(1440PRGBA, data);
+			CaseFreeMem(1440PDepth, data);
+			CaseFreeMem(1536P, data);
+			CaseFreeMem(1536PRGBA, data);
+			CaseFreeMem(1536PDepth, data);
+			CaseFreeMem(2160P, data);
+			CaseFreeMem(2160PRGBA, data);
+			CaseFreeMem(2160PDepth, data);
+			CaseFreeMem(3072P, data);
+			CaseFreeMem(3072PRGBA, data);
+			CaseFreeMem(3072PDepth, data);
 
 		default:
 			delete[] data;
