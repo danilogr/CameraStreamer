@@ -166,6 +166,38 @@ void  Configuration::ParseConfiguration(bool warn)
 		requestFirstCameraAvailable = false; // depending on camera implementation, this will force the application to use a specific camera
 	}
 
+
+	// =======================================================================================
+	// streaming
+	if (parsedConfigurationFile.HasMember("streaming") && parsedConfigurationFile["streaming"].IsObject())
+	{
+		currentDoc = parsedConfigurationFile["streaming"].GetObject();
+	}
+	else {
+		currentDoc = emptyDoc;
+	}
+
+	ReadJSONDefaultBool(currentDoc, "streamColor", isStreamingColor, true, warn);
+	//ReadJSONDefaultInt(currentDoc, "colorWidth", cameraColorWidth, 1280, warn);
+	//ReadJSONDefaultInt(currentDoc, "colorHeight", cameraColorHeight, 720, warn);
+	ReadJSONDefaultBool(currentDoc, "streamDepth", isStreamingDepth, true, warn);
+	//ReadJSONDefaultInt(currentDoc, "depthWidth", cameraDepthWidth, 640, warn);
+	//ReadJSONDefaultInt(currentDoc, "depthHeight", cameraDepthHeight, 576, warn);
+
+	// validate streaming entries
+	if (isStreamingColor && !requestColorCamera)
+	{
+		isStreamingColor = false;
+		Logger::Log("Config") << "Disabling \"streamColor\" in \"streaming\" because \"requestColor\" is false in \"camera\"" << std::endl;
+	}
+
+	if (isStreamingDepth && !requestDepthCamera)
+	{
+		isStreamingDepth = false;
+		Logger::Log("Config") << "Disabling \"streamDepth\" in \"streaming\" because \"requestDepth\" is false in \"camera\"" << std::endl;
+	}
+
+
 }
 
 

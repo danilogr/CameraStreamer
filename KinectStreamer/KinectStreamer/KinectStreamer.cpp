@@ -73,7 +73,7 @@ int main()
 	{
 
 		// starts listening but not yet dealing with client connections
-		TCPStreamingServer server(appStatus);
+		TCPStreamingServer server(appStatus, configuration);
 		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraName());
 
 		// instantiate the correct camera

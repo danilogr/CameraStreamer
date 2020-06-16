@@ -27,8 +27,8 @@
 
   Configuration settings implemented:
   * type: "k4a"
-  * requestColor: true
-  * requestDepth: true
+  * requestColor: true / false
+  * requestDepth: true / false
   * colorWidth x colorHeight: 1280x720, 1920x1080, 2560x1440, 2048x1536, 4096x3072 (15fps)
   * depthWidth x depthHeight: 302x288, 512x512, 640x576, 1024x1024 (15fps)
   

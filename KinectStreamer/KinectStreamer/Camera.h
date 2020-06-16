@@ -249,6 +249,18 @@ public:
 		return colorCameraEnabled || depthCameraEnabled;
 	}
 
+	// returns true if the depth camera is opened and streaming video
+	bool IsDepthCameraEnabled()
+	{
+		return depthCameraEnabled;
+	}
+
+	// returns true if the color camera is opened and streaming video
+	bool IsColorCameraEnabled()
+	{
+		return colorCameraEnabled;
+	}
+
 
 	// responsible for stopping the thread
 	virtual void Stop()
