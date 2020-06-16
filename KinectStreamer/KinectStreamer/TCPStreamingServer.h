@@ -218,7 +218,6 @@ private:
 		Logger::Log("Streamer") << "Streaming " <<
 		(streamingColor && streamingDepth ? "color and depth" : 
 		(streamingColor ? "color" : "depth")) <<
-		(streamingDepth ? "depth" : "") <<
 		" at a resolution of " <<
 		configuration->GetStreamingWidth() << 'x' << configuration->GetStreamingHeight() << std::endl;
 
