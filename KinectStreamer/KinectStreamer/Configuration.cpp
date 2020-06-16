@@ -89,8 +89,6 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 void  Configuration::ParseConfiguration(bool warn)
 {
 	// trick to always use default elements in case parts of the document are missing
-	rapidjson::Value emptyDoc;
-	emptyDoc.SetObject();
 	rapidjson::Value currentDoc;
 	currentDoc.SetObject();
 
@@ -105,6 +103,8 @@ void  Configuration::ParseConfiguration(bool warn)
 		currentDoc = parsedConfigurationFile["camera"].GetObject();
 	}
 	else {
+		rapidjson::Value emptyDoc;
+		emptyDoc.SetObject();
 		currentDoc = emptyDoc;
 	}
 
@@ -134,12 +134,15 @@ void  Configuration::ParseConfiguration(bool warn)
 
 
 	// =======================================================================================
+
 	// streaming
 	if (parsedConfigurationFile.HasMember("streaming") && parsedConfigurationFile["streaming"].IsObject())
 	{
 		currentDoc = parsedConfigurationFile["streaming"].GetObject();
 	}
 	else {
+		rapidjson::Value emptyDoc;
+		emptyDoc.SetObject();
 		currentDoc = emptyDoc;
 	}
 
