@@ -9,6 +9,8 @@
 
 #include "Frame.h"
 #include "Logger.h"
+
+#include "Configuration.h"
 #include "ApplicationStatus.h"
 
 
@@ -30,10 +32,11 @@ struct CameraIntrinsics
 	float p2;            // Tangential distortion coefficient 2 */
 	float p1;            // Tangential distortion coefficient 1 */
 	float metricRadius;  // Metric radius */
+	float metricScale;   // Scale to transform measurements into meters (only makes sense for depth cameras)
 
 	CameraIntrinsics() : cx(0), cy(0), fx(0), fy(0),
 		k1(0), k2(0), k3(0), k4(0), k5(0), k6(0), p2(0), p1(0),
-		metricRadius(0)
+		metricRadius(0), metricScale(0)
 	{
 
 	}
@@ -59,13 +62,83 @@ struct CameraExtrinsics
  */
 struct CameraParameters
 {
-
 	CameraIntrinsics intrinsics;
 	CameraExtrinsics extrinsics;
 
 	int resolutionWidth;
 	int resolutionHeight;
 	float metricRadius;
+};
+
+
+struct CameraStatistics
+{
+	// number of frames captured on the long run
+	unsigned long long framesCapturedTotal;
+	unsigned long long framesFailedTotal;
+	unsigned int sessions;
+	std::chrono::steady_clock::time_point startTimeTotal;
+	std::chrono::steady_clock::time_point endTimeTotal;
+
+	// number of frames captured in this session
+	unsigned long long framesCaptured;
+	unsigned long long framesFailed;
+	std::chrono::steady_clock::time_point startTime;
+	std::chrono::steady_clock::time_point endTime;
+
+
+	CameraStatistics() : framesCapturedTotal(0), framesFailedTotal(0), sessions(0), framesCaptured(0), framesFailed(0), initialized(false), inSession(false) {}
+
+	void StartCounting()
+	{
+		// did we forget to stop counting?
+		if (inSession)
+		{
+			StopCounting(); // not super accurate, but whatevs
+		}
+
+		startTime = std::chrono::high_resolution_clock::now();
+		framesCaptured = 0;
+		framesFailed = 0;
+
+		// this is the first time we are running the camera loop
+		// thus, we will set both the startTimeTotal and the startTime
+		if (!initialized)
+		{
+			initialized = true;
+			startTimeTotal = startTime;
+		}
+
+		++sessions;
+		inSession = true;
+	}
+
+	void StopCounting()
+	{
+		if (inSession)
+		{
+			endTime = std::chrono::high_resolution_clock::now();
+		
+			// add information to the long run
+			inSession = false;
+			endTimeTotal = endTime;
+			framesCapturedTotal += framesCaptured;
+			framesFailedTotal += framesFailed;
+		}
+	}
+
+	long long durationInSeconds()
+	{
+		return std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
+	}
+
+	long long totalDurationInSeconds()
+	{
+		return std::chrono::duration_cast<std::chrono::seconds>(endTimeTotal - startTimeTotal).count();
+	}
+
+private:
+	bool initialized, inSession;
 };
 
 /**
@@ -78,6 +151,8 @@ struct CameraParameters
   */
 class Camera
 {
+
+public:
 
 protected:
 	// camera properties that help us identify the type of camera
@@ -92,17 +167,19 @@ protected:
 	// timeouts?
 	std::chrono::milliseconds getFrameTimeout;
 
-	// is the camera running?
-	bool runningCameras;
+	// which camera is running?
+	bool depthCameraEnabled, colorCameraEnabled;
 
-	// most of the configuration comes from the AppStatus class
+	// all threads use a shared data structure to report their status
 	std::shared_ptr<ApplicationStatus> appStatus;
+
+	// configuration (from either a configuration file or a setting set by the user)
+	std::shared_ptr<Configuration> configuration;
 
 	// cameras have a thread that handles requesting frames
 	// Todo: we should create an abstract thread class for future uses
 	std::shared_ptr<std::thread> sThread;
 	bool thread_running;
-
 
 	// Virtual Methods to start and stop the camera
 	virtual void CameraLoop() = 0;
@@ -125,9 +202,12 @@ protected:
 			sThread = nullptr;
 
 			// were devices running?
-			if (runningCameras)
+			if (IsAnyCameraEnabled())
 			{
-				runningCameras = false;
+				depthCameraEnabled = false;
+				colorCameraEnabled = false;
+
+				// todo: update status here?
 			}
 
 
@@ -152,8 +232,8 @@ public:
 	// callback invoked when the camera disconnects
 	CameraDisconnectedCallback onCameraDisconnect;
 
-	// constructor 
-	Camera(std::shared_ptr<ApplicationStatus> appStatus) : currentExposure(0), currentGain(0), appStatus(appStatus), thread_running(false), runningCameras(false), getFrameTimeout(1000)
+	// constructor explicitly defining a configuration file (as well as appStatus)
+	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), depthCameraEnabled(false), colorCameraEnabled(false), getFrameTimeout(1000)
 	{
 
 	}
@@ -163,16 +243,29 @@ public:
 		Stop();
 	}
 
-	bool isRunning()
+	bool IsThreadRunning()
 	{
 		return (sThread && sThread->joinable());
 	}
 
 	// Returns true if kinect is opened and streaming video
-	bool isStreaming()
+	bool IsAnyCameraEnabled()
 	{
-		return runningCameras;
+		return colorCameraEnabled || depthCameraEnabled;
 	}
+
+	// returns true if the depth camera is opened and streaming video
+	bool IsDepthCameraEnabled()
+	{
+		return depthCameraEnabled;
+	}
+
+	// returns true if the color camera is opened and streaming video
+	bool IsColorCameraEnabled()
+	{
+		return colorCameraEnabled;
+	}
+
 
 	// responsible for stopping the thread
 	virtual void Stop()
@@ -212,28 +305,66 @@ public:
 	// Adjust the camera exposure
 	virtual bool AdjustExposureBy(int exposure_level) = 0;
 
+	// Prints camera parameters
+	virtual void PrintCameraIntrinsics()
+	{
+		if (depthCameraEnabled)
+		{
+			Logger::Log("Camera") << "[Depth] resolution width: " << depthCameraParameters.resolutionWidth << std::endl;
+			Logger::Log("Camera") << "[Depth] resolution height: " << depthCameraParameters.resolutionHeight << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius: " << depthCameraParameters.metricRadius << std::endl;
+			Logger::Log("Camera") << "[Depth] principal point x: " << depthCameraParameters.intrinsics.cx << std::endl;
+			Logger::Log("Camera") << "[Depth] principal point y: " << depthCameraParameters.intrinsics.cy << std::endl;
+			Logger::Log("Camera") << "[Depth] focal length x: " << depthCameraParameters.intrinsics.fx << std::endl;
+			Logger::Log("Camera") << "[Depth] focal length y: " << depthCameraParameters.intrinsics.fy << std::endl;
+			Logger::Log("Camera") << "[Depth] radial distortion coefficients:" << std::endl;
+			Logger::Log("Camera") << "[Depth] k1: " << depthCameraParameters.intrinsics.k1 << std::endl;
+			Logger::Log("Camera") << "[Depth] k2: " << depthCameraParameters.intrinsics.k2 << std::endl;
+			Logger::Log("Camera") << "[Depth] k3: " << depthCameraParameters.intrinsics.k3 << std::endl;
+			Logger::Log("Camera") << "[Depth] k4: " << depthCameraParameters.intrinsics.k4 << std::endl;
+			Logger::Log("Camera") << "[Depth] k5: " << depthCameraParameters.intrinsics.k5 << std::endl;
+			Logger::Log("Camera") << "[Depth] k6: " << depthCameraParameters.intrinsics.k6 << std::endl;
+			Logger::Log("Camera") << "[Depth] tangential distortion coefficient x: " << depthCameraParameters.intrinsics.p1 << std::endl;
+			Logger::Log("Camera") << "[Depth] tangential distortion coefficient y: " << depthCameraParameters.intrinsics.p2 << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius (intrinsics): " << depthCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius (to meters): " << depthCameraParameters.intrinsics.metricScale << std::endl << std::endl;
 
-	//
-	// There are two ways of setting camera settings
-	//
+		}
 
-	// Setting camera specifics from the configuration file
-	// if resetConfiguration is true then the camera implementation
-	// may reset its custom data structure
-	virtual void SetCameraConfigurationFromAppStatus(bool resetConfiguration = true) = 0;
-
-	// Setting camera specifics from the a custom structure implemented by the camera
-	virtual void SetCameraConfigurationFromCustomDatastructure(void* cameraSpecificConfiguration) = 0;
+		if (colorCameraEnabled)
+		{
+			Logger::Log("Camera") << "[Color] resolution width: " << colorCameraParameters.resolutionWidth << std::endl;
+			Logger::Log("Camera") << "[Color] resolution height: " << colorCameraParameters.resolutionHeight << std::endl;
+			Logger::Log("Camera") << "[Color] metric radius: " << colorCameraParameters.metricRadius << std::endl;
+			Logger::Log("Camera") << "[Color] principal point x: " << colorCameraParameters.intrinsics.cx << std::endl;
+			Logger::Log("Camera") << "[Color] principal point y: " << colorCameraParameters.intrinsics.cy << std::endl;
+			Logger::Log("Camera") << "[Color] focal length x: " << colorCameraParameters.intrinsics.fx << std::endl;
+			Logger::Log("Camera") << "[Color] focal length y: " << colorCameraParameters.intrinsics.fy << std::endl;
+			Logger::Log("Camera") << "[Color] radial distortion coefficients:" << std::endl;
+			Logger::Log("Camera") << "[Color] k1: " << colorCameraParameters.intrinsics.k1 << std::endl;
+			Logger::Log("Camera") << "[Color] k2: " << colorCameraParameters.intrinsics.k2 << std::endl;
+			Logger::Log("Camera") << "[Color] k3: " << colorCameraParameters.intrinsics.k3 << std::endl;
+			Logger::Log("Camera") << "[Color] k4: " << colorCameraParameters.intrinsics.k4 << std::endl;
+			Logger::Log("Camera") << "[Color] k5: " << colorCameraParameters.intrinsics.k5 << std::endl;
+			Logger::Log("Camera") << "[Color] k6: " << colorCameraParameters.intrinsics.k6 << std::endl;
+			Logger::Log("Camera") << "[Color] tangential distortion coefficient x: " << colorCameraParameters.intrinsics.p1 << std::endl;
+			Logger::Log("Camera") << "[Color] tangential distortion coefficient y: " << colorCameraParameters.intrinsics.p2 << std::endl;
+			Logger::Log("Camera") << "[Color] metric radius (intrinsics): " << colorCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+		}
+	}
 
 	// Camera paremeters
-	CameraParameters calibration;
+	CameraParameters depthCameraParameters, colorCameraParameters;
 
-	const std::string& getSerial()
+	// Camera statistics
+	CameraStatistics statistics;
+
+	const std::string& getSerial() const
 	{
 		return cameraSerialNumber;
 	}
 
-	const std::string& getCameraType()
+	const std::string& getCameraType() const
 	{
 		return cameraName;
 	}

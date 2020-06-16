@@ -12,7 +12,8 @@
 //
 
 // 1) key resources shared by all other headers
-#include "Logger.h"
+#include "Logger.h" // singleton (for now)
+#include "Configuration.h"
 #include "ApplicationStatus.h"
 
 // 2) Abstraction of video capture devices and memory management for frames
@@ -25,7 +26,9 @@
 #include "VideoRecorder.h"
 
 // 4) specific cameras supported
+#include "CompilerConfiguration.h"
 #include "AzureKinect.h"
+#include "RealSense.h"
 
 
 using namespace std;
@@ -37,9 +40,15 @@ int main()
 
 
 	// ApplicationStatus is the data structure the application uses to synchronize 
-		// the overall application state machine across threads (e.g.: VideoRecorder uses it
-		// to let other threads know when it is recording, for instance)
+	// the overall application state machine across threads (e.g.: VideoRecorder uses it
+	// to let other threads know when it is recording, for instance)
 	std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
+
+	// Configuration is a data structure that holds the default settings
+	// for all threads
+	std::shared_ptr<Configuration> configuration = std::make_shared<Configuration>();
+
+
 	ApplicationStatus& appStatusPtr = *appStatus;
 
 	// set default values
@@ -47,38 +56,50 @@ int main()
 	appStatus->SetControlPort(6606);
 
 	// structure that lists supported cameras -> points to their constructors
-	map<string, std::shared_ptr<Camera> (*)(std::shared_ptr<ApplicationStatus>)> SupportedCamerasSet = { {"k4a", &AzureKinect::Create} };
+	typedef  std::map<string, std::shared_ptr<Camera>(*)(std::shared_ptr<ApplicationStatus>, std::shared_ptr<Configuration>)> CameraNameToConstructorMap;
+	CameraNameToConstructorMap SupportedCamerasSet = {
+		
+		// Azure Kinect support
+		#ifdef ENABLE_K4A
+		{"k4a", &AzureKinect::Create},
+		#endif
+
+		// RealSense2 support
+		#ifdef ENABLE_RS2
+		{"rs2", &RealSense::Create},
+		#endif
+	};
 
 	// read configuration file if one is present
-	appStatus->LoadConfiguration("config.json");
+	configuration->LoadConfiguration("config.json");
 
 	// do we have a camera we currently support?
-	if (SupportedCamerasSet.find(appStatus->GetCameraName()) == SupportedCamerasSet.cend())
+	if (SupportedCamerasSet.find(configuration->GetCameraName()) == SupportedCamerasSet.cend())
 	{
-		Logger::Log("Main") << "Device \"" << appStatus->GetCameraName() << "\" is not supported! Exiting..." << endl;
+		Logger::Log("Main") << "Device \"" << configuration->GetCameraName() << "\" is not supported! Exiting..." << endl;
 		return 1;
 	}
 
+	// initializes appStatus based on some default values from the configuration
+	appStatus->UpdateAppStatusFromConfig(*configuration);
 
 	// main application loop where it waits for a user key to stop everything
 	{
 
 		// starts listening but not yet dealing with client connections
-		TCPStreamingServer server(appStatus);
+		TCPStreamingServer server(appStatus, configuration);
 		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraName());
 
 		// instantiate the correct camera
-		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus);
-
-		// parse configuration
-		depthCamera->SetCameraConfigurationFromAppStatus();
+		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus, configuration);
 
 		// set up callbacks
-
 		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
+			// streams to client
 			server.ForwardToAll(color, depth);
 
+			// saves to file 
 			if (appStatusPtr.isRedirectingFramesToRecorder())
 			{
 				videoRecorderThread.RecordFrame(color, depth);
@@ -86,21 +107,26 @@ int main()
 
 		};
 
-		// we could print messages when the camera gets connected / disconnected; not now
-		depthCamera->onCameraConnect = []()	{};
-		depthCamera->onCameraDisconnect = []() {};
-	
-		// this is a commented out example of how we can override camera settings using a 
-		// SDK specific data structure
-		//k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-		//config.color_format     = K4A_IMAGE_FORMAT_COLOR_BGRA32; // we need BGRA32 because JPEG won't allow transformation
-		//config.camera_fps       = K4A_FRAMES_PER_SECOND_30;		 // at 30 fps
-		//config.color_resolution = K4A_COLOR_RESOLUTION_720P;     // 1280x720
-		//config.depth_mode       = K4A_DEPTH_MODE_NFOV_UNBINNED;  // 640x576 - fov 75x65 - 0.5m-3.86m
-		//config.synchronized_images_only = true;					 // depth and image should be synchronized
+		
+		// prints device intrinsics the first time
+		bool printedIntrinsicsOnce = false;
+		depthCamera->onCameraConnect = [&]()
+		{
+			if (!printedIntrinsicsOnce && depthCamera)
+			{
+				depthCamera->PrintCameraIntrinsics();
+				printedIntrinsicsOnce = true;
+			}
+		};
 
-		// start device, streaming server, and recording thread
-		//depthCamera.SetCameraConfigurationFromCustomDatastructure((void*)& config);
+		depthCamera->onCameraDisconnect = [&]()
+		{
+			if (depthCamera)
+			{ 
+				Logger::Log("Camera") << "Captured " << depthCamera->statistics.framesCaptured << " frames in " << depthCamera->statistics.durationInSeconds() << " seconds (" << ((double)depthCamera->statistics.framesCaptured / (double)depthCamera->statistics.durationInSeconds()) << " fps) - Fails: " << depthCamera->statistics.framesFailed << " times" << std::endl;
+			}
+		};
+
 		depthCamera->Run();
 		server.Run();
 		videoRecorderThread.Run();
@@ -115,7 +141,7 @@ int main()
 			if (!depthCamera) return;
 
 			// we are already running
-			if (depthCamera->isStreaming())
+			if (depthCamera->IsAnyCameraEnabled())
 			{
 				Logger::Log("Remote") << "(startKinect) Kinect is already running!" << std::endl;
 				return;
@@ -131,7 +157,7 @@ int main()
 			// sanity check
 			if (!depthCamera) return;
 
-			if (!depthCamera->isRunning())
+			if (!depthCamera->IsThreadRunning())
 			{
 				Logger::Log("Remote") << "(stopKinect) Kinect is not running!" << std::endl;
 				return;
