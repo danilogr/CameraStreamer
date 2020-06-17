@@ -543,7 +543,7 @@ bool AzureKinect::LoadConfigurationSettings()
 	}
 
 	// if both cameras are enabled, we will make sure that frames are synchronized
-	if (true)//configuration->IsColorCameraEnabled() && configuration->IsDepthCameraEnabled())
+	if (configuration->IsColorCameraEnabled() && configuration->IsDepthCameraEnabled())
 	{
 		kinectConfiguration.synchronized_images_only = true;
 	}

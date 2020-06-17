@@ -28,26 +28,33 @@ def receivedEntireMessage(sock, length):
 
 
 while True:
-  # Get initial uint32 with frame size
+  # read header
   width = int.from_bytes(receivedEntireMessage(stream, 4), "little")
   height = int.from_bytes(receivedEntireMessage(stream, 4), "little")
-  colorLen = int.from_bytes(receivedEntireMessage(stream, 4), "little")
-  depthLen = int.from_bytes(receivedEntireMessage(stream, 4), "little")
+  colorLen = int.from_bytes(receivedEntireMessage(stream, 4), "little") # 0 if no color frame
+  depthLen = int.from_bytes(receivedEntireMessage(stream, 4), "little") # 0 if no depth frame
   
   print("Got frame with (w=%d,h=%d,color=%d,depth=%d)" % (width, height, colorLen, depthLen))
-  
-  colorData = receivedEntireMessage(stream, colorLen)
-  depthData = receivedEntireMessage(stream, depthLen)
 
-  numpyarr = numpy.fromstring(colorData, numpy.uint8)
-  #print(numpyarr.shape)
-  frame = cv2.imdecode(numpyarr, cv2.IMREAD_COLOR)
-  #print(frame)
-  
-  cv2.imshow('Color', frame)
+  # read color if enabled
+  if (colorLen > 0):
+    colorData = receivedEntireMessage(stream, colorLen)
 
-  deptharray = numpy.fromstring(depthData, numpy.uint16).reshape(height,width)
-  cv2.imshow('Depth', cv2.normalize(deptharray, dst=None, alpha=0, beta=65535, norm_type=cv2.NORM_MINMAX))
+  # read depth if enabled
+  if (depthLen > 0):
+    depthData = receivedEntireMessage(stream, depthLen)
+
+  # show color if enabled
+  if (colorLen > 0):
+    numpyarr = numpy.fromstring(colorData, numpy.uint8)
+    frame = cv2.imdecode(numpyarr, cv2.IMREAD_COLOR)
+    cv2.imshow('Color', frame)
+
+  # show depth if enabled
+  if (depthLen > 0):
+    deptharray = numpy.fromstring(depthData, numpy.uint16).reshape(height,width)
+    cv2.imshow('Depth', cv2.normalize(deptharray, dst=None, alpha=0, beta=65535, norm_type=cv2.NORM_MINMAX))
+
   if (cv2.waitKey(1) & 0xFF == 27):
     break
 
