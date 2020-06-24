@@ -33,7 +33,7 @@
 
 using namespace std;
 
-int main()
+int main(int argc, char* argv[])
 {
 
 //	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
@@ -69,9 +69,19 @@ int main()
 		{"rs2", &RealSense::Create},
 		#endif
 	};
+	
+
+	std::string configFilePath("config.json");
+	// do we have a parameter?
+	if (argc > 1)
+	{
+		// uses the first argument as the configuration filename
+		configFilePath = std::string(argv[1]);
+	}
+
 
 	// read configuration file if one is present
-	configuration->LoadConfiguration("config.json");
+	configuration->LoadConfiguration(configFilePath);
 
 	// do we have a camera we currently support?
 	if (SupportedCamerasSet.find(configuration->GetCameraName()) == SupportedCamerasSet.cend())
