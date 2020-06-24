@@ -1,5 +1,7 @@
 #include "RealSense.h"
 
+#include <sstream>
+
 // we have compilation flags that determine whether this feature
 // is supported or not
 #include "CompilerConfiguration.h"
@@ -10,12 +12,11 @@ const char* RealSense::RealSenseConstStr = "RealSense2";
 
 bool RealSense::LoadConfigurationSettings()
 {
-
 	// blank slate
 	rs2Configuration.disable_all_streams();
 
 	// get current list of devices
-	const std::set<std::string>& devicesConnected = RealSense::ListDevices();
+	std::set<std::string> devicesConnected = RealSense::ListDevices();
 
 	// do we have a specific serial number we are looking for?
 	if (!configuration->UseFirstCameraAvailable())
@@ -23,6 +24,18 @@ bool RealSense::LoadConfigurationSettings()
 		if (devicesConnected.find(configuration->GetCameraSN()) == devicesConnected.cend())
 		{
 			Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << configuration->GetCameraSN() << "\" not available!" << std::endl;
+
+			std::stringstream deviceList;
+			int lastDevice = devicesConnected.size();
+			for (const std::string& sn : devicesConnected)
+			{
+				lastDevice--;
+				deviceList << sn << (lastDevice ? ',' : '.');
+			}
+
+			Logger::Log(RealSenseConstStr) << "Devices connected: " << deviceList.str() << std::endl;
+
+		
 			return false; // we cannot test configuration if the device is not available :(
 		}
 

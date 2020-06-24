@@ -110,8 +110,12 @@ void  Configuration::ParseConfiguration(bool warn)
 		emptyDoc.SetObject();
 		currentDoc = emptyDoc;
 	}
+	
+	// Actual camera type: Very important!
+	ReadJSONDefaultString(currentDoc, "type", cameraType, "k4a", true); 
 
-	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true); 
+	// this is just for debugging / logging purposes
+	ReadJSONDefaultString(currentDoc, "name", cameraUserDefinedName, "", false);
 
 	// no need to warn when camera name is not present
 	ReadJSONDefaultLong(currentDoc, "frameTimeoutMS", cameraFrameCaptureTimeout, 1000, false);
@@ -208,6 +212,10 @@ void  Configuration::ParseConfiguration(bool warn)
 		isStreamingDepth = false;
 		Logger::Log(ConfigNameStr) << "Disabling \"streamDepth\" in \"streaming\" because \"requestDepth\" is false in \"camera\"" << std::endl;
 	}
+
+
+	// prints a quick status of the configuration
+	std::cout << std::endl;
 
 
 }

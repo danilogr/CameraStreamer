@@ -76,15 +76,17 @@ public:
 	/**
 	  Returns a set of all devices connected to the computer
 	*/
-	static const std::set<std::string>& ListDevices()
+	static std::set<std::string> ListDevices()
 	{
 		rs2::context ctx{};
 		rs2::device_list deviceList = ctx.query_devices();
 		
 		std::set<std::string> devices;
+
 		for (auto dev = deviceList.begin(); dev != deviceList.end(); ++dev)
 		{
-			devices.insert((*dev).get_info(RS2_CAMERA_INFO_SERIAL_NUMBER));
+			if ((*dev).supports(RS2_CAMERA_INFO_SERIAL_NUMBER))
+				devices.insert(std::string((*dev).get_info(RS2_CAMERA_INFO_SERIAL_NUMBER)));
 		}
 
 		return devices;

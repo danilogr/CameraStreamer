@@ -88,9 +88,9 @@ int main(int argc, char* argv[])
 	configuration->LoadConfiguration(configFilePath);
 
 	// do we have a camera we currently support?
-	if (SupportedCamerasSet.find(configuration->GetCameraName()) == SupportedCamerasSet.cend())
+	if (SupportedCamerasSet.find(configuration->GetCameraType()) == SupportedCamerasSet.cend())
 	{
-		Logger::Log("Main") << "Device \"" << configuration->GetCameraName() << "\" is not supported! Exiting..." << endl;
+		Logger::Log("Main") << "Device \"" << configuration->GetCameraType() << "\" is not supported! Exiting..." << endl;
 		return 1;
 	}
 
@@ -102,10 +102,10 @@ int main(int argc, char* argv[])
 
 		// starts listening but not yet dealing with client connections
 		TCPStreamingServer server(appStatus, configuration);
-		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraName());
+		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraType());
 
 		// instantiate the correct camera
-		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraName()](appStatus, configuration);
+		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraType()](appStatus, configuration);
 
 		// set up callbacks
 		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)

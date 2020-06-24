@@ -19,9 +19,11 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 	// locks to make sure that the entire json object is consistent
 	std::lock_guard<std::mutex> guard(dataLock);
 	{
+
 		// camera settings
 		applicationStatusJson.AddMember("capturing", IsAppCapturing(), allocator);
-		applicationStatusJson.AddMember("captureDeviceName", rapidjson::Value().SetString(cameraName.c_str(), cameraName.length(), allocator), allocator);
+		applicationStatusJson.AddMember("captureDeviceUserDefinedName", rapidjson::Value().SetString(cameraUserDefinedName.c_str(), cameraUserDefinedName.length(), allocator), allocator);
+		applicationStatusJson.AddMember("captureDeviceType", rapidjson::Value().SetString(cameraType.c_str(), cameraType.length(), allocator), allocator);
 		applicationStatusJson.AddMember("captureDeviceSerial", rapidjson::Value().SetString(cameraSerial.c_str(), cameraSerial.length(), allocator), allocator);
 		applicationStatusJson.AddMember("capturingDepth", isCameraDepthRunning, allocator);
 		applicationStatusJson.AddMember("capturingColor", isCameraColorRunning, allocator);

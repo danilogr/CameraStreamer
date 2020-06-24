@@ -158,7 +158,7 @@ protected:
 	// camera properties that help us identify the type of camera
 	// when using the abstract Camera interface
 	std::string cameraSerialNumber;
-	std::string cameraName;
+	std::string cameraType;
 
 	// configurable camera settings
 	int currentExposure = 0;
@@ -199,7 +199,7 @@ protected:
 			}
 			catch (...)
 			{
-				Logger::Log("Camera") << "Unhandled exception in " << cameraName << " (" << cameraSerialNumber << "). Restarting camera thread in 5 seconds..." << std::endl;
+				Logger::Log("Camera") << "Unhandled exception in " << cameraType << " (" << cameraSerialNumber << "). Restarting camera thread in 5 seconds..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
 		}
@@ -244,7 +244,7 @@ public:
 		// are we looking for a specific camera? let users know and avoid confusion
 		if (!configuration->UseFirstCameraAvailable())
 		{
-			Logger::Log("Camera") << "Attention: This application is looking for a " << getCameraType() << " camera with SN " << configuration->GetCameraSN() << " is connected!";
+			Logger::Log("Camera") << "Attention: This application is looking for a " << configuration->GetCameraType() << " camera with SN " << configuration->GetCameraSN() << std::endl;
 		}
 	}
 
@@ -376,7 +376,7 @@ public:
 
 	const std::string& getCameraType() const
 	{
-		return cameraName;
+		return cameraType;
 	}
 
 };

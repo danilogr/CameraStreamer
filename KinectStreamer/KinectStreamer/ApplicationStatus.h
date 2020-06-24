@@ -70,7 +70,8 @@ public:
 		std::lock_guard<std::mutex> guard(dataLock);
 
 		// camera
-		cameraName = config.GetCameraName();
+		cameraType = config.GetCameraType();
+		cameraUserDefinedName = config.GetCameraUserDefinedName();
 
 		// tcp servers
 		controlPort = config.GetControlPort();
@@ -157,6 +158,8 @@ public:
 		int streamWidth = 0, int streamHeight = 0)
 	{
 		std::lock_guard<std::mutex> guard(dataLock);
+
+
 
 		// camera serial number
 		this->cameraSerial = sn;

@@ -49,7 +49,10 @@ protected:
 	bool isStreamingDepth;
 
 	// camera: what camera should we connect to?
-	std::string cameraName;
+	std::string cameraType;
+
+	// camera: user friendly name used for sanity purposes
+	std::string cameraUserDefinedName;
 	
 	// camera: should we connect to a specific camera (given its serial number)
 	std::string cameraSerial;
@@ -115,7 +118,8 @@ public:
 	bool IsDepthCameraEnabled() const { return requestDepthCamera; }
 	bool IsColorCameraEnabled() const { return requestColorCamera; }
 	//bool IsInfraredCameraEnabled() const { return requestInfraredCamera; }
-	const std::string& GetCameraName() const { return cameraName; }
+	const std::string& GetCameraType() const { return cameraType; }
+	const std::string& GetCameraUserDefinedName() const { return cameraUserDefinedName;  }
 	const std::string& GetCameraSN() const { return cameraSerial; }
 	bool UseFirstCameraAvailable() const { return requestFirstCameraAvailable; }
 	bool SetUseFirstCameraAvailable(bool value) { requestFirstCameraAvailable = value; }
