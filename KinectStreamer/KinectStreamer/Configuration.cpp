@@ -8,10 +8,13 @@
 #include <fstream>
 #include "Logger.h"
 
-#define ReadJSONDefaultInt(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetInt(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
-#define ReadJSONDefaultFloat(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetFloat(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid float! Using default: " << defaultvalue  << std::endl; } }
-#define ReadJSONDefaultBool(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid boolean! Using default: " << defaultvalue  << std::endl; } }
-#define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log("Config") << "Error! Element \""<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
+const char* Configuration::ConfigNameStr = "Config";
+
+#define ReadJSONDefaultLong(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetUint64(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
+#define ReadJSONDefaultInt(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetInt(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
+#define ReadJSONDefaultFloat(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetFloat(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid float! Using default: " << defaultvalue  << std::endl; } }
+#define ReadJSONDefaultBool(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid boolean! Using default: " << defaultvalue  << std::endl; } }
+#define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
 
 
 bool  Configuration::LoadConfiguration(const std::string& filepath)
@@ -26,7 +29,7 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 		// were we able to open it?
 		if (!file.is_open())
 		{
-			Logger::Log("Config") << "Could not open configuration file: " << filepath << std::endl;
+			Logger::Log(ConfigNameStr) << "Could not open configuration file: " << filepath << std::endl;
 			successReading = false;
 			parsedConfigurationFile = rapidjson::Document();
 			parsedConfigurationFile.SetObject();
@@ -40,7 +43,7 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 			// check file size
 			if (fsize > 100 * 1024 * 1024)
 			{
-				Logger::Log("Config") << "Configuration file is too big (> 100mb)! (" << filepath << ")" << std::endl;
+				Logger::Log(ConfigNameStr) << "Configuration file is too big (> 100mb)! (" << filepath << ")" << std::endl;
 				successReading = false;
 				file.close();
 			} else {
@@ -60,13 +63,13 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 					// I am really trying to understand what this API does
 					if (ok.IsError())
 					{
-						Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << ok.Code() << " at location " << ok.Offset() << std::endl << std::endl;
+						Logger::Log(ConfigNameStr) << "Error parsing configuration file: " << filepath << "! " << ok.Code() << " at location " << ok.Offset() << std::endl << std::endl;
 						successReading = false;
 					}
 				}
 				catch (const std::exception & e)
 				{
-					Logger::Log("Config") << "Error parsing configuration file: " << filepath << "! " << e.what() << std::endl << std::endl;
+					Logger::Log(ConfigNameStr) << "Error parsing configuration file: " << filepath << "! " << e.what() << std::endl << std::endl;
 					successReading = false;
 				}
 
@@ -78,7 +81,7 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 		ParseConfiguration(successReading);
 
 		if (successReading)
-			Logger::Log("Config") << "Loaded configuration file: " << filepath << std::endl;
+			Logger::Log(ConfigNameStr) << "Loaded configuration file: " << filepath << std::endl;
 	}
 
 	return successReading;
@@ -108,7 +111,17 @@ void  Configuration::ParseConfiguration(bool warn)
 		currentDoc = emptyDoc;
 	}
 
-	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true);
+	ReadJSONDefaultString(currentDoc, "type", cameraName, "k4a", true); 
+
+	// no need to warn when camera name is not present
+	ReadJSONDefaultLong(currentDoc, "frameTimeoutMS", cameraFrameCaptureTimeout, 1000, false);
+
+	if (cameraFrameCaptureTimeout < 33)
+	{
+		Logger::Log(ConfigNameStr) << "Value Error! camera.frameTimeoutMS should be greater than 33 ms (~30fps). Using 1000ms instead!" << std::endl;
+		cameraFrameCaptureTimeout = 1000;
+	}
+
 	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true, warn);
 	
 	if (requestColorCamera)
@@ -184,13 +197,13 @@ void  Configuration::ParseConfiguration(bool warn)
 	if (isStreamingColor && !requestColorCamera)
 	{
 		isStreamingColor = false;
-		Logger::Log("Config") << "Disabling \"streamColor\" in \"streaming\" because \"requestColor\" is false in \"camera\"" << std::endl;
+		Logger::Log(ConfigNameStr) << "Disabling \"streamColor\" in \"streaming\" because \"requestColor\" is false in \"camera\"" << std::endl;
 	}
 
 	if (isStreamingDepth && !requestDepthCamera)
 	{
 		isStreamingDepth = false;
-		Logger::Log("Config") << "Disabling \"streamDepth\" in \"streaming\" because \"requestDepth\" is false in \"camera\"" << std::endl;
+		Logger::Log(ConfigNameStr) << "Disabling \"streamDepth\" in \"streaming\" because \"requestDepth\" is false in \"camera\"" << std::endl;
 	}
 
 

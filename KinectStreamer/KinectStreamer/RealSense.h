@@ -52,6 +52,7 @@ class RealSense : public Camera
 
 	rs2::config rs2Configuration;
 
+	static const char* RealSenseConstStr;
 
 protected:
 

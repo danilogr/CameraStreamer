@@ -166,6 +166,7 @@ protected:
 
 	// timeouts?
 	std::chrono::milliseconds getFrameTimeout;
+	unsigned int getFrameTimeoutMSInt;
 
 	// which camera is running?
 	bool depthCameraEnabled, colorCameraEnabled;
@@ -234,9 +235,11 @@ public:
 	CameraDisconnectedCallback onCameraDisconnect;
 
 	// constructor explicitly defining a configuration file (as well as appStatus)
-	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), depthCameraEnabled(false), colorCameraEnabled(false), getFrameTimeout(1000)
+	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), depthCameraEnabled(false), colorCameraEnabled(false), getFrameTimeout(1000), getFrameTimeoutMSInt(1000)
 	{
-
+		// camera frame timeout
+		getFrameTimeoutMSInt = configuration->GetCameraFrameTimeoutMs();
+		getFrameTimeout = configuration->GetCameraFrameTimoutMsChrono();
 	}
 
 	~Camera()

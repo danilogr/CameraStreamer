@@ -3,11 +3,16 @@
 #ifdef ENABLE_K4A
 #include <sstream>
 
+
+// name used in logs
+const char* AzureKinect::AzureKinectConstStr = "AzureKinect";
+
+
 bool AzureKinect::OpenDefaultKinect()
 {
 	if (kinectDevice)
 	{
-		Logger::Log("AzureKinect") << "Device is already open!" << std::endl;
+		Logger::Log(AzureKinectConstStr) << "Device is already open!" << std::endl;
 		return true;
 	}
 
@@ -17,7 +22,7 @@ bool AzureKinect::OpenDefaultKinect()
 	}
 	catch (const k4a::error& e)
 	{
-		Logger::Log("AzureKinect") << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
+		Logger::Log(AzureKinectConstStr) << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
 		return false;
 	}
 
@@ -28,7 +33,7 @@ bool AzureKinect::OpenDefaultKinect()
 	}
 	catch (const k4a::error& e)
 	{
-		Logger::Log("AzureKinect") << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
+		Logger::Log(AzureKinectConstStr) << "Could not open default device..." << "(" << e.what() << ")" << std::endl;
 		cameraSerialNumber = "Unknown";
 	}
 
@@ -96,7 +101,7 @@ void AzureKinect::saveTransformationTable(int img_width, int img_height)
 
 void AzureKinect::CameraLoop()
 {
-	Logger::Log("AzureKinect") << "Started Azure Kinect polling thread: " << std::this_thread::get_id << std::endl;
+	Logger::Log(AzureKinectConstStr) << "Started Azure Kinect polling thread: " << std::this_thread::get_id << std::endl;
 	bool print_camera_parameters = true;
 	bool didWeEverInitializeTheCamera = false;
 	bool didWeCallConnectedCallback = false; // if the thread is stopped but we did execute the connected callback, then we will execute the disconnected callback to maintain consistency
@@ -118,7 +123,7 @@ void AzureKinect::CameraLoop()
 			// try reading configuration
 			while (!LoadConfigurationSettings() && thread_running)
 			{
-				Logger::Log("AzureKinect") << "Trying again in 5 seconds..." << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Trying again in 5 seconds..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
 
@@ -127,7 +132,7 @@ void AzureKinect::CameraLoop()
 			{
 				// waits one second
 				std::this_thread::sleep_for(std::chrono::seconds(1));
-				Logger::Log("AzureKinect") << "Trying again..." << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Trying again..." << std::endl;
 			}
 
 			//  if we stop the application while waiting...
@@ -136,7 +141,7 @@ void AzureKinect::CameraLoop()
 				break;
 			}
 
-			Logger::Log("AzureKinect") << "Opened kinect device id: " << cameraSerialNumber << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Opened kinect device id: " << cameraSerialNumber << std::endl;
 
 			// starting cameras based on configuration
 			try
@@ -147,7 +152,7 @@ void AzureKinect::CameraLoop()
 			}
 			catch (const k4a::error& error)
 			{
-				Logger::Log("AzureKinect") << "Error opening cameras!" << "(" << error.what() << ")" << std::endl; 
+				Logger::Log(AzureKinectConstStr) << "Error opening cameras!" << "(" << error.what() << ")" << std::endl; 
 			}
 
 			// loading camera configuration to memory
@@ -200,7 +205,7 @@ void AzureKinect::CameraLoop()
 				}
 				catch (const k4a::error& error)
 				{
-					Logger::Log("AzureKinect") << "Error obtaining camera parameter!" << "(" << error.what() << ")" << std::endl;
+					Logger::Log(AzureKinectConstStr) << "Error obtaining camera parameter!" << "(" << error.what() << ")" << std::endl;
 					kinectDevice.stop_cameras();
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
@@ -214,7 +219,7 @@ void AzureKinect::CameraLoop()
 				kinectDevice.close();
 				colorCameraEnabled = false;
 				depthCameraEnabled = false;
-				Logger::Log("AzureKinect") << "Trying again in 1 second..." << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Trying again in 1 second..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 			else {
@@ -261,7 +266,7 @@ void AzureKinect::CameraLoop()
 				colorCameraEnabled ? colorCameraParameters.resolutionHeight : depthCameraParameters.resolutionHeight);
 
 			// starts
-			Logger::Log("AzureKinect") << "Started capturing" << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Started capturing" << std::endl;
 
 			// invokes camera connect callback
 			if (thread_running && onCameraConnect)
@@ -326,13 +331,13 @@ void AzureKinect::CameraLoop()
 						triesBeforeRestart = 5;
 					}
 					else {
-						Logger::Log("AzureKinect") << "Timed out while getting a frame..." << std::endl;
+						Logger::Log(AzureKinectConstStr) << "Timed out while getting a frame..." << std::endl;
 						--triesBeforeRestart;
 						++statistics.framesFailed;
 
 						if (triesBeforeRestart == 0)
 						{
-							Logger::Log("AzureKinect") << "Tried to get a frame 5 times but failed! Restarting system in 1 second..." << std::endl;
+							Logger::Log(AzureKinectConstStr) << "Tried to get a frame 5 times but failed! Restarting system in 1 second..." << std::endl;
 							std::this_thread::sleep_for(std::chrono::seconds(1));
 							if (kinectDevice)
 							{
@@ -348,7 +353,7 @@ void AzureKinect::CameraLoop()
 			}
 			catch (const k4a::error& e)
 			{
-				Logger::Log("AzureKinect") << "Fatal error getting frames... Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Fatal error getting frames... Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
 				++statistics.framesFailed;
 				if (kinectDevice)
 				{
@@ -366,7 +371,7 @@ void AzureKinect::CameraLoop()
 			}
 			catch (const std::bad_alloc& e)
 			{
-				Logger::Log("AzureKinect") << "Fatal error! Running out of memory! Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Fatal error! Running out of memory! Restarting device in 5 seconds! (" << e.what() << ")" << std::endl;
 				++statistics.framesFailed;
 				if (kinectDevice)
 				{
@@ -410,7 +415,7 @@ void AzureKinect::CameraLoop()
 		// waits one second before restarting...
 		if (thread_running)
 		{
-			Logger::Log("AzureKinect") << "Restarting device..." << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Restarting device..." << std::endl;
 		}
 
 	}
@@ -470,7 +475,7 @@ bool AzureKinect::LoadConfigurationSettings()
 			break;
 
 		default:
-			Logger::Log("AzureKinect") << "Color camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Color camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
 			kinectConfiguration.color_resolution = K4A_COLOR_RESOLUTION_720P;
 			appStatus->SetCameraColorHeight(720);
 			appStatus->SetCameraColorWidth(1280);
@@ -520,7 +525,7 @@ bool AzureKinect::LoadConfigurationSettings()
 			canRun30fps = false;
 			break;
 		default:
-			Logger::Log("AzureKinect") << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Depth camera Initialization Error! The requested resolution is not supported: " << requestedWidth << 'x' << requestedHeight << std::endl;
 			kinectConfiguration.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
 			appStatus->SetCameraDepthHeight(576);
 			appStatus->SetCameraDepthWidth(640);
@@ -556,13 +561,13 @@ bool AzureKinect::LoadConfigurationSettings()
 	else {
 		// the second fastest speed it can run is 15fps
 		kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_15;
-		Logger::Log("AzureKinect") << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
+		Logger::Log(AzureKinectConstStr) << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
 	}
 
 	// what about the device?
 	if (!configuration->UseFirstCameraAvailable())
 	{
-		Logger::Log("AzureKinect") << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
+		Logger::Log(AzureKinectConstStr) << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
 	}
 
 	return true;

@@ -5,6 +5,9 @@
 #include "CompilerConfiguration.h"
 #ifdef ENABLE_RS2
 
+// name used in logs
+const char* RealSense::RealSenseConstStr = "RealSense2";
+
 bool RealSense::LoadConfigurationSettings()
 {
 
@@ -19,7 +22,7 @@ bool RealSense::LoadConfigurationSettings()
 	{
 		if (devicesConnected.find(appStatus->GetCameraSN()) == devicesConnected.cend())
 		{
-			Logger::Log("RealSense2") << "ERROR! Selected device \"" << appStatus->GetCameraSN() << "\" not available!" << std::endl;
+			Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << appStatus->GetCameraSN() << "\" not available!" << std::endl;
 			return false; // we cannot test configuration if the device is not available :(
 		}
 
@@ -29,7 +32,7 @@ bool RealSense::LoadConfigurationSettings()
 	else {
 		if (devicesConnected.size() == 0)
 		{
-			Logger::Log("RealSense2") << "ERROR! No devices available...." << std::endl;
+			Logger::Log(RealSenseConstStr) << "ERROR! No devices available...." << std::endl;
 			return false;
 		}
 
@@ -61,7 +64,7 @@ bool RealSense::LoadConfigurationSettings()
 	// now, let's make sure that this configuration is valid!
 	if (!rs2Configuration.can_resolve(realsensePipeline))
 	{
-		Logger::Log("RealSense2") << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
+		Logger::Log(RealSenseConstStr) << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
 		cameraSerialNumber = std::string();
 		return false;
 	}
@@ -83,7 +86,7 @@ bool RealSense::LoadConfigurationSettings()
 
 void RealSense::CameraLoop()
 {
-	Logger::Log("RealSense2") << "Started Real Sense polling thread: " << std::this_thread::get_id << std::endl;
+	Logger::Log(RealSenseConstStr) << "Started Real Sense polling thread: " << std::this_thread::get_id << std::endl;
 
 	bool didWeEverInitializeTheCamera = false;
 	// if the thread is stopped but we did execute the connected callback,
@@ -115,7 +118,7 @@ void RealSense::CameraLoop()
 			// start with camera configuration
 			while (!LoadConfigurationSettings() && thread_running)
 			{
-				Logger::Log("RealSense2") << "Trying again in 5 seconds..." << std::endl;
+				Logger::Log(RealSenseConstStr) << "Trying again in 5 seconds..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
 
@@ -198,7 +201,7 @@ void RealSense::CameraLoop()
 				}
 				catch (const rs2::camera_disconnected_error& e)
 				{
-					Logger::Log("RealSense2") << "ERROR! Camera is not connected! Please, connect the camera! Trying again in 5 seconds..." << std::endl;
+					Logger::Log(RealSenseConstStr) << "ERROR! Camera is not connected! Please, connect the camera! Trying again in 5 seconds..." << std::endl;
 					device = nullptr;
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
@@ -206,7 +209,7 @@ void RealSense::CameraLoop()
 				}
 				catch (const std::runtime_error& e)
 				{
-					Logger::Log("RealSense2") << "ERROR! Could not start the camera: " << e.what()  << std::endl;
+					Logger::Log(RealSenseConstStr) << "ERROR! Could not start the camera: " << e.what()  << std::endl;
 					device = nullptr;
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
@@ -223,7 +226,7 @@ void RealSense::CameraLoop()
 				colorCameraEnabled = false;
 				depthCameraEnabled = false;
 				device = nullptr;
-				Logger::Log("AzureKinect") << "Trying again in 1 second..." << std::endl;
+				Logger::Log(RealSenseConstStr) << "Trying again in 1 second..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 			else {
@@ -232,7 +235,7 @@ void RealSense::CameraLoop()
 				didWeEverInitializeTheCamera = true;
 			}
 
-			Logger::Log("RealSense2") << "Opened RealSense device id: " << cameraSerialNumber << std::endl;
+			Logger::Log(RealSenseConstStr) << "Opened RealSense device id: " << cameraSerialNumber << std::endl;
 		}
 
 		//
@@ -265,7 +268,7 @@ void RealSense::CameraLoop()
 				colorCameraEnabled ? colorCameraParameters.resolutionHeight : depthCameraParameters.resolutionHeight);
 
 			// starts
-			Logger::Log("AzureKinect") << "Started capturing" << std::endl;
+			Logger::Log(RealSenseConstStr) << "Started capturing" << std::endl;
 
 			// invokes camera connect callback
 			if (thread_running && onCameraConnect)
@@ -281,7 +284,7 @@ void RealSense::CameraLoop()
 				{
 					while (thread_running)
 					{
-						rs2::frameset capture = realsensePipeline.wait_for_frames();
+						rs2::frameset capture = realsensePipeline.wait_for_frames(getFrameTimeoutMSInt);
 
 						std::shared_ptr<Frame> sharedColorFrame, sharedDepthFrame;
 
@@ -345,7 +348,7 @@ void RealSense::CameraLoop()
 				catch (const rs2::camera_disconnected_error& e)
 				{
 					++statistics.framesFailed;
-					Logger::Log("RealSense2") << "Error! Camera disconnected!... Trying again in 1 second! (" << e.what() << ")" << std::endl;
+					Logger::Log(RealSenseConstStr) << "Error! Camera disconnected!... Trying again in 1 second! (" << e.what() << ")" << std::endl;
 					std::this_thread::sleep_for(std::chrono::seconds(1));
 				}
 				catch (const rs2::recoverable_error& e)
@@ -355,7 +358,7 @@ void RealSense::CameraLoop()
 
 					if (triesBeforeRestart == 0)
 					{
-						Logger::Log("RealSense2") << "Tried to get a frame 5 times but failed ("<< e.what() << ")! Restarting system in 1 second..." << std::endl;
+						Logger::Log(RealSenseConstStr) << "Tried to get a frame 5 times but failed ("<< e.what() << ")! Restarting system in 1 second..." << std::endl;
 						std::this_thread::sleep_for(std::chrono::seconds(1));
 						
 						if (IsAnyCameraEnabled())
@@ -369,7 +372,7 @@ void RealSense::CameraLoop()
 						break; // breaks out of the loop
 					}
 					else {
-						Logger::Log("RealSense2") << "Error! " << e.what() << "!..  Trying again in 1 second!" << std::endl;
+						Logger::Log(RealSenseConstStr) << "Error! " << e.what() << "!! Trying again in 1 second!" << std::endl;
 						std::this_thread::sleep_for(std::chrono::seconds(1));
 					}
 
@@ -377,7 +380,7 @@ void RealSense::CameraLoop()
 				catch (const std::runtime_error& e)
 				{
 					++statistics.framesFailed;
-					Logger::Log("RealSense2") << "Fatal Error! " << e.what() << ")! Restarting system in 5 second..." << std::endl;
+					Logger::Log(RealSenseConstStr) << "Fatal Error! " << e.what() << "!! Restarting system in 5 seconds..." << std::endl;
 
 					if (IsAnyCameraEnabled())
 					{
@@ -392,7 +395,7 @@ void RealSense::CameraLoop()
 				catch (const std::bad_alloc& e)
 				{
 					++statistics.framesFailed;
-					Logger::Log("RealSense2") << "FATAL ERROR! No memory left! Restarting device in 10 seconds! (" << e.what() << ")" << std::endl;
+					Logger::Log(RealSenseConstStr) << "FATAL ERROR! No memory left! Restarting device in 10 seconds! (" << e.what() << ")" << std::endl;
 
 					if (IsAnyCameraEnabled())
 					{
@@ -439,7 +442,7 @@ void RealSense::CameraLoop()
 		// waits one second before restarting...
 		if (thread_running)
 		{
-			Logger::Log("RealSense2") << "Restarting device..." << std::endl;
+			Logger::Log(RealSenseConstStr) << "Restarting device..." << std::endl;
 		}
 
 

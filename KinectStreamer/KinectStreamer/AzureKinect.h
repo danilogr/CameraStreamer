@@ -56,6 +56,8 @@ class AzureKinect : public Camera
 	std::string kinectDeviceSerial;
 
 
+	static const char* AzureKinectConstStr;
+
 public:
 
 	/**
@@ -109,12 +111,12 @@ public:
 		{
 			kinectDevice.set_color_control(K4A_COLOR_CONTROL_GAIN, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>((float)proposedGain * 25.5f));
 			currentGain = proposedGain;
-			Logger::Log("AzureKinect") << "Gain level: " << currentGain << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Gain level: " << currentGain << std::endl;
 			return true;
 		}
 		catch (const k4a::error & e)
 		{
-			Logger::Log("AzureKinect") << "Could not adjust gain level to: " << proposedGain << "("<< e.what() << ")" << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Could not adjust gain level to: " << proposedGain << "("<< e.what() << ")" << std::endl;
 			return false;
 		}
 		
@@ -137,12 +139,12 @@ public:
 			kinectDevice.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>(exp2f((float)proposedExposure) *
 				1000000.0f));
 			currentExposure = proposedExposure;
-			Logger::Log("AzureKinect") << "Exposure level: " << currentExposure << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Exposure level: " << currentExposure << std::endl;
 			return true;
 		}
 		catch (const k4a::error& e)
 		{
-			Logger::Log("AzureKinect") << "Could not adjust exposure level to: " << proposedExposure << "(" << e.what() << ")" << std::endl;
+			Logger::Log(AzureKinectConstStr) << "Could not adjust exposure level to: " << proposedExposure << "(" << e.what() << ")" << std::endl;
 			return false;
 		}
 		

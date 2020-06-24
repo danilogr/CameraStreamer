@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <mutex>
 #include <vector>
@@ -7,6 +8,8 @@
 
 class Configuration
 {
+
+	static const char* ConfigNameStr;
 
 protected:
 	// this is only used when a recording starts or stops as many fields are changed at once
@@ -63,6 +66,9 @@ protected:
 	 
 	// camera: color camera resolution
 	int cameraColorWidth, cameraColorHeight;
+
+	// camera: how long should we wait before doing something about oncoming frames 
+	unsigned long cameraFrameCaptureTimeout;
 	
 
 
@@ -90,7 +96,8 @@ public:
 	isStreamingColor(false), isStreamingDepth(false),
 	requestDepthCamera(true), requestColorCamera(true),
 	cameraDepthWidth(0), cameraDepthHeight(0),
-	cameraColorWidth(0), cameraColorHeight(0), requestFirstCameraAvailable(true) {};
+	cameraColorWidth(0), cameraColorHeight(0), requestFirstCameraAvailable(true),
+	cameraFrameCaptureTimeout(1000) {};
 
 	//
 	// streaming ports
@@ -120,6 +127,11 @@ public:
 	void SetCameraColorWidth(int value) {  cameraColorWidth = value; }
 	void SetCameraDepthHeight(int value) { cameraDepthHeight = value; }
 	void SetCameraDepthWidth(int value) { cameraDepthWidth = value; }
+
+	void SetCameraFrameTimeoutMs(unsigned long value) { cameraFrameCaptureTimeout = value; }
+	unsigned long GetCameraFrameTimeoutMs() const { return cameraFrameCaptureTimeout;  }
+	std::chrono::milliseconds GetCameraFrameTimoutMsChrono() const { return std::chrono::milliseconds(cameraFrameCaptureTimeout); }
+
 
 
 	//
