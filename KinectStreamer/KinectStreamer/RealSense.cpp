@@ -374,7 +374,7 @@ void RealSense::CameraLoop()
 					}
 
 				}
-				catch (const rs2::unrecoverable_error& e)
+				catch (const std::runtime_error& e)
 				{
 					++statistics.framesFailed;
 					Logger::Log("RealSense2") << "Fatal Error! " << e.what() << ")! Restarting system in 5 second..." << std::endl;

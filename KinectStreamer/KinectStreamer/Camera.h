@@ -189,28 +189,29 @@ protected:
 		// executes the internal camera loop
 		thread_running = true;
 
-		try
+		// loops through the camera loop implementation
+		while (thread_running)
 		{
-			CameraLoop();
-		}
-		catch (...)
-		{
-			Logger::Log("Camera") << "Unhandled exception in " << cameraName << " (" << cameraSerialNumber << "). Exiting..." << std::endl;
-			
-			// erases thread info
-			thread_running = true;
-			sThread = nullptr;
-
-			// were devices running?
-			if (IsAnyCameraEnabled())
+			try
 			{
-				depthCameraEnabled = false;
-				colorCameraEnabled = false;
-
-				// todo: update status here?
+				CameraLoop();
 			}
+			catch (...)
+			{
+				Logger::Log("Camera") << "Unhandled exception in " << cameraName << " (" << cameraSerialNumber << "). Restarting camera thread in 5 seconds..." << std::endl;
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			}
+		}
 
+		// erases thread info
+		thread_running = false;
+		sThread = nullptr;
 
+		// were devices running?
+		if (IsAnyCameraEnabled())
+		{
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
 		}
 	}
 
