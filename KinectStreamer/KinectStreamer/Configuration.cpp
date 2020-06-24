@@ -144,6 +144,9 @@ void  Configuration::ParseConfiguration(bool warn)
 	{
 		requestFirstCameraAvailable = false; // depending on camera implementation, this will force the application to use a specific camera
 	}
+	else {
+		requestFirstCameraAvailable = true;
+	}
 
 
 	// =======================================================================================

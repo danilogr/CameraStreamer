@@ -240,6 +240,12 @@ public:
 		// camera frame timeout
 		getFrameTimeoutMSInt = configuration->GetCameraFrameTimeoutMs();
 		getFrameTimeout = configuration->GetCameraFrameTimoutMsChrono();
+
+		// are we looking for a specific camera? let users know and avoid confusion
+		if (!configuration->UseFirstCameraAvailable())
+		{
+			Logger::Log("Camera") << "Attention: This application is looking for a " << getCameraType() << " camera with SN " << configuration->GetCameraSN() << " is connected!";
+		}
 	}
 
 	~Camera()

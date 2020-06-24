@@ -38,7 +38,10 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 
+	// Hello world!
  	Logger::Log("Main") << "KinectStreamer v." << VERSION_MAJOR << '.' << VERSION_MINOR << VERSION_PATCH << endl;
+	Logger::Log("Main") << "To close this application, press 'q'" << endl << endl;
+
 
 	// ApplicationStatus is the data structure the application uses to synchronize 
 	// the overall application state machine across threads (e.g.: VideoRecorder uses it
@@ -290,10 +293,10 @@ int main(int argc, char* argv[])
 		remoteControlServer.Run();
 
 
-		// let's everyone know that they can exit by pressing 'q'
-		Logger::Log("Main") << endl << "To close this application, press 'q'" << endl;
-
+		//
 		// waits for user command to exit
+		// (either user pressing "q" or sending a message through the control port)
+		//
 		bool exit = false;
 		while (!exit)
 		{

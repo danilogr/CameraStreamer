@@ -20,14 +20,14 @@ bool RealSense::LoadConfigurationSettings()
 	// do we have a specific serial number we are looking for?
 	if (!configuration->UseFirstCameraAvailable())
 	{
-		if (devicesConnected.find(appStatus->GetCameraSN()) == devicesConnected.cend())
+		if (devicesConnected.find(configuration->GetCameraSN()) == devicesConnected.cend())
 		{
-			Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << appStatus->GetCameraSN() << "\" not available!" << std::endl;
+			Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << configuration->GetCameraSN() << "\" not available!" << std::endl;
 			return false; // we cannot test configuration if the device is not available :(
 		}
 
 		// device is available! yay
-		rs2Configuration.enable_device(appStatus->GetCameraSN());
+		rs2Configuration.enable_device(configuration->GetCameraSN());
 	}
 	else {
 		if (devicesConnected.size() == 0)
