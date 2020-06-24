@@ -34,11 +34,11 @@ class TCPStreamingServer
 	std::shared_ptr<ApplicationStatus> appStatus;
 	std::shared_ptr<Configuration> configuration;
 
-	bool streamingColor, streamingDepth;
+	bool streamingColor, streamingDepth, streamingJPEGLengthValue;
 
 public:
 	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : appStatus(appStatus),
-		configuration(configuration), streamingColor(false), streamingDepth(false),
+		configuration(configuration), streamingColor(false), streamingDepth(false), streamingJPEGLengthValue(false),
 		acceptor(io_service, tcp::endpoint(tcp::v4(), configuration->GetStreamerPort()))
 	{
 		Logger::Log("Streamer") << "Listening on " << configuration->GetStreamerPort() << std::endl;
@@ -151,26 +151,44 @@ public:
 		}
 
 		// prepares the message
-		std::shared_ptr<std::vector<uchar> > message = std::make_shared<std::vector<uchar> >(5*sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
-
-		// header [frame total length in bytes][width][height][rgb length][depth length]
-		*((uint32_t*) &(*message)[0])    =  message->size();
-		*((uint32_t*) & (*message)[4])   = imgWidth;
-		*((uint32_t*) & (*message)[8])   = imgHeight;
-		*((uint32_t*) & (*message)[12])  = encodedColorImage.size();
-		*((uint32_t*) & (*message)[16])  = depthImgSize;
-
-		// write color frame
-		if (streamingColor)
+		std::shared_ptr<std::vector<uchar> > message;
+		
+		if (streamingJPEGLengthValue)
 		{
-			memcpy((unsigned char*)&(*message)[20], &encodedColorImage[0], encodedColorImage.size());
+			message = std::make_shared<std::vector<uchar> >(1 * sizeof(uint32_t) + encodedColorImage.size());
+
+			// header [color jpeg size]
+			*((uint32_t*)&(*message)[0]) = encodedColorImage.size();
+
+			// copies color
+			memcpy((unsigned char*)&(*message)[4], &encodedColorImage[0], encodedColorImage.size());
+
+		}
+		else {
+
+			message = std::make_shared<std::vector<uchar> >(4 * sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
+
+			// header [width][height][rgb length][depth length]
+			//*((uint32_t*)&(*message)[0]) = message->size();
+			*((uint32_t*)&(*message)[0]) = imgWidth;
+			*((uint32_t*)&(*message)[4]) = imgHeight;
+			*((uint32_t*)&(*message)[8]) = encodedColorImage.size();
+			*((uint32_t*)&(*message)[12]) = depthImgSize;
+
+			// write color frame
+			if (streamingColor)
+			{
+				memcpy((unsigned char*)&(*message)[16], &encodedColorImage[0], encodedColorImage.size());
+			}
+
+			// write depth frame
+			if (streamingDepth)
+			{
+				memcpy((unsigned char*)&(*message)[16 + encodedColorImage.size()], (const char*)depth->getData(), depth->size());
+			}
 		}
 
-		// write depth frame
-		if (streamingDepth)
-		{
-			memcpy((unsigned char*)&(*message)[20 + encodedColorImage.size()], (const char*)depth->getData(), depth->size());
-		}
+
 
 		// sends to all clients
 		{
@@ -220,6 +238,8 @@ private:
 		Logger::Log("Streamer") << "Waiting for connections on port " << appStatus->GetStreamerPort() << std::endl;
 	
 		// update application to tell wich streams are being enabled
+		streamingJPEGLengthValue = configuration->IsStreamingTLVJPGProtocol(); // this has precedence over the 
+
 		streamingColor = configuration->GetStreamingColorEnabled();
 		streamingDepth = configuration->GetStreamingDepthEnabled();
 		appStatus->SetStreamingColorEnabled(streamingColor);
@@ -230,6 +250,12 @@ private:
 		(streamingColor ? "color" : "depth")) <<
 		" at a resolution of " <<
 		configuration->GetStreamingWidth() << 'x' << configuration->GetStreamingHeight() << std::endl;
+
+		// let users know that we are using a comms protocol
+		if (streamingJPEGLengthValue)
+		{
+			Logger::Log("Streamer") << "Streaming using JPEG Length Value Protocol " << std::endl;
+		}
 
 		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
 		io_service.run();	      // starts listening for connections

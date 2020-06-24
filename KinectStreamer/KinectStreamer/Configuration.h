@@ -21,6 +21,9 @@ protected:
 	// streamer: should we throtlle streaming FPS by default for all clients?
 	bool streamingThrottleFPS;
 
+	// streamer: if true, it streams only a JPG of the color stream (yeah, very specific case)
+	bool streamingJpegLengthValueProtocol;
+
 	// streamer: if steramingThrottleFPS is true, what is the max FPS that we accept / allow ?
 	int streamingMaxFPS;
 
@@ -80,7 +83,7 @@ private:
 public:
 
 	Configuration() : streamerPort(0), controlPort(0),
-	streamingThrottleFPS(false), streamingMaxFPS(60),
+	streamingThrottleFPS(false), streamingJpegLengthValueProtocol(false), streamingMaxFPS(60),
 	streamingWidth(0), streamingHeight(0),
 	//streamingColorWidth(0), streamingColorHeight(0),
 	//streamingDepthWidth(0), streamingDepthHeight(0),
@@ -144,6 +147,9 @@ public:
 
 	void SetStreamingThrottleMaxFPS(bool value) { streamingThrottleFPS = value; }
 	bool IsStreamingThrottleMaxFPS() const { return streamingThrottleFPS; }
+
+	void SetStreamingTLVJPGProtocol(bool value) { streamingJpegLengthValueProtocol = value; }
+	bool IsStreamingTLVJPGProtocol() const { return streamingJpegLengthValueProtocol;  }
 
 
 

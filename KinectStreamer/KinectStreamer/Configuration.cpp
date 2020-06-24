@@ -146,11 +146,23 @@ void  Configuration::ParseConfiguration(bool warn)
 		currentDoc = emptyDoc;
 	}
 
-	ReadJSONDefaultBool(currentDoc, "streamColor", isStreamingColor, true, warn);
-	//ReadJSONDefaultIntNotSupported(currentDoc, "width", streamingWidth, 1280, warn);
-	//ReadJSONDefaultIntNotSupported(currentDoc, "height", streamingHeight, 720, warn);
-	ReadJSONDefaultBool(currentDoc, "streamDepth", isStreamingDepth, true, warn);
+	// this is an optional parameter
+	ReadJSONDefaultBool(currentDoc, "streamJPEGLengthValue", streamingJpegLengthValueProtocol, false, false);
 
+	if (!streamingJpegLengthValueProtocol)
+	{
+		ReadJSONDefaultBool(currentDoc, "streamColor", isStreamingColor, true, warn);
+		//ReadJSONDefaultIntNotSupported(currentDoc, "width", streamingWidth, 1280, warn);
+		//ReadJSONDefaultIntNotSupported(currentDoc, "height", streamingHeight, 720, warn);
+		ReadJSONDefaultBool(currentDoc, "streamDepth", isStreamingDepth, true, warn);
+	}
+	else {
+		// streamJPEGTLV forces the old JPEG streaming protocol --> it only supports color
+		isStreamingColor = true;
+		isStreamingDepth = false;
+	}
+	
+	// adjsuting streaming resolutions (same as capture for now)
 	if (requestColorCamera)
 	{
 		streamingWidth = cameraColorWidth;
@@ -161,8 +173,11 @@ void  Configuration::ParseConfiguration(bool warn)
 		streamingHeight = cameraDepthHeight;
 	}
 	
-	// default streaming protocol
-	streamingColorFormat = "jpeg";
+	// default streaming protocol (hardcoded for now)
+	if (streamingJpegLengthValueProtocol)
+		streamingColorFormat = "jpeg";
+	else
+		streamingColorFormat = "jpeg"; // yeah
 	streamingColorFormat = "raw16";
 
 	// validate streaming entries

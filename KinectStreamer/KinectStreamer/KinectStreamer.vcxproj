@@ -221,6 +221,7 @@
     <ClInclude Include="RemoteControlServer.h" />
     <ClInclude Include="Statistics.h" />
     <ClInclude Include="TCPStreamingServer.h" />
+    <ClInclude Include="Version.h" />
     <ClInclude Include="VideoRecorder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

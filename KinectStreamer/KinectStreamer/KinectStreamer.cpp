@@ -30,14 +30,15 @@
 #include "AzureKinect.h"
 #include "RealSense.h"
 
+// 5) version specific 
+#include "Version.h"
 
 using namespace std;
 
 int main(int argc, char* argv[])
 {
 
-//	Logger::Log("Main") << "There are " << k4a_device_get_installed_count() << " kinect devices connected to this computer" << endl;
-
+ 	Logger::Log("Main") << "KinectStreamer v." << VERSION_MAJOR << '.' << VERSION_MINOR << VERSION_PATCH << endl;
 
 	// ApplicationStatus is the data structure the application uses to synchronize 
 	// the overall application state machine across threads (e.g.: VideoRecorder uses it
