@@ -1,9 +1,40 @@
 import socket
 import cv2
 import numpy
+import sys
 
 PORT = 3614
 ADDR = "localhost"
+
+# do we have any parameters?
+paramOk = False
+if len(sys.argv) > 1:
+  if len(sys.argv) == 2:
+    param = sys.argv[1].split(':')
+    # do we have port and host, port only or host only?
+    if len(param) == 1:
+      try:
+        PORT = int(param[0])
+        paramOk = True
+      except:
+        ADDR = param[0]
+        paramOk = True
+    elif len(param) == 2:
+      try:
+        PORT = int(param[1])
+        ADDR = param[0]
+        paramOk = True
+      except:
+        print("Invalid port %s" % param[1])
+
+if not paramOk:
+  print("Usages:\n\t %s <host:port>" % sys.argv[0])
+  print("\t %s <host> for a default port of %d" %(sys.argv[0],PORT))
+  print("\t %s <port> for a default host of %s" %(sys.argv[0],ADDR))
+  exit(1)
+
+
+print("Connecting to %s:%d....\n\n" % (ADDR,PORT))
 
 # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # sock.connect((ADDR, PORT))
