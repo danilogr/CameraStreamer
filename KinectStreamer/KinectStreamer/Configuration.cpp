@@ -198,7 +198,7 @@ void  Configuration::ParseConfiguration(bool warn)
 		streamingColorFormat = "jpeg";
 	else
 		streamingColorFormat = "jpeg"; // yeah
-	streamingColorFormat = "raw16";
+	streamingDepthFormat = "raw16";
 
 	// validate streaming entries
 	if (isStreamingColor && !requestColorCamera)

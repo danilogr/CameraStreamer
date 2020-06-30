@@ -192,6 +192,6 @@ public:
 	/**
 	 * Returns a summary of the application as a rapidjson document
 	 */
-	rapidjson::Document&& GetApplicationStatusJSON();
+	rapidjson::Document GetApplicationStatusJSON();
 
 };

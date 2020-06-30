@@ -9,7 +9,7 @@
 #include "Logger.h"
 
 
-rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
+rapidjson::Document ApplicationStatus::GetApplicationStatusJSON()
 {
 
 	rapidjson::Document applicationStatusJson;
@@ -41,7 +41,7 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 		applicationStatusJson.AddMember("streamingColorHeight", streamingHeight, allocator);
 		applicationStatusJson.AddMember("streamingColorFormat", rapidjson::Value().SetString(streamingColorFormat.c_str(), streamingColorFormat.length(), allocator), allocator);
 		applicationStatusJson.AddMember("streamingColorBitrate", streamingColorBitrate, allocator);
-		applicationStatusJson.AddMember("streamingDepth", isStreamingColor, allocator);
+		applicationStatusJson.AddMember("streamingDepth", isStreamingDepth, allocator);
 		applicationStatusJson.AddMember("streamingDepthWidth", streamingWidth, allocator);
 		applicationStatusJson.AddMember("streamingDepthHeight", streamingHeight, allocator);
 		applicationStatusJson.AddMember("streamingDepthFormat", rapidjson::Value().SetString(streamingDepthFormat.c_str(), streamingDepthFormat.length(), allocator), allocator);
@@ -59,5 +59,5 @@ rapidjson::Document&& ApplicationStatus::GetApplicationStatusJSON()
 		applicationStatusJson.AddMember("controlPort", controlPort, allocator);
 	}
 
-	return std::move(applicationStatusJson);
+	return applicationStatusJson;
 }

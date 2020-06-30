@@ -94,6 +94,7 @@ public:
 	Configuration() : streamerPort(0), controlPort(0),
 	streamingThrottleFPS(false), streamingJpegLengthValueProtocol(false), streamingMaxFPS(60),
 	streamingWidth(0), streamingHeight(0),
+	streamingColorFormat("jpg"), streamingDepthFormat("raw16"),
 	//streamingColorWidth(0), streamingColorHeight(0),
 	//streamingDepthWidth(0), streamingDepthHeight(0),
 	isStreamingColor(false), isStreamingDepth(false),
