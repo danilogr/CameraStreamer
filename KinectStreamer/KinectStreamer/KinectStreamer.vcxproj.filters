@@ -21,9 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="KinectStreamer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="RemoteControlServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -46,6 +43,9 @@
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
     <ClCompile Include="Configuration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraStreamer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

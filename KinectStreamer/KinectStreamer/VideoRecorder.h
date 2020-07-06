@@ -497,6 +497,7 @@ public:
 
 		// good to go!
 		io_service.post(std::bind(&VideoRecorder::InternalRecordFrame, this, timenow, color, depth));
+		return true;
 	}
 
 	// returns true if there is a recording in progresss

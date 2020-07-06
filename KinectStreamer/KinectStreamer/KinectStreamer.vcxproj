@@ -203,7 +203,7 @@
     <ClCompile Include="AzureKinect.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Configuration.cpp" />
-    <ClCompile Include="KinectStreamer.cpp" />
+    <ClCompile Include="CameraStreamer.cpp" />
     <ClCompile Include="RealSense.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
     <ClCompile Include="TCPStreamingServer.cpp" />
