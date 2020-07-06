@@ -36,6 +36,7 @@ rapidjson::Document ApplicationStatus::GetApplicationStatusJSON()
 		applicationStatusJson.AddMember("streaming", IsAppStreaming(), allocator);	  // true if streaming either color, depth, or both
 		applicationStatusJson.AddMember("streamingClients", streamingClients, allocator); // number of clients currently connected to the stream
 		applicationStatusJson.AddMember("streamingMaxFPS", streamingMaxFPS, allocator);	  // FPS of the stream
+		applicationStatusJson.AddMember("streamingCameraParameters", rapidjson::Value().SetString(calibrationMatrix.c_str(), calibrationMatrix.length(), allocator), allocator);
 		applicationStatusJson.AddMember("streamingColor", isStreamingColor, allocator);
 		applicationStatusJson.AddMember("streamingColorWidth", streamingWidth, allocator);
 		applicationStatusJson.AddMember("streamingColorHeight", streamingHeight, allocator);

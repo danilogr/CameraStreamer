@@ -113,8 +113,8 @@ class RemoteControlServer
 
 public:
 	RemoteControlServer(std::shared_ptr<ApplicationStatus> appStatus,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startKinectCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopKinectCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startCameraCallback,
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopCameraCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> startRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
@@ -123,8 +123,8 @@ public:
 	{
 	
 		using namespace std::placeholders; // for  _1, _2, ...
-		remoteCommandsCallbacks["startKinect"] = startKinectCallback;
-		remoteCommandsCallbacks["stopKinect"] = stopKinectCallback;
+		remoteCommandsCallbacks["startCamera"] = startCameraCallback;
+		remoteCommandsCallbacks["stopCamera"] = stopCameraCallback;
 		remoteCommandsCallbacks["startRecording"] = startRecordingCallback;
 		remoteCommandsCallbacks["stopRecording"] = stopRecordingCallback;
 		remoteCommandsCallbacks["shutdown"] = shutdownCallback;

@@ -55,6 +55,10 @@ protected:
 	// true if the camera is currently running / receiving fraems
 	bool isCameraDepthRunning, isCameraColorRunning;
 
+	// the calibration matrix of the camera currently running
+	std::string calibrationMatrix;
+
+
 	
 
 public:
@@ -152,7 +156,7 @@ public:
 	 * Updates the application status internally (streaming)
 	 */
 	void UpdateCaptureStatus(bool isColorCameraRunning, bool isDepthCameraRunning,
-		const std::string& sn = std::string(),
+		const std::string& sn = std::string(), const std::string& calibrationMatrix = std::string(),
 		int colorCameraWidth = 0, int colorCameraHeight = 0,
 		int depthCameraWidth = 0, int depthCameraHeight = 0,
 		int streamWidth = 0, int streamHeight = 0)
@@ -177,6 +181,9 @@ public:
 		// resolution stream
 		this->streamingWidth  = streamWidth;
 		this->streamingHeight = streamHeight;
+
+		// calibration matrix
+		this->calibrationMatrix = calibrationMatrix;
 
 	}
 

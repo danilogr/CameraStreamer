@@ -252,7 +252,8 @@ void AzureKinect::CameraLoop()
 
 			// updates app with capture and stream status
 			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,
-				
+				OpenCVCameraMatrix(colorCameraEnabled ? colorCameraParameters : depthCameraParameters),
+
 				// color camera
 				colorCameraEnabled ? colorCameraParameters.resolutionWidth : 0,
 				colorCameraEnabled ? colorCameraParameters.resolutionHeight : 0,

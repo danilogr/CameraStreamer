@@ -204,16 +204,9 @@ protected:
 			}
 		}
 
-		// erases thread info
-		thread_running = false;
-		sThread = nullptr;
-
-		// were devices running?
-		if (IsAnyCameraEnabled())
-		{
-			depthCameraEnabled = false;
-			colorCameraEnabled = false;
-		}
+		// This should not happen because this method
+		// is running within the thread!
+		//sThread = nullptr;
 	}
 
 
@@ -315,6 +308,10 @@ public:
 	// Adjust the camera exposure
 	virtual bool AdjustExposureBy(int exposure_level) = 0;
 
+
+	// Returns a json file with a valid OpenCV camera intrinsic matrix
+	virtual const std::string& OpenCVCameraMatrix(const CameraParameters& param);
+
 	// Prints camera parameters
 	virtual void PrintCameraIntrinsics()
 	{
@@ -336,7 +333,7 @@ public:
 			Logger::Log("Camera") << "[Depth] k6: " << depthCameraParameters.intrinsics.k6 << std::endl;
 			Logger::Log("Camera") << "[Depth] tangential distortion coefficient x: " << depthCameraParameters.intrinsics.p1 << std::endl;
 			Logger::Log("Camera") << "[Depth] tangential distortion coefficient y: " << depthCameraParameters.intrinsics.p2 << std::endl;
-			Logger::Log("Camera") << "[Depth] metric radius (intrinsics): " << depthCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
+			Logger::Log("Camera") << "[Depth] metric radius (intrinsics): " << depthCameraParameters.intrinsics.metricRadius << std::endl;
 			Logger::Log("Camera") << "[Depth] metric radius (to meters): " << depthCameraParameters.intrinsics.metricScale << std::endl << std::endl;
 
 		}
@@ -361,6 +358,8 @@ public:
 			Logger::Log("Camera") << "[Color] tangential distortion coefficient y: " << colorCameraParameters.intrinsics.p2 << std::endl;
 			Logger::Log("Camera") << "[Color] metric radius (intrinsics): " << colorCameraParameters.intrinsics.metricRadius << std::endl << std::endl;
 		}
+
+		
 	}
 
 	// Camera paremeters
