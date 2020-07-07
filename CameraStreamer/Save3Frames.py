@@ -76,6 +76,7 @@ while cameraIsStreaming != True:
        CameraParameters = json.loads(msg["streamingCameraParameters"])
        CameraParameters["cameraType"] = msg["captureDeviceType"]
        CameraParameters["cameraSN"] = msg["captureDeviceSerial"]
+       CameraParameters["filePrefix"] = CAMERA
        print("[%s] - Camera parameters: %s" % (CAMERA, CameraParameters))
        with open("%s-param.json"%CAMERA,"w") as f:
            f.write(json.dumps(CameraParameters, indent=2))
@@ -117,7 +118,7 @@ while frameCount > 0:
   # show depth if enabled
   if (depthLen > 0):
     deptharray = np.fromstring(depthData, np.uint16).reshape(height,width)
-    with open("%s-depth-%d.bin" % (CAMERA,2-frameCount), "wb") as f:
+    with open("%s-depth-%d.bin" % (CAMERA,3-frameCount), "wb") as f:
       np.save(f, deptharray)
     cv2.imshow('Depth', cv2.normalize(deptharray, dst=None, alpha=0, beta=65535, norm_type=cv2.NORM_MINMAX))
 
