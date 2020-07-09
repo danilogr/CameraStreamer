@@ -341,13 +341,13 @@ public:
 		}
 
 		// can we record? what's the resolution so far
-		if (color && appStatus->IsColorCameraEnabled())
+		if (color && !appStatus->IsColorCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
 			return false;
 		}
 
-		if (depth && appStatus->IsDepthCameraEnabled())
+		if (depth && !appStatus->IsDepthCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
 			return false;

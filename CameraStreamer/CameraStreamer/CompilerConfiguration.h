@@ -12,3 +12,8 @@
 #define ENABLE_RS2 1 // real sense api
 
 #define ENABLE_REPLAY_CAMERA 1 // camera that can help measuring latency
+
+
+// future work
+//#define ENABLE_NETWORK_RELAY_CAMERA  // camera that relays content from the network
+//#define ENABLE_DVI2USB_CAMERA		   // DVI2USB camera

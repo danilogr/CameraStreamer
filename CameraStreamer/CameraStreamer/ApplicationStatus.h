@@ -126,8 +126,8 @@ public:
 	bool IsAppCapturing() const { return isCameraDepthRunning || isCameraColorRunning;  }
 	float GetCurrentStreamingFPS() const { return streamingCurrentFPS;  }
 
-	bool IsDepthCameraEnabled() const { return requestDepthCamera; }
-	bool IsColorCameraEnabled() const { return requestColorCamera; }
+	bool IsDepthCameraEnabled() const { return isCameraDepthRunning; }
+	bool IsColorCameraEnabled() const { return isCameraColorRunning; }
 	//bool IsInfraredCameraEnabled() const { return requestInfraredCamera; }
 	
 

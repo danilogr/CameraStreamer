@@ -8,6 +8,9 @@ const unsigned int VERSION_PATCH = 8;
 // 0.9.8
 // Configuration
 // - Reports missing configuration fields with more context. e.g., "camera.type" instead of "type"
+// 
+// VideoRecorder
+// - Fixed bug that would prevent recording from working
 
 // 0.9.7
 // Camera:
