@@ -10,14 +10,14 @@
 
 const char* Configuration::ConfigNameStr = "Config";
 
-#define ReadJSONDefaultLong(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetUint64(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
-#define ReadJSONDefaultInt(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetInt(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
-#define ReadJSONDefaultFloat(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetFloat(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid float! Using default: " << defaultvalue  << std::endl; } }
-#define ReadJSONDefaultBool(d,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid boolean! Using default: " << defaultvalue  << std::endl; } }
-#define ReadJSONDefaultString(d,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
+#define ReadJSONDefaultLong(d,dname,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetUint64(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""##dname##"."<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
+#define ReadJSONDefaultInt(d,dname,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetInt(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""##dname##"."<< name << "\" should have a valid integer! Using default: " << defaultvalue << std::endl; } }
+#define ReadJSONDefaultFloat(d,dname,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsNumber()) { destination = d[name].GetFloat(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""##dname##"."<< name << "\" should have a valid float! Using default: " << defaultvalue  << std::endl; } }
+#define ReadJSONDefaultBool(d,dname,name,destination,defaultvalue,warn) if (d.HasMember(name) && d[name].IsBool()) { destination = d[name].GetBool(); } else { destination = defaultvalue; if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""##dname##"."<< name << "\" should have a valid boolean! Using default: " << defaultvalue  << std::endl; } }
+#define ReadJSONDefaultString(d,dname,name,destination,defaultvalue,warn) if (d.HasMember(name)) { destination = d[name].GetString(); } else { destination = defaultvalue;  if (warn) { Logger::Log(ConfigNameStr) << "Error! Element \""##dname##"."<< name << "\" should have a valid string! Using default: " << defaultvalue << std::endl; } }
 
 
-bool  Configuration::LoadConfiguration(const std::string& filepath)
+bool Configuration::LoadConfiguration(const std::string& filepath)
 {
 	bool successReading = true;
 	// blocks anyone from reading from ApplicationStatus while we are reading from file
@@ -82,6 +82,12 @@ bool  Configuration::LoadConfiguration(const std::string& filepath)
 
 		if (successReading)
 			Logger::Log(ConfigNameStr) << "Loaded configuration file: " << filepath << std::endl;
+		else
+		{
+			// create empty valid rapidjson files
+			parsedConfigurationFile.SetObject();
+			parsedCameraConfigurationFile.SetObject();
+		}
 	}
 
 	return successReading;
@@ -96,8 +102,8 @@ void  Configuration::ParseConfiguration(bool warn)
 	currentDoc.SetObject();
 
 	// ports
-	ReadJSONDefaultInt(parsedConfigurationFile, "streamerPort", streamerPort, 3614, true);
-	ReadJSONDefaultInt(parsedConfigurationFile, "controlPort", controlPort, 6606, true);
+	ReadJSONDefaultInt(parsedConfigurationFile, "", "streamerPort", streamerPort, 3614, true);
+	ReadJSONDefaultInt(parsedConfigurationFile, "", "controlPort", controlPort, 6606, true);
 
 	// =======================================================================================
 	// camera
@@ -112,13 +118,13 @@ void  Configuration::ParseConfiguration(bool warn)
 	}
 	
 	// Actual camera type: Very important!
-	ReadJSONDefaultString(currentDoc, "type", cameraType, "k4a", true); 
+	ReadJSONDefaultString(currentDoc, "camera", "type", cameraType, "k4a", true); 
 
 	// this is just for debugging / logging purposes
-	ReadJSONDefaultString(currentDoc, "name", cameraUserDefinedName, "", false);
+	ReadJSONDefaultString(currentDoc, "camera", "name", cameraUserDefinedName, "", false);
 
 	// no need to warn when camera name is not present
-	ReadJSONDefaultLong(currentDoc, "frameTimeoutMS", cameraFrameCaptureTimeout, 1000, false);
+	ReadJSONDefaultLong(currentDoc, "camera", "frameTimeoutMS", cameraFrameCaptureTimeout, 1000, false);
 
 	if (cameraFrameCaptureTimeout < 33)
 	{
@@ -126,24 +132,24 @@ void  Configuration::ParseConfiguration(bool warn)
 		cameraFrameCaptureTimeout = 1000;
 	}
 
-	ReadJSONDefaultBool(currentDoc, "requestColor", requestColorCamera, true, warn);
+	ReadJSONDefaultBool(currentDoc, "camera", "requestColor", requestColorCamera, true, warn);
 	
 	if (requestColorCamera)
 	{
-		ReadJSONDefaultInt(currentDoc, "colorWidth", cameraColorWidth, 1280, warn);
-		ReadJSONDefaultInt(currentDoc, "colorHeight", cameraColorHeight, 720, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "colorWidth", cameraColorWidth, 1280, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "colorHeight", cameraColorHeight, 720, warn);
 	}
 
-	ReadJSONDefaultBool(currentDoc, "requestDepth", requestDepthCamera, true, warn);
+	ReadJSONDefaultBool(currentDoc, "camera", "requestDepth", requestDepthCamera, true, warn);
 
 	if (requestDepthCamera)
 	{
-		ReadJSONDefaultInt(currentDoc, "depthWidth", cameraDepthWidth, 640, warn);
-		ReadJSONDefaultInt(currentDoc, "depthHeight", cameraDepthHeight, 576, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "depthWidth", cameraDepthWidth, 640, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "depthHeight", cameraDepthHeight, 576, warn);
 	}
 
 	// should we force a specific camera serial number?
-	ReadJSONDefaultString(currentDoc, "serialNumber", cameraSerial, std::string(), false);
+	ReadJSONDefaultString(currentDoc, "camera", "serialNumber", cameraSerial, std::string(), false);
 	if (!cameraSerial.empty())
 	{
 		requestFirstCameraAvailable = false; // depending on camera implementation, this will force the application to use a specific camera
@@ -151,6 +157,8 @@ void  Configuration::ParseConfiguration(bool warn)
 	else {
 		requestFirstCameraAvailable = true;
 	}
+
+	parsedCameraConfigurationFile = currentDoc;
 
 
 	// =======================================================================================
@@ -167,14 +175,14 @@ void  Configuration::ParseConfiguration(bool warn)
 	}
 
 	// this is an optional parameter
-	ReadJSONDefaultBool(currentDoc, "streamJPEGLengthValue", streamingJpegLengthValueProtocol, false, false);
+	ReadJSONDefaultBool(currentDoc, "streaming", "streamJPEGLengthValue", streamingJpegLengthValueProtocol, false, false);
 
 	if (!streamingJpegLengthValueProtocol)
 	{
-		ReadJSONDefaultBool(currentDoc, "streamColor", isStreamingColor, true, warn);
+		ReadJSONDefaultBool(currentDoc, "streaming", "streamColor", isStreamingColor, true, warn);
 		//ReadJSONDefaultIntNotSupported(currentDoc, "width", streamingWidth, 1280, warn);
 		//ReadJSONDefaultIntNotSupported(currentDoc, "height", streamingHeight, 720, warn);
-		ReadJSONDefaultBool(currentDoc, "streamDepth", isStreamingDepth, true, warn);
+		ReadJSONDefaultBool(currentDoc, "streaming", "streamDepth", isStreamingDepth, true, warn);
 	}
 	else {
 		// streamJPEGTLV forces the old JPEG streaming protocol --> it only supports color
@@ -220,6 +228,80 @@ void  Configuration::ParseConfiguration(bool warn)
 
 }
 
+
+std::string Configuration::GetCameraCustomString(const std::string& fieldName, const std::string& defaultVal, bool warn)
+{
+	const char* fieldNameChar = fieldName.c_str();
+
+	if (parsedCameraConfigurationFile.HasMember(fieldNameChar) && parsedCameraConfigurationFile[fieldNameChar].IsString())
+	{
+		return parsedCameraConfigurationFile[fieldNameChar].GetString();
+	}
+	else {
+		if (warn)
+		{
+			Logger::Log(ConfigNameStr) << "Error! Element \"camera." << fieldName << "\" should have a valid string! Using default: " << defaultVal << std::endl;
+		}
+
+		return defaultVal;
+	}
+	
+}
+
+bool Configuration::GetCameraCustomBool(const std::string& fieldName, bool defaultValue, bool warn)
+{
+
+	const char* fieldNameChar = fieldName.c_str();
+
+	if (parsedCameraConfigurationFile.HasMember(fieldNameChar) && parsedCameraConfigurationFile[fieldNameChar].IsBool())
+	{
+		return parsedCameraConfigurationFile[fieldNameChar].GetBool();
+	}
+	else {
+		if (warn)
+		{
+			Logger::Log(ConfigNameStr) << "Error! Element \"camera." << fieldName << "\" should have a valid boolean! Using default: " << defaultValue << std::endl;
+		}
+
+		return defaultValue;
+	}
+}
+
+int Configuration::GetCameraCustomInt(const std::string& fieldName, int defaultValue, bool warn)
+{
+	const char* fieldNameChar = fieldName.c_str();
+
+	if (parsedCameraConfigurationFile.HasMember(fieldNameChar) && parsedCameraConfigurationFile[fieldNameChar].IsNumber())
+	{
+		return parsedCameraConfigurationFile[fieldNameChar].GetInt();
+	}
+	else {
+		if (warn)
+		{
+			Logger::Log(ConfigNameStr) << "Error! Element \"camera." << fieldName << "\" should have a valid number! Using default: " << defaultValue << std::endl;
+		}
+
+		return defaultValue;
+	}
+}
+
+float Configuration::GetCameraCustomFloat(const std::string& fieldName, float defaultValue, bool warn)
+{
+	const char* fieldNameChar = fieldName.c_str();
+
+	if (parsedCameraConfigurationFile.HasMember(fieldNameChar) && parsedCameraConfigurationFile[fieldNameChar].IsFloat())
+	{
+		return parsedCameraConfigurationFile[fieldNameChar].GetFloat();
+	}
+	else {
+		if (warn)
+		{
+			Logger::Log(ConfigNameStr) << "Error! Element \"camera." << fieldName << "\" should have a valid float! Using default: " << defaultValue << std::endl;
+		}
+
+		return defaultValue;
+	}
+}
 
 
 bool Configuration::SaveConfiguration(const std::string& filepath)

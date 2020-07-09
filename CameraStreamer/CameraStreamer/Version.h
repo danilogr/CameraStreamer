@@ -3,7 +3,11 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 0; // breaking changes
 const unsigned int VERSION_MINOR = 9;
-const unsigned int VERSION_PATCH = 7;
+const unsigned int VERSION_PATCH = 8;
+
+// 0.9.8
+// Configuration
+// - Reports missing configuration fields with more context. e.g., "camera.type" instead of "type"
 
 // 0.9.7
 // Camera:
