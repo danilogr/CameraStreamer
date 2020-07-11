@@ -192,7 +192,8 @@ class VideoRecorder
 			{
 				try
 				{
-					cv::Mat frame(colorFrame->getHeight(), colorFrame->getWidth() , CV_8UC4, colorFrame->getData());
+					unsigned int type = (colorFrame->getPixelLen() == 3) ? CV_8UC3 : CV_8UC4;
+					cv::Mat frame(colorFrame->getHeight(), colorFrame->getWidth() , type, colorFrame->getData());
 					colorVideoWriter.write(frame);
 					++internalColorFramesRecorded;
 				}
