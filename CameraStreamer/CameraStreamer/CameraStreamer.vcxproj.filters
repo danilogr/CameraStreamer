@@ -62,9 +62,6 @@
     <ClInclude Include="Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Statistics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="RemoteControlServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -100,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="TCPRelayCamera.h">
       <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkStatistics.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

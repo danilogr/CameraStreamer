@@ -20,7 +20,7 @@
 
 #include "ApplicationStatus.h"
 #include "Logger.h"
-#include "Statistics.h"
+#include "NetworkStatistics.h"
 
 using boost::asio::ip::tcp;
 
@@ -34,7 +34,7 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	RemoteControlServer& server;
 
 	// keeps track of messages received and sent
-	Statistics statistics;
+	NetworkStatistics statistics;
 
 	// read buffer
 	boost::asio::streambuf request;

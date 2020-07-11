@@ -222,7 +222,7 @@
     <ClInclude Include="Logger.h" />
     <ClInclude Include="RealSense.h" />
     <ClInclude Include="RemoteControlServer.h" />
-    <ClInclude Include="Statistics.h" />
+    <ClInclude Include="NetworkStatistics.h" />
     <ClInclude Include="TCPRelayCamera.h" />
     <ClInclude Include="TCPStreamingServer.h" />
     <ClInclude Include="Version.h" />

@@ -16,7 +16,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "Logger.h"
-#include "Statistics.h"
+#include "NetworkStatistics.h"
 #include "Configuration.h"
 #include "ApplicationStatus.h"
 
@@ -229,7 +229,7 @@ private:
 	// set with all clients currently connected to the server
 	std::set<std::shared_ptr< tcp::socket> > clients;
 	std::map < std::shared_ptr< tcp::socket>, std::queue < std::shared_ptr < std::vector<uchar> > > > clientsQs;
-	std::map < std::shared_ptr< tcp::socket>, Statistics > clientsStatistics;
+	std::map < std::shared_ptr< tcp::socket>, NetworkStatistics > clientsStatistics;
 	std::mutex clientSetMutex;
 
 	// this method implements the main thread for TCPStreamingServer
@@ -289,7 +289,7 @@ private:
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
 			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
-			clientsStatistics[newClient] = Statistics();								// starts trackings stats for this client
+			clientsStatistics[newClient] = NetworkStatistics();								// starts trackings stats for this client
 			clientsStatistics[newClient].remoteAddress = newClient->remote_endpoint().address().to_string();
 			clientsStatistics[newClient].remotePort = newClient->remote_endpoint().port();
 
