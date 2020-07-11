@@ -27,8 +27,8 @@ RemoteClient::~RemoteClient()
 
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Client disconnected" << std::endl;
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] "
-		<< statistics.bytesSent << " bytes (" << statistics.packetsSent << " messages sent and " << statistics.packetsDropped << " dropped) -"
-		<< statistics.bytesReceived << " bytes (" << statistics.packetsReceived << " messages received) -"
+		<< statistics.bytesSent << " bytes (" << statistics.messagesSent << " messages sent and " << statistics.messagesDropped << " dropped) -"
+		<< statistics.bytesReceived << " bytes (" << statistics.messagesReceived << " messages received) -"
 		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connected).count() / 1000.0f << " sec" << std::endl;
 }
 
@@ -50,7 +50,7 @@ void RemoteClient::close()
 		if (server.io_service.stopped())
 		{
 			// add a new count of packets dropped
-			statistics.packetsDropped += outputMessageQ.size();
+			statistics.messagesDropped += outputMessageQ.size();
 		}
 	}
 }
@@ -103,7 +103,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 	if (error || !client->socket)
 	{
 		// update statistics (we are going to drop this and other messages that were enqueued)
-		client->statistics.packetsDropped += client->outputMessageQ.size() + 1; // accounts for this message
+		client->statistics.messagesDropped += client->outputMessageQ.size() + 1; // accounts for this message
 
 		// clears the queue
 		while (client->outputMessageQ.size() > 0)
@@ -118,7 +118,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 	// pops the last read
 	client->outputMessageQ.pop();
 
-	client->statistics.packetsSent++;
+	client->statistics.messagesSent++;
 	
 	// moves on with next writes
 	write_next_message(client);
@@ -154,7 +154,7 @@ void RemoteClient::write_request(std::shared_ptr<RemoteClient> client, std::shar
 	// is the client still connected?
 	if (!client->socket)
 	{
-		++client->statistics.packetsDropped; // whoops
+		++client->statistics.messagesDropped; // whoops
 		return;
 	}
 
@@ -271,7 +271,7 @@ void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::
 	}
 
 	// everything went well. this counts as a message
-	++client->statistics.packetsReceived;
+	++client->statistics.messagesReceived;
 
 	// parse message 
 	client->server.ParseMessage(buffer, client);

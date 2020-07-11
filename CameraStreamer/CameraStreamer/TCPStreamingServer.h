@@ -85,7 +85,7 @@ public:
 			try
 			{
 				// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
-				clientsStatistics[client].packetsDropped += clientsQs[client].size();
+				clientsStatistics[client].messagesDropped += clientsQs[client].size();
 				client->close();
 			}
 			catch (std::exception e)
@@ -95,7 +95,7 @@ public:
 
 			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << ":"
-				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
+				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << "packets sent; " << clientsStatistics[client].messagesDropped << " dropped) -"
 				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 		}
 
@@ -200,7 +200,7 @@ public:
 				while (clientsQs[client].size() > 1)
 				{
 					clientsQs[client].pop();
-					clientsStatistics[client].packetsDropped++;
+					clientsStatistics[client].messagesDropped++;
 				}
 
 				// adds message to client Q
@@ -312,11 +312,11 @@ private:
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
 				if (clients.find(client) != clients.end())
 				{
-					clientsStatistics[client].packetsDropped++;
+					clientsStatistics[client].messagesDropped++;
 
 					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " --> "
-						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
+						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << " packets sent and " << clientsStatistics[client].messagesDropped << " dropped) -"
 						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
 					
 					clientsQs.erase(client);
@@ -329,7 +329,7 @@ private:
 
 		// pops the last read
 		clientsQs[client].pop();
-		clientsStatistics[client].packetsSent++;
+		clientsStatistics[client].messagesSent++;
 		clientsStatistics[client].bytesSent += bytes_transferred;
 
 		// moves on
