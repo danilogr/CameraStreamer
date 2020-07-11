@@ -1,11 +1,12 @@
 #include "RealSense.h"
 
-#include <sstream>
-
 // we have compilation flags that determine whether this feature
 // is supported or not
 #include "CompilerConfiguration.h"
 #ifdef ENABLE_RS2
+
+// includes that only get compiled if the camera is enabled
+#include <sstream>
 
 // name used in logs
 const char* RealSense::RealSenseConstStr = "RealSense2";

@@ -207,6 +207,7 @@
     <ClCompile Include="ReplayCamera.cpp" />
     <ClCompile Include="RealSense.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
+    <ClCompile Include="TCPRelayCamera.cpp" />
     <ClCompile Include="TCPStreamingServer.cpp" />
     <ClCompile Include="VideoRecorder.cpp" />
   </ItemGroup>
@@ -222,6 +223,7 @@
     <ClInclude Include="RealSense.h" />
     <ClInclude Include="RemoteControlServer.h" />
     <ClInclude Include="Statistics.h" />
+    <ClInclude Include="TCPRelayCamera.h" />
     <ClInclude Include="TCPStreamingServer.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="VideoRecorder.h" />
