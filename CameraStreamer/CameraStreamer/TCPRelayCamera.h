@@ -5,6 +5,8 @@
 #include "CompilerConfiguration.h"
 #ifdef ENABLE_TCPCLIENT_RELAY_CAMERA
 
+// stl
+#include <string>
 
 // our framework
 #include "Logger.h"
@@ -12,6 +14,10 @@
 #include "ApplicationStatus.h"
 #include "Frame.h"
 #include "Camera.h"
+
+// boost requirements for this camera
+#include <boost/asio.hpp>
+
 
 /**
   TCP Relay camera relays incoming streams (yuv, rgb, jpeg, etc...)
@@ -24,26 +30,53 @@
   * requestColor: true -> should forward color if available
   * requestDepth: depth -> should forward depth if available
 
-  Custom configuration elements:
+  TCPRelayCamera-specific configuration elements (All required):
   * host: URI this camera should connect to
   * port: port used to connect
   * headerType: string describing the header this camera should parse
-                "CameraStreamer", "JPEGLengthValue",
-                
-                
-  In the future, we could support a custom header format or something like:  "None"
+                "CameraStreamer", "LengthWidthHeight", "JPEGLengthValue", "Length", "None"
+
+  * colorFormat: string describing what this camera should expect in the content
+                 (content type is ignored and set to JPEG when using JPEGLengthValue)
+			e.g.: "yuv422", "rgb", "bgr", "rgba", "bgra" , "jpeg", "none" (when no color is expected)
+
+  * depthFormat: string describing what this camera should expect in the content
+				 (content type is ignored and set to None when using JPEGLengthValue)
+		    e.g.: "raw16", "raw8", "none"
+
+
+  In order to save video files, CameraStreamer **cannot** act as a blind relay server.
+  Thus, for combinations such as headerType = "Length" and colorFormat="rgb", 
+  we need to know the dimensions of the frame ahead of time.
+             
+  In the future, we could support that by asking for a few additional configuration details:
 
   (todo)
       Configuration settings only used when the header is None:
       * colorFirst: true if we should read color first
-      * colorType: string -> RGB, RBG, YUV422, RGBA
-      * depthType: string -> raw8, raw16
       * colorWidth x colorHeight: -> how many bytes to read for color
       * depthWidth x depthHeight: -> how many bytes to read for depth
   (todo)  
+
+
+  Alternatively, we could provide a grammar for network protocol description. Something much simpler
+  than ProtocolBuf with pre-defined keywords. E.g.:
+
+  packet = "[TotalLength:4][ColorWidth:4][ColorHeight:4][ColorFrame:ColorWidthxColorHeightx3]"
+
+  for now, we cover basic use cases required in our research
+
  */
 class TCPRelayCamera : public Camera
 {
+	// hostAddr as found in the configuration file
+	std::string hostAddr;
+
+	// hostPort as found in the configuration file
+	int hostPort;
+
+	// where we should connect to
+	boost::asio::ip::tcp::endpoint hostEndpoint;
 
 protected:
 
