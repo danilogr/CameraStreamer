@@ -41,7 +41,7 @@ class ReplayCamera : public Camera
 protected:
 
 	// method that finds a suitable camera given what is set in the app status
-	bool LoadConfigurationSettings();
+	virtual bool LoadConfigurationSettings();
 
 	// camera loop responsible for receiving frames, transforming them, and invoking callbacks
 	virtual void CameraLoop();

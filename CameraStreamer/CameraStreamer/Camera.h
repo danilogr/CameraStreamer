@@ -215,6 +215,23 @@ protected:
 	typedef std::function<void()> CameraConnectedCallback;
 	typedef std::function<void()> CameraDisconnectedCallback;
 
+	// method used to parse configuration settings
+	// other camera classes should extend to add implementation specific settings
+
+	virtual bool LoadConfigurationSettings()
+	{
+		// camera frame timeout
+		getFrameTimeoutMSInt = configuration->GetCameraFrameTimeoutMs();
+		getFrameTimeout = configuration->GetCameraFrameTimoutMsChrono();
+
+		// are we looking for a specific camera? let users know and avoid confusion
+		if (!configuration->UseFirstCameraAvailable())
+		{
+			Logger::Log("Camera") << "Attention: This application is looking for a " << configuration->GetCameraType() << " camera with SN " << configuration->GetCameraSN() << std::endl;
+		}
+
+		return true;
+	}
 
 public:
 
@@ -230,15 +247,6 @@ public:
 	// constructor explicitly defining a configuration file (as well as appStatus)
 	Camera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : currentExposure(0), currentGain(0), appStatus(appStatus), configuration(configuration), thread_running(false), depthCameraEnabled(false), colorCameraEnabled(false), getFrameTimeout(1000), getFrameTimeoutMSInt(1000)
 	{
-		// camera frame timeout
-		getFrameTimeoutMSInt = configuration->GetCameraFrameTimeoutMs();
-		getFrameTimeout = configuration->GetCameraFrameTimoutMsChrono();
-
-		// are we looking for a specific camera? let users know and avoid confusion
-		if (!configuration->UseFirstCameraAvailable())
-		{
-			Logger::Log("Camera") << "Attention: This application is looking for a " << configuration->GetCameraType() << " camera with SN " << configuration->GetCameraSN() << std::endl;
-		}
 	}
 
 	~Camera()

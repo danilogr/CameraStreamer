@@ -13,89 +13,95 @@ const char* RealSense::RealSenseConstStr = "RealSense2";
 
 bool RealSense::LoadConfigurationSettings()
 {
-	// blank slate
-	rs2Configuration.disable_all_streams();
-
-	// get current list of devices
-	std::set<std::string> devicesConnected = RealSense::ListDevices();
-
-	// do we have a specific serial number we are looking for?
-	if (!configuration->UseFirstCameraAvailable())
+	// makes sure to invoke base class implementation of settings
+	if (Camera::LoadConfigurationSettings())
 	{
-		if (devicesConnected.find(configuration->GetCameraSN()) == devicesConnected.cend())
-		{
-			Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << configuration->GetCameraSN() << "\" not available!" << std::endl;
 
-			std::stringstream deviceList;
-			int lastDevice = devicesConnected.size();
-			for (const std::string& sn : devicesConnected)
+		// blank slate
+		rs2Configuration.disable_all_streams();
+
+		// get current list of devices
+		std::set<std::string> devicesConnected = RealSense::ListDevices();
+
+		// do we have a specific serial number we are looking for?
+		if (!configuration->UseFirstCameraAvailable())
+		{
+			if (devicesConnected.find(configuration->GetCameraSN()) == devicesConnected.cend())
 			{
-				lastDevice--;
-				deviceList << sn << (lastDevice ? ',' : '.');
+				Logger::Log(RealSenseConstStr) << "ERROR! Selected device \"" << configuration->GetCameraSN() << "\" not available!" << std::endl;
+
+				std::stringstream deviceList;
+				int lastDevice = devicesConnected.size();
+				for (const std::string& sn : devicesConnected)
+				{
+					lastDevice--;
+					deviceList << sn << (lastDevice ? ',' : '.');
+				}
+
+				Logger::Log(RealSenseConstStr) << "Devices connected: " << deviceList.str() << std::endl;
+
+
+				return false; // we cannot test configuration if the device is not available :(
 			}
 
-			Logger::Log(RealSenseConstStr) << "Devices connected: " << deviceList.str() << std::endl;
+			// device is available! yay
+			rs2Configuration.enable_device(configuration->GetCameraSN());
+		}
+		else {
+			if (devicesConnected.size() == 0)
+			{
+				Logger::Log(RealSenseConstStr) << "ERROR! No devices available...." << std::endl;
+				return false;
+			}
 
-		
-			return false; // we cannot test configuration if the device is not available :(
+			// get the first device available
+			cameraSerialNumber = *devicesConnected.cbegin();
+			rs2Configuration.enable_device(cameraSerialNumber);
+
 		}
 
-		// device is available! yay
-		rs2Configuration.enable_device(configuration->GetCameraSN());
-	}
-	else {
-		if (devicesConnected.size() == 0)
+		// first figure out which cameras have been loaded
+		if (configuration->IsColorCameraEnabled())
 		{
-			Logger::Log(RealSenseConstStr) << "ERROR! No devices available...." << std::endl;
+			rs2Configuration.enable_stream(RS2_STREAM_COLOR, configuration->GetCameraColorWidth(), configuration->GetCameraColorHeight(), RS2_FORMAT_BGR8, 30);
+		}
+		else {
+			rs2Configuration.disable_stream(RS2_STREAM_COLOR);
+		}
+
+		// then figure out depth
+		if (configuration->IsDepthCameraEnabled())
+		{
+			rs2Configuration.enable_stream(RS2_STREAM_DEPTH, configuration->GetCameraDepthWidth(), configuration->GetCameraDepthHeight(), RS2_FORMAT_Z16, 30);
+		}
+		else {
+			// camera is off
+			rs2Configuration.disable_stream(RS2_STREAM_DEPTH);
+		}
+
+		// now, let's make sure that this configuration is valid!
+		if (!rs2Configuration.can_resolve(realsensePipeline))
+		{
+			Logger::Log(RealSenseConstStr) << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
+			cameraSerialNumber = std::string();
 			return false;
 		}
 
-		// get the first device available
-		cameraSerialNumber = *devicesConnected.cbegin();
-		rs2Configuration.enable_device(cameraSerialNumber);
-		
-	}
 
-	// first figure out which cameras have been loaded
-	if (configuration->IsColorCameraEnabled())
-	{
-		rs2Configuration.enable_stream(RS2_STREAM_COLOR, configuration->GetCameraColorWidth(), configuration->GetCameraColorHeight(), RS2_FORMAT_BGR8, 30);
-	}
-	else {
-		rs2Configuration.disable_stream(RS2_STREAM_COLOR);
-	}
+		if (configuration->IsDepthCameraEnabled())
+		{
+			// add filters (todo: make them configurable)
+			dec_filter = std::make_shared<rs2::decimation_filter>(1.0f); // Decimation - reduces depth frame density
+			spat_filter = std::make_shared<rs2::spatial_filter>();       // Spatial    - edge-preserving spatial smoothing
+			temp_filter = std::make_shared<rs2::temporal_filter>();      // Temporal   - reduces temporal noise
 
-	// then figure out depth
-	if (configuration->IsDepthCameraEnabled())
-	{
-		rs2Configuration.enable_stream(RS2_STREAM_DEPTH, configuration->GetCameraDepthWidth(), configuration->GetCameraDepthHeight(), RS2_FORMAT_Z16, 30);
+			depth_to_disparity = std::make_shared<rs2::disparity_transform>(true);
+			disparity_to_depth = std::make_shared<rs2::disparity_transform>(false);
+		}
+
+		return true;
 	}
-	else {
-		// camera is off
-		rs2Configuration.disable_stream(RS2_STREAM_DEPTH);
-	}
-
-	// now, let's make sure that this configuration is valid!
-	if (!rs2Configuration.can_resolve(realsensePipeline))
-	{
-		Logger::Log(RealSenseConstStr) << "ERROR! Could not initialize a device with the provided settings!" << std::endl;
-		cameraSerialNumber = std::string();
-		return false;
-	}
-
-
-	if (configuration->IsDepthCameraEnabled())
-	{
-		// add filters (todo: make them configurable)
-		dec_filter = std::make_shared<rs2::decimation_filter>(1.0f); // Decimation - reduces depth frame density
-		spat_filter = std::make_shared<rs2::spatial_filter>();       // Spatial    - edge-preserving spatial smoothing
-		temp_filter = std::make_shared<rs2::temporal_filter>();      // Temporal   - reduces temporal noise
-
-		depth_to_disparity = std::make_shared<rs2::disparity_transform>(true);
-		disparity_to_depth = std::make_shared<rs2::disparity_transform>(false);
-	}
-
-	return true;
+	return false;
 }
 
 void RealSense::CameraLoop()

@@ -28,7 +28,7 @@
   Generic configuration settings implemented:
   * type : "replay"
   * requestColor: true -> should forward color if available
-  * requestDepth: depth -> should forward depth if available
+  * requestDepth: true -> should forward depth if available
 
   TCPRelayCamera-specific configuration elements (All required):
   * host: URI this camera should connect to
@@ -78,6 +78,10 @@ class TCPRelayCamera : public Camera
 	// where we should connect to
 	boost::asio::ip::tcp::endpoint hostEndpoint;
 
+
+	// header size in bytes
+	unsigned int headerSize;
+
 protected:
 
 	// method that finds a suitable camera given what is set in the app status
@@ -99,7 +103,8 @@ public:
 		return std::make_shared<TCPRelayCamera>(appStatus, configuration);
 	}
 
-	TCPRelayCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration)
+	TCPRelayCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration),
+		hostPort(0), headerSize(0)
 	{
 
 	}
