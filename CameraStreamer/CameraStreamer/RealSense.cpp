@@ -108,7 +108,6 @@ void RealSense::CameraLoop()
 {
 	Logger::Log(RealSenseConstStr) << "Started Real Sense polling thread: " << std::this_thread::get_id << std::endl;
 
-	bool didWeEverInitializeTheCamera = false;
 	// if the thread is stopped but we did execute the connected callback,
 	// then we will execute the disconnected callback to maintain consistency
 	bool didWeCallConnectedCallback = false; 
@@ -121,7 +120,6 @@ void RealSense::CameraLoop()
 	while (thread_running)
 	{
 		// start again ...
-		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
 		totalTries = 0;
 		device = nullptr;
@@ -148,8 +146,7 @@ void RealSense::CameraLoop()
 				break;
 			}
 
-
-			// tries to start the streaming pipeline
+			// repeats until a camera is running or the application  stops
 			while (!IsAnyCameraEnabled() && thread_running)
 			{
 				try
@@ -217,7 +214,7 @@ void RealSense::CameraLoop()
 
 
 					// update camera serial number based on selected camera
-					cameraSerialNumber = device->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);					
+					cameraSerialNumber = device->get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
 				}
 				catch (const rs2::camera_disconnected_error& e)
 				{
@@ -225,34 +222,19 @@ void RealSense::CameraLoop()
 					device = nullptr;
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
+					Logger::Log(RealSenseConstStr) << "Trying again in 5 seconds..." << std::endl;
 					std::this_thread::sleep_for(std::chrono::seconds(5));
 				}
 				catch (const std::runtime_error& e)
 				{
 					Logger::Log(RealSenseConstStr) << "ERROR! Could not start the camera: " << e.what()  << std::endl;
+					Logger::Log(RealSenseConstStr) << "Trying again in 1 second..." << std::endl;
 					device = nullptr;
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
 					std::this_thread::sleep_for(std::chrono::seconds(1));
-					break;
 				}
-			}
-
-			// error openning all cameras?
-			if (!IsAnyCameraEnabled())
-			{
-				// we have to close the device and try again
-				realsensePipeline.stop();
-				colorCameraEnabled = false;
-				depthCameraEnabled = false;
-				device = nullptr;
-				Logger::Log(RealSenseConstStr) << "Trying again in 1 second..." << std::endl;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
-			else {
-				// reminder that we have to wrap things in the end, even if
-				// no frames were captured
-				didWeEverInitializeTheCamera = true;
+				
 			}
 
 			Logger::Log(RealSenseConstStr) << "Opened RealSense device id: " << cameraSerialNumber << std::endl;

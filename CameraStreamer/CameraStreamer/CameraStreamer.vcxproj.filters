@@ -19,20 +19,35 @@
     <Filter Include="Source Files\Cameras">
       <UniqueIdentifier>{ca0df2fe-4259-4e61-891f-51a590025d27}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Network">
+      <UniqueIdentifier>{9e313ed9-7b2d-4f01-9791-bb2e9b142997}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network">
+      <UniqueIdentifier>{460e356c-10b8-4e77-8c61-a4aad8be9c74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Applications">
+      <UniqueIdentifier>{f8ab5cd1-8c3b-4e8a-918a-885c0a654ee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Applications">
+      <UniqueIdentifier>{1912961f-b27c-4644-a1e4-c2f82cba6431}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Compiler Settings">
+      <UniqueIdentifier>{d15993c6-5fba-418e-8080-d88e422bad82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utils">
+      <UniqueIdentifier>{1fa9b8ad-3ce8-46e9-9df4-259b335d9f54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{66cb255c-7995-413f-ae90-2c24a940c1f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Protocols">
+      <UniqueIdentifier>{dc703b1e-6a9a-42d5-925f-75b14f0a92e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols">
+      <UniqueIdentifier>{feac2c89-7c27-4c40-827d-6a29696d59b1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RemoteControlServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TCPStreamingServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VideoRecorder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ApplicationStatus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
@@ -42,38 +57,38 @@
     <ClCompile Include="RealSense.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
-    <ClCompile Include="Configuration.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CameraStreamer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ReplayCamera.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
     <ClCompile Include="TCPRelayCamera.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
+    <ClCompile Include="PacketReader.cpp">
+      <Filter>Source Files\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="RemoteControlServer.cpp">
+      <Filter>Source Files\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="VideoRecorder.cpp">
+      <Filter>Source Files\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="ApplicationStatus.cpp">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Configuration.cpp">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="TCPStreamingServer.cpp">
+      <Filter>Source Files\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraStreamer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketWriter.cpp">
+      <Filter>Source Files\Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Frame.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RemoteControlServer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TCPStreamingServer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VideoRecorder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ApplicationStatus.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
@@ -83,23 +98,47 @@
     <ClInclude Include="RealSense.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
-    <ClInclude Include="CompilerConfiguration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Configuration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Version.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ReplayCamera.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
     <ClInclude Include="TCPRelayCamera.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
+    <ClInclude Include="PacketReader.h">
+      <Filter>Header Files\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="CompilerConfiguration.h">
+      <Filter>Header Files\Compiler Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Configuration.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ApplicationStatus.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
     <ClInclude Include="NetworkStatistics.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="RemoteControlServer.h">
+      <Filter>Header Files\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="TCPStreamingServer.h">
+      <Filter>Header Files\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="VideoRecorder.h">
+      <Filter>Header Files\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="Version.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame.h">
+      <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketWriter.h">
+      <Filter>Header Files\Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

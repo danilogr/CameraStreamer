@@ -34,7 +34,11 @@
   * host: URI this camera should connect to
   * port: port used to connect
   * headerType: string describing the header this camera should parse
-                "CameraStreamer", "LengthWidthHeight", "JPEGLengthValue", "Length", "None"
+				"LWHYUV420"
+
+				(future):
+                "CameraStreamer", "LengthWidthHeightColor",
+				"JPEGLengthValue";  "Length" and "None" (not supported yet)
 
   * colorFormat: string describing what this camera should expect in the content
                  (content type is ignored and set to JPEG when using JPEGLengthValue)

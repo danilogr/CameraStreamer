@@ -204,6 +204,8 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="CameraStreamer.cpp" />
+    <ClCompile Include="PacketReader.cpp" />
+    <ClCompile Include="PacketWriter.cpp" />
     <ClCompile Include="ReplayCamera.cpp" />
     <ClCompile Include="RealSense.cpp" />
     <ClCompile Include="RemoteControlServer.cpp" />
@@ -218,6 +220,8 @@
     <ClInclude Include="CompilerConfiguration.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="Frame.h" />
+    <ClInclude Include="PacketReader.h" />
+    <ClInclude Include="PacketWriter.h" />
     <ClInclude Include="ReplayCamera.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="RealSense.h" />
