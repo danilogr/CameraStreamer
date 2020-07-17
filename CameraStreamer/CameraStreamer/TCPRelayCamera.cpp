@@ -45,6 +45,31 @@ bool TCPRelayCamera::LoadConfigurationSettings()
 	return false;
 }
 
+// yuv protocol: future uses would rely on a different protocol
+void YUVReadHeader(boost::asio::ip::tcp::socket &clientSocket, int& width, int& height)
+{
+
+
+}
+
+// yuv protocol: future uses
+std::shared_ptr<Frame> YUVReadFrame(boost::asio::ip::tcp::socket& clientSocket, int width, int height)
+{
+
+}
+
+// Get Resolution
+//byte[] resolution = new byte[sizeof(int) * 2];
+//Buffer.BlockCopy(BitConverter.GetBytes((int)frame.Width), 0, resolution, 0, sizeof(int));
+//Buffer.BlockCopy(BitConverter.GetBytes((int)frame.Height), 0, resolution, sizeof(int), sizeof(int));
+// Add Resolution as header
+//byte[] combined = new byte[frame.Buffer.Length + resolution.Length];
+//Buffer.BlockCopy(resolution, 0, combined, 0, resolution.Length);
+//Buffer.BlockCopy(frame.Buffer, 0, combined, resolution.Length, frame.Buffer.Length);
+// Send
+//CommOutput.Send(combined);
+
+
 void TCPRelayCamera::CameraLoop()
 {
 	using namespace boost::asio;
@@ -58,7 +83,6 @@ void TCPRelayCamera::CameraLoop()
 
 	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera polling thread: " << std::this_thread::get_id << std::endl;
 
-	bool didWeEverInitializeTheCamera = false;
 	// if the thread is stopped but we did execute the connected callback,
 	// then we will execute the disconnected callback to maintain consistency
 	bool didWeCallConnectedCallback = false;
@@ -67,7 +91,6 @@ void TCPRelayCamera::CameraLoop()
 	while (thread_running)
 	{
 		// start again ...
-		didWeEverInitializeTheCamera = false;
 		didWeCallConnectedCallback = false;
 		totalTries = 0;
 		
@@ -98,7 +121,29 @@ void TCPRelayCamera::CameraLoop()
 			{
 				try
 				{
-					client_socket.connect()
+					Logger::Log(TCPRelayCameraConstStr) << "Connecting to: " << hostAddr << ":" << hostPort << std::endl;
+					//deadlineTimer.expires_from_now(boost::posix_time::seconds(1));
+					client_socket.connect(hostEndpoint);
+
+					// hardcoded for now - yuv case
+					if (client_socket.is_open())
+					{
+						depthCameraEnabled = false;
+						colorCameraEnabled = true;
+					}
+
+					// read camera settings from the network
+					int colorCameraWidth = 0, colorCameraHeight = 0;
+					YUVReadHeader(client_socket, colorCameraWidth, colorCameraHeight);
+					if (colorCameraWidth > 0 && colorCameraHeight > 0)
+					{
+						colorCameraParameters.resolutionWidth  = colorCameraWidth;
+						colorCameraParameters.resolutionHeight = colorCameraHeight;
+					}
+
+					// reads a frame to ignore things
+					YUVReadFrame(client_socket, colorCameraWidth, colorCameraHeight);
+
 				}
 				catch (const std::exception& e)
 				{
@@ -119,20 +164,141 @@ void TCPRelayCamera::CameraLoop()
 				// we have to close the device and try again
 				colorCameraEnabled = false;
 				depthCameraEnabled = false;
+
+				// closes the socket if its open / connected
+				if (client_socket.is_open())
+					client_socket.close();
+
 				Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 			else {
 				// reminder that we have to wrap things in the end, even if
 				// no frames were captured
-				didWeEverInitializeTheCamera = true;
+				
 			}
 
-			Logger::Log(RealSenseConstStr) << "Opened RealSense device id: " << cameraSerialNumber << std::endl;
+			//Logger::Log(RealSenseConstStr) << "Opened RealSense device id: " << cameraSerialNumber << std::endl;
 
 
 
 
+		}
+
+		//
+		// Step #2) START, LOOP FOR FRAMES, STOP
+		//
+
+		// start keeping track of incoming frames / failed frames
+		statistics.StartCounting();
+
+		// loop to capture frames
+		if (thread_running && IsAnyCameraEnabled())
+		{
+			// time to start reading frames and streaming
+			unsigned int triesBeforeRestart = 5;
+			totalTries = 0;
+
+
+			// updates app with capture and stream status
+			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,
+				OpenCVCameraMatrix(colorCameraEnabled ? colorCameraParameters : depthCameraParameters),
+
+				// color camera
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : 0,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : 0,
+
+				// depth camera
+				depthCameraEnabled ? depthCameraParameters.resolutionWidth : 0,
+				depthCameraEnabled ? depthCameraParameters.resolutionHeight : 0,
+
+				// streaming (color resolution when  color is available, depth resolution otherwise)
+				colorCameraEnabled ? colorCameraParameters.resolutionWidth : depthCameraParameters.resolutionWidth,
+				colorCameraEnabled ? colorCameraParameters.resolutionHeight : depthCameraParameters.resolutionHeight);
+
+
+		}
+
+		// starts
+		Logger::Log(TCPRelayCameraConstStr) << "Started capturing" << std::endl;
+
+		// invokes camera connect callback
+		if (thread_running && onCameraConnect)
+		{
+			didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+			onCameraConnect();
+		}
+
+		// capture loop
+		
+		try
+		{
+			while (thread_running)
+			{
+
+				int colorWidth, colorHeight;
+
+				std::chrono::microseconds timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
+				YUVReadHeader(client_socket, colorWidth, colorHeight);
+				std::shared_ptr<Frame> frame = YUVReadFrame(client_socket, colorWidth, colorHeight);
+
+				// invoke callback
+				if (onFramesReady)
+					onFramesReady(timestamp, frame, nullptr);
+
+				// update info
+				++statistics.framesCaptured;
+
+			}
+		}
+		catch (const std::exception& e)
+		{
+			// did something fail?
+			Logger::Log(TCPRelayCameraConstStr) << "ERROR! Could not read frame: " << e.what() << std::endl;
+
+			// closes connection
+			if (client_socket.is_open())
+				client_socket.close();
+
+			// closes cameras
+			colorCameraEnabled = false;
+			depthCameraEnabled = false;
+			appStatus->UpdateCaptureStatus(false, false);
+			statistics.StopCounting();
+
+			// waits 1 second before trying again
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+
+		//
+		// Step #3) Shutdown
+		//
+
+		// stop statistics
+		statistics.StopCounting();
+
+		// let other threads know that we are not capturing anymore
+		appStatus->UpdateCaptureStatus(false, false);
+
+		// stop cameras that might be running
+		if (IsAnyCameraEnabled())
+		{
+			// closes connection
+			if (client_socket.is_open())
+				client_socket.close();
+
+			depthCameraEnabled = false;
+			colorCameraEnabled = false;
+		}
+
+		// calls the camera disconnect callback if we called onCameraConnect() - consistency
+		if (didWeCallConnectedCallback && onCameraDisconnect)
+			onCameraDisconnect();
+
+		// waits one second before restarting...
+		if (thread_running)
+		{
+			Logger::Log(TCPRelayCameraConstStr) << "Restarting device..." << std::endl;
 		}
 		
 
