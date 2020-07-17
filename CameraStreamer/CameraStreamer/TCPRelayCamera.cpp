@@ -15,6 +15,8 @@
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
 
+#include <libyuv.h>
+
 const char* TCPRelayCamera::TCPRelayCameraConstStr = "TCPRelayCam";
 
 bool TCPRelayCamera::LoadConfigurationSettings()
@@ -55,6 +57,24 @@ void YUVReadHeader(boost::asio::ip::tcp::socket &clientSocket, int& width, int& 
 // yuv protocol: future uses
 std::shared_ptr<Frame> YUVReadFrame(boost::asio::ip::tcp::socket& clientSocket, int width, int height)
 {
+
+	using namespace libyuv;
+
+
+	char* frameY;
+	char* frameU;
+	char* frameV;
+
+	// creates BGRA frame
+	std::shared_ptr<Frame> rgbFrame = Frame::Create(width, height, FrameType::Encoding::RGBA32);
+
+	I422ToRGBA( (const uint8_t *) frameY, width,
+			    (const uint8_t *) frameU, width / 2,
+			    (const uint8_t *) frameV, width / 2,
+		rgbFrame->getData(), width, width, height);
+
+	return rgbFrame;
+
 
 }
 
