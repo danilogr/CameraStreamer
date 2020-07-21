@@ -182,7 +182,7 @@ void RemoteClient::read_header_async(std::shared_ptr<RemoteClient> client)
 	using namespace std::placeholders; // for  _1, _2, ...
 
 	// readsheader
-	boost::asio::async_read(*client->socket, boost::asio::buffer(&client->incomingMessageSize, RemoteClientHeaderLength), boost::asio::transfer_exactly(RemoteClientHeaderLength), std::bind(&RemoteClient::read_message_async, client, _1, _2));
+	boost::asio::async_read(*client->socket, boost::asio::buffer(&client->incomingMessageLength, RemoteClientHeaderLength), boost::asio::transfer_exactly(RemoteClientHeaderLength), std::bind(&RemoteClient::read_message_async, client, _1, _2));
 }
 
 
@@ -219,10 +219,10 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 	}
 
 	// is the message too big?
-	if (client->incomingMessageSize > RemoteClientMaxIncoingMessage)
+	if (client->incomingMessageLength > RemoteClientMaxIncomingMessageLength)
 	{
 		// log error
-		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort <<']' <<" Message is too long (" << client->incomingMessageSize << ")!" << std::endl;
+		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort <<']' <<" Message is too long (" << client->incomingMessageLength << ")!" << std::endl;
 
 
 		// disconnect client
@@ -231,7 +231,7 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 	}
 
 	// now that we know that we have a reasonable message ready to be read - let's read it
-	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageSize);
+	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageLength);
 
 	// reads the entire message
 	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()), boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));

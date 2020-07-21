@@ -24,7 +24,7 @@ using boost::asio::ip::tcp;
 
 class RemoteControlServer; // forward declaration for the RemoteClient implementation
 const unsigned int RemoteClientHeaderLength = sizeof(uint32_t);
-const unsigned int RemoteClientMaxIncoingMessage= 1024*1024*100; // 100kb
+const unsigned int RemoteClientMaxIncomingMessageLength= 1024*1024*100; // 100kb
 
 class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 {
@@ -41,7 +41,7 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	std::queue<std::shared_ptr<std::vector<uchar> > > outputMessageQ;
 
 	// all the messages received will be stored here until they are consumed
-	uint32_t incomingMessageSize;
+	uint32_t incomingMessageLength;
 
 	// client connection
 	std::shared_ptr<tcp::socket> socket;
