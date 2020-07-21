@@ -5,7 +5,7 @@
 
 #include "NetworkBuffer.h"
 
-class FrameNetworkBuffer : NetworkBuffer
+class FrameNetworkBuffer : NetworkBufferPtr
 {
 
 protected:

@@ -5,16 +5,18 @@
 
 struct NetworkStatistics
 {
-
 	// number of packets received and sent on the long run
-
-	std::chrono::time_point<std::chrono::system_clock> connected;
-
+	std::chrono::time_point<std::chrono::system_clock> connected, disconnected;
+	bool currentlyConnected;
 
 
 	// remote address info
 	std::string remoteAddress;
 	int remotePort;
+
+	// local address info
+	std::string localAddress;
+	int localPort;
 
 	// if true, it means that this structure represents the statistics of 
 	// an incoming connection  (and not an outgoing connection)
@@ -28,7 +30,8 @@ struct NetworkStatistics
 	unsigned long long bytesReceived;
 
 
-	NetworkStatistics() : connected(std::chrono::system_clock::now()),
+	NetworkStatistics() : connected(std::chrono::system_clock::now()), currentlyConnected(false),
 		messagesSent(0), messagesDropped(0), bytesSent(0), messagesReceived(0),
-		bytesReceived(0), remotePort(0), incomingConnection(false) {}
+		bytesReceived(0), remotePort(0), localPort(0), incomingConnection(false) {}
+
 };

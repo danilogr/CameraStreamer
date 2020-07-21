@@ -46,6 +46,9 @@
     <Filter Include="Source Files\Network\Protocols">
       <UniqueIdentifier>{feac2c89-7c27-4c40-827d-6a29696d59b1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Network\NetworkBuffer">
+      <UniqueIdentifier>{b631b09b-96ba-412d-bc33-f7a0ae560f52}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp">
@@ -85,6 +88,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PacketWriter.cpp">
+      <Filter>Source Files\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="ReliableCommunicationClientX.cpp">
       <Filter>Source Files\Network</Filter>
     </ClCompile>
   </ItemGroup>
@@ -139,6 +145,18 @@
     </ClInclude>
     <ClInclude Include="PacketWriter.h">
       <Filter>Header Files\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="ReliableCommunicationClientX.h">
+      <Filter>Header Files\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkBuffer.h">
+      <Filter>Header Files\Network\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameNetworkBuffer.h">
+      <Filter>Header Files\Network\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorNetworkBuffer.h">
+      <Filter>Header Files\Network\NetworkBuffer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

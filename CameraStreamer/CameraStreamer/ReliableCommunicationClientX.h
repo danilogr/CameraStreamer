@@ -1,5 +1,8 @@
 #pragma once
 
+#include <chrono>
+#include <queue>
+
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -30,7 +33,10 @@
    - onError
    - onConnectTimeout
    - onWriteTimeout
+   - onWriteError
    - onReadTimeout
+   - onReadError
+
 
    Inspiration:
    https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/example/cpp03/timeouts/async_tcp_client.cpp
@@ -47,18 +53,18 @@ class ReliableCommunicationClientX : public std::enable_shared_from_this<Reliabl
 {
 protected:
 
-	// the core of boost::asio is an io_context
-	// this socket class either receives one directly or it inherits one from a socket
-	boost::asio::io_context& io_context;
-	std::shared_ptr<boost::asio::ip::tcp::socket> tcpClient;
+	//
+	// Construtors
+	//
 
 
 	// constructors are private to force everyone to make a shared_copy
-	ReliableCommunicationClientX(boost::asio::io_context& io_context) : io_context(io_context), remotePort(0), localPort(0), tag(0) {}
+	ReliableCommunicationClientX(boost::asio::io_context& io_context) : io_context(io_context), remotePort(0), localPort(0), tag(0),
+	writeTimeout(io_context), readTimeout(io_context), stopRequested (false) {}
 
 
 	// constructor that receives an existing socket (probably connected)
-	ReliableCommunicationClientX(std::shared_ptr<boost::asio::ip::tcp::socket> connection) : ReliableCommunicationClientX(io_context) // c++11 only (delegating constructors)
+	ReliableCommunicationClientX(std::shared_ptr<boost::asio::ip::tcp::socket> connection, bool incomingConnection = true) : ReliableCommunicationClientX(io_context) // c++11 only (delegating constructors)
 	{
 		tcpClient = connection;
 	}
@@ -70,24 +76,69 @@ protected:
 	//
 
 	// called when done writing to cleint
-	static void write_done(std::shared_ptr<ReliableCommunicationClientX> client, std::shared_ptr <NetworkBuffer> buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
+	static void write_done(std::shared_ptr<ReliableCommunicationClientX> client,
+		NetworkBufferPtr buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
+
 	static void write_next_message(std::shared_ptr<ReliableCommunicationClientX> client);
 
 	// start reading for the client
 	static void read_header_async(std::shared_ptr<ReliableCommunicationClientX> client);
-	static void read_message_async(std::shared_ptr<ReliableCommunicationClientX> client, const boost::system::error_code& error, std::size_t bytes_transferred);
-	static void read_message_done(std::shared_ptr<ReliableCommunicationClientX> client, std::shared_ptr <NetworkBuffer> buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
+
+	static void read_message_async(std::shared_ptr<ReliableCommunicationClientX> client,
+		const boost::system::error_code& error, std::size_t bytes_transferred);
+
+	static void read_message_done(std::shared_ptr<ReliableCommunicationClientX> client,
+		NetworkBufferPtr buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
+
+	static void write_request(std::shared_ptr<ReliableCommunicationClientX> client,
+		NetworkBufferPtr message);
+
+	//
+	// methods used to update client related details
+	//
+	 
+	void updateConnectionDetails()
+	{
+		if (tcpClient && tcpClient->is_open())
+		{
+			networkStatistics.remoteAddress = tcpClient->remote_endpoint().address().to_string();
+			networkStatistics.remotePort    = tcpClient->remote_endpoint().port();
+
+			networkStatistics.localAddress = tcpClient->local_endpoint().address().to_string();
+			networkStatistics.localPort    = tcpClient->local_endpoint().port();
+		}
+	}
+
+	//
+	// Core implementation
+	//
+
+
+	// the core of boost::asio is an io_context
+	// this socket class either receives one directly or it inherits one from a socket
+	boost::asio::io_context& io_context;
+	std::shared_ptr<boost::asio::ip::tcp::socket> tcpClient;
+
+	// write buffer (users can only call one write at a time, so this class buffers repetead requests)
+	std::queue<NetworkBufferPtr> outputMessageQ;
 
 	// book keeping
 	std::string remoteAddress, localAddress;
 	int remotePort, localPort, tag;
+
+	// timeout timers
+	boost::asio::steady_timer writeTimeout;
+	boost::asio::steady_timer readTimeout;
+	bool stopRequested;
 	
 public:
 
-	// creates a ReliableCommunicationClientX based on an existing TCPClient (e.g., when using a TCPServer)
-	static std::shared_ptr<ReliableCommunicationClientX> createClient(std::shared_ptr<boost::asio::ip::tcp::socket> connection)
+	NetworkStatistics networkStatistics;
+
+	// creates a ReliableCommunicationClientX based on an existing TCPClient (e.g., when using a TCPServer). If not, set incomingConnection to false
+	static std::shared_ptr<ReliableCommunicationClientX> createClient(std::shared_ptr<boost::asio::ip::tcp::socket> connection, bool incomingConnection = true)
 	{
-		std::shared_ptr<ReliableCommunicationClientX> c(new ReliableCommunicationClientX(connection));
+		std::shared_ptr<ReliableCommunicationClientX> c(new ReliableCommunicationClientX(connection, incomingConnection));
 		return c;
 	}
 
@@ -98,16 +149,48 @@ public:
 		return c;
 	}
 
-	bool connected();
+	// returns true if socket is connected
+	bool connected()
+	{
+		return (socket && socket->is_open());
+	}
 
-	void read(int bytes);
 	void connect();
 
-	// closes
-	void close();
+	const std::string& remoteAddress() const { return networkStatistics.remoteAddress; }
+	int remotePort() const { return networkStatistics.remotePort; }
+	const std::string& localAddress() const { return networkStatistics.localAddress; }
+	int localPort() const { return networkStatistics.localPort; }
+
+
+	// (non-blocking) writes a buffer to the remote endpoint (no protocol). returns false if socket is not connected or stopped
+	bool write(NetworkBufferPtr buffer);
+
+	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
+	bool read(NetworkBufferPtr buffer, size_t count);
+
+	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
+	bool read(NetworkBufferPtr buffer, size_t count, std::chrono::milliseconds timeout);
+
+	// stops socket
+	void close()
+	{
+
+	}
 
 	// destructor
-	~ReliableCommunicationClientX();
+	~ReliableCommunicationClientX()
+	{
+
+		close();
+
+		// tecnically speaking, it is impossible for this destructor to run if any operation is pending (as they are queued)
+		if (tcpClient && tcpClient->is_open())
+		{
+			tcpClient->close();
+			tcpClient = nullptr;
+		}
+	}
 
 };
 
