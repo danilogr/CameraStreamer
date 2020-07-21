@@ -10,8 +10,6 @@
 #include <queue>
 #include <thread>
 #include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <opencv2/opencv.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -39,7 +37,7 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	// read buffer
 	boost::asio::streambuf request;
 
-	// write buffer (we can only call we asyn	c write once, so we have to buffer messages until they are fully written)
+	// write buffer (we can only call one async write once, so we have to buffer messages until they are fully written)
 	std::queue<std::shared_ptr<std::vector<uchar> > > outputMessageQ;
 
 	// all the messages received will be stored here until they are consumed
