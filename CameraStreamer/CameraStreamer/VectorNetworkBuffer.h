@@ -14,7 +14,7 @@ protected:
 
 public:
 
-	FrameNetworkBuffer(std::shared_ptr<Frame> frame) : frame(frame) {}
+	FrameNetworkBuffer(std::shared_ptr<std::vector<unsigned char>> buffer) : buffer(buffer) {}
 
 	// whether or not the buffer is still valid
 	virtual bool Allocated()

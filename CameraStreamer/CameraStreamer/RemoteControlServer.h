@@ -50,7 +50,6 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	// constructor is private to force everyone to make a shared_copy
 	RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection);
 
-
 	// called when done writing to cleint
 	static void write_done(std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
 	static void write_next_message(std::shared_ptr<RemoteClient> client);
@@ -119,7 +118,6 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
-	
 		using namespace std::placeholders; // for  _1, _2, ...
 		remoteCommandsCallbacks["startCamera"] = startCameraCallback;
 		remoteCommandsCallbacks["stopCamera"] = stopCameraCallback;
@@ -129,9 +127,8 @@ public:
 		remoteCommandsCallbacks["changeExposure"] = changeExposureCallback;
 		remoteCommandsCallbacks["changeGain"] = changeGainCallback;
 		remoteCommandsCallbacks["ping"] = std::bind(&RemoteControlServer::pingRequest, this, _1, _2);
-
-
 	};
+
 	~RemoteControlServer()
 	{
 		Stop();
