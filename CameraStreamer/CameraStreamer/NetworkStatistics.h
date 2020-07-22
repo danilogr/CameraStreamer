@@ -23,12 +23,11 @@ struct NetworkStatistics
 	bool incomingConnection;
 	// number of packets received and sent during this last session
 	unsigned int messagesSent;		// messages is protocol dependent (and it doesn't mean network packets.)
-	unsigned int messagesDropped;   // messages dropped due to timeouts
+	unsigned int messagesDropped;   // messages dropped due to timeouts, disconnects
 	unsigned long long bytesSent;
 
 	unsigned int messagesReceived;
 	unsigned long long bytesReceived;
-
 
 	NetworkStatistics() : connected(std::chrono::system_clock::now()), currentlyConnected(false),
 		messagesSent(0), messagesDropped(0), bytesSent(0), messagesReceived(0),

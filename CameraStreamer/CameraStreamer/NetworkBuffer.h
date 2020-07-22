@@ -22,6 +22,6 @@ public:
 	virtual size_t Size() { return 0;  }
 
 	// pointer to the implementation specific buffer
-	virtual const unsigned char* Data() { return nullptr;  }
+	virtual unsigned char* Data() { return nullptr;  }
 
 };

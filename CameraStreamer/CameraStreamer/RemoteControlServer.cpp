@@ -136,7 +136,7 @@ void RemoteClient::write_next_message(std::shared_ptr<RemoteClient> client)
 	if (!client->socket)
 		return;
 
-	// nothing to write? -> done with asynchronous writings
+	// nothing to write? -> done with asynchronous writingsf
 	if (client->outputMessageQ.size() == 0)
 		return;
 
@@ -234,7 +234,8 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageLength);
 
 	// reads the entire message
-	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()), boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));
+	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()),
+		boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));
 
 
 }

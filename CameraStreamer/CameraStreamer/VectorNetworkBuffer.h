@@ -29,7 +29,7 @@ public:
 	}
 
 	// pointer to the implementation specific buffer
-	virtual const unsigned char* Data() const
+	virtual unsigned char* Data() const
 	{
 		return &((*buffer)[0]);
 	}
