@@ -10,6 +10,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "CommsErrors.h"
 #include "NetworkStatistics.h"
@@ -75,7 +76,11 @@ protected:
 		networkStatistics.incomingConnection = incomingConnection;
 	}
 
-	
+
+	// method invoked asynchronously when done connecting to a client
+	void connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error,
+		const boost::asio::ip::tcp::endpoint& endpoint);
+
 	// method invoked asynchronously when a connect operation is taking too long
 	void connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
 
@@ -163,16 +168,18 @@ public:
 
 	bool connect(const std::string& host, int port)
 	{
+		using namespace std::placeholders; // for  _1, _2, ...
 		// cannot connect when already connected
 		if (connected())
 			return false;
 
-		//tcpClient =
+		boost::asio::ip::tcp::resolver resolver(io_service);
+		auto endpoints = resolver.resolve(host, boost::lexical_cast<std::string>(port));
+		tcpClient = std::make_shared<boost::asio::ip::tcp::socket>(io_service);
 
-		// todo: create tcp client
-		// todo: start async connect
-		// return true
+		boost::asio::async_connect(*tcpClient, endpoints, std::bind(&ReliableCommunicationClientX::connect_done, this, shared_from_this(), _1, _2));
 
+		return true;
 	}
 
 	/// <summary>
@@ -197,7 +204,7 @@ public:
 		connectDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::connect_timeout_done, this, shared_from_this(), _1));
 
 		// invokes connect
-		connect(host, port);
+		return connect(host, port);
 
 	}
 
@@ -244,20 +251,26 @@ public:
 		readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), _1));
 
 		// invokes read operation
-		read(buffer, count);
+		return read(buffer, count);
 	}
 
 	// stops socket
 	void close(const boost::system::error_code& error = boost::system::error_code())
 	{
 		stopRequested = true;
-		if (tcpClient && tcpClient->is_open())
+		if (tcpClient)
 		{
+			bool isConnected = tcpClient->is_open();
+
+			// gracefully shutdown connections and stops all asynchronous operations
+			boost::system::error_code e;
+			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
+
 			// cancel pending operations for this socket
-			tcpClient->close();
+			tcpClient->close(e);
 
 			// let others know that this socket is no more - this should be called after all pending operations are done failing
-			if (onDisconnected)
+			if (isConnected && onDisconnected)
 			{
 				io_service.post(std::bind(onDisconnected, shared_from_this(), error));
 			}

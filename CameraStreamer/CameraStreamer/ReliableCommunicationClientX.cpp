@@ -110,7 +110,7 @@ namespace comms
 		using namespace std::placeholders; // for  _1, _2, ...
 
 		// operation aborted
-		if (stopRequested)	
+		if (stopRequested)
 		{
 			readOperationPending = false;
 
@@ -189,6 +189,32 @@ namespace comms
 		}
 	}
 
+
+	void ReliableCommunicationClientX::connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error,
+		const boost::asio::ip::tcp::endpoint& endpoint)
+	{
+		// did we connect?
+		boost::system::error_code errorToReport = error;
+		if (!errorToReport)
+		{
+			if (stopRequested || !tcpClient)
+			{
+				errorToReport = comms::error::Cancelled;
+			} else {
+				// updates statistics
+				networkStatistics.connected();
+				updateConnectionDetails();
+			}
+		}
+
+		if (onConnected)
+		{
+			onConnected(clientLifeKeeper, errorToReport);
+		}
+
+	}
+
+
 	void ReliableCommunicationClientX::connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
 		const boost::system::error_code& error)
 	{
@@ -202,7 +228,8 @@ namespace comms
 		if (error != boost::asio::error::operation_aborted)
 		{
 			// cancel any pending operations
-			tcpClient->close();
+			boost::system::error_code e;
+			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
 			// let the user know that something went wrong
 			if (onConnected)

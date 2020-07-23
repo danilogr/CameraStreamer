@@ -10,7 +10,7 @@ struct NetworkStatistics
 
 	// remote address info
 	std::string remoteAddress;
-	int remotePort;
+		int remotePort;
 
 	// local address info
 	std::string localAddress;
