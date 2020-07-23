@@ -25,15 +25,16 @@
    callbacks for timeouts. Implementing a protocol requires user intervention
    
    Being an asynchronous TCP client, it provides users with the power to put a timeout on specific
-   functions (connect, read, write).
+   functions (connect, read, write). However, users should only expect for callbacks when they are 
+   set and when the request operation (connect, write, read) returns true. If the requested operation
+   returns false, then the user should investigate whether or not a close has been invoked or the socket
+   is not set yet.
 
    Callbacks:
    - onConnected(socket)
    - onDisconnected(socket)
    - onConnectError(socket, error)
-   - onConnectTimeout(socket)
    - onWriteError (socket,error code, pending operations missed)
-   - onReadTimeout(socket)
    - onReadError (socket,error code)
 
 
@@ -200,7 +201,7 @@ public:
 	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
 	bool read(NetworkBufferPtr buffer, size_t count, std::chrono::milliseconds timeout)
 	{
-		if (stopRequested)
+		if (stopRequested || readOperationPending)
 			return false;
 	}
 
@@ -220,6 +221,19 @@ public:
 		close();
 		tcpClient = nullptr;
 	}
+
+	// invoked when the socket successfully connected to a server
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnected;
+
+	// invoked when the socket disconnected from the server
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onDisconnected;
+
+	// invoked when the socket failed to write to the server for various reaons (or in the future, when it timed out)
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onWrite;
+
+	// invoked when the socket failed to read from the server for various reasons (or when it timed out)
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onRead;
+
 
 };
 

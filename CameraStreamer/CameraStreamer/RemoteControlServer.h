@@ -116,7 +116,8 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus),
+		acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 		remoteCommandsCallbacks["startCamera"] = startCameraCallback;

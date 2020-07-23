@@ -115,12 +115,19 @@ void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCom
 {
 	using namespace std::placeholders; // for  _1, _2, ...
 
+	// done reading. Allow user to read more
+	readOperationPending = false;
+
 	// saves the amount of bytes read
 	networkStatistics.bytesReceived += bytes_transferred;
 
 	// any problems?
 	if (error || bytes_transferred != bytes_requested)
 	{
+		// invoke read callback with error
+		if (onRead)
+			onRead(clientLifeKeeper, error);
+
 		// remove itself from the server
 		close();
 		return;
@@ -129,7 +136,9 @@ void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCom
 	// everything went well. this counts as a message
 	++networkStatistics.messagesReceived;
 
-	// (todo) invoke read callback
+	// invoke read callback to inform the user that we completed (error should be 0)
+	if (onRead)
+		onRead(clientLifeKeeper, error);
 
 }
 
