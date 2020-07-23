@@ -139,7 +139,6 @@ namespace comms
 	void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
 		NetworkBufferPtr buffer, size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
-		using namespace std::placeholders; // for  _1, _2, ...
 
 		// done reading. Allow user to read more
 		readOperationPending = false;
@@ -172,6 +171,11 @@ namespace comms
 	void ReliableCommunicationClientX::read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
 		const boost::system::error_code& error)
 	{
+		// we don't need to timeout when a stop was requested or the tcpClient was never set in first place
+		// (both conditions will lead to an immediate error from the socket)
+		if (stopRequested || !tcpClient)
+			return;
+
 		// operation_aborted means that a timer was rescheduled. We don't care about those scenarios
 		// hence, if this timer wasn't aborted
 		if (error != boost::asio::error::operation_aborted)

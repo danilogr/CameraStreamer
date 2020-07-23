@@ -64,7 +64,7 @@ protected:
 
 	// constructors are private to force everyone to make a shared_copy
 	ReliableCommunicationClientX(boost::asio::io_service& io_service) : io_service(io_service), tag(0),
-	writeTimeout(io_service), readTimeout(io_service), stopRequested (false), readOperationPending(false) {}
+		connectDeadlineTimer(io_service), readDeadlineTimer(io_service), stopRequested (false), readOperationPending(false) {}
 
 
 	// constructor that receives an existing socket (probably connected)
@@ -134,8 +134,8 @@ protected:
 	int tag;
 
 	// timeout timers
-	boost::asio::steady_timer writeTimeout;
-	boost::asio::steady_timer readTimeout;
+	boost::asio::steady_timer connectDeadlineTimer;
+	boost::asio::steady_timer readDeadlineTimer;
 	bool stopRequested;
 	bool readOperationPending;
 	
@@ -207,13 +207,17 @@ public:
 	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
 	bool read(const NetworkBufferPtr& buffer, size_t count, std::chrono::milliseconds timeout)
 	{
+		using namespace std::placeholders; // for  _1, _2, ...
+
 		// cannot read if already reading or if stop was requested
 		if (stopRequested || readOperationPending)
 			return false;
 
-		// todo: sets deadline
+		// sets deadline for as many milliseconds as the user requested
+		readDeadlineTimer.expires_from_now(timeout);
+		readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), _1));
 
-		// reads
+		// invokes read operation
 		read(buffer, count);
 	}
 
