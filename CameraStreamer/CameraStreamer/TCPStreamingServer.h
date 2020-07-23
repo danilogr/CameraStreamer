@@ -39,7 +39,7 @@ class TCPStreamingServer
 public:
 	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : appStatus(appStatus),
 		configuration(configuration), streamingColor(false), streamingDepth(false), streamingJPEGLengthValue(false),
-		acceptor(io_service, tcp::endpoint(tcp::v4(), configuration->GetStreamerPort()))
+		acceptor(io_context, tcp::endpoint(tcp::v4(), configuration->GetStreamerPort()))
 	{
 		Logger::Log("Streamer") << "Listening on " << configuration->GetStreamerPort() << std::endl;
 	}
@@ -65,7 +65,7 @@ public:
 		if (IsThreadRunning())
 		{
 			// stops io service
-			io_service.stop();
+			io_context.stop();
 
 			// is it running ? wait for it to finish
 			if (sThread && sThread->joinable())
@@ -116,7 +116,7 @@ public:
 		// is running the server
 		if (std::this_thread::get_id() != sThread->get_id())
 		{
-			this->io_service.post(std::bind(&TCPStreamingServer::ForwardToAll, this, color, depth));
+			boost::asio::post(io_context, std::bind(&TCPStreamingServer::ForwardToAll, this, color, depth));
 			return;
 		}
 
@@ -218,7 +218,7 @@ public:
 
 private:
 	// event queue
-	boost::asio::io_service io_service;
+	boost::asio::io_context io_context;
 
 	// tcp server that listens and waits for clients
 	tcp::acceptor acceptor;
@@ -258,8 +258,8 @@ private:
 			Logger::Log("Streamer") << "Streaming using JPEG Length Value Protocol " << std::endl;
 		}
 
-		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
-		io_service.run();	      // starts listening for connections
+		aync_accept_connection(); // adds some work to the io_context, otherwise it exits
+		io_context.run();	      // starts listening for connections
 		
 		// make sure others knows that the thread is not running
 		streamingColor = false;
@@ -275,7 +275,7 @@ private:
 		using namespace std::placeholders; // for  _1, _2, ...
 
 		// creates a new socket to received the connection
-		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_service);
+		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_context);
 
 		// waits for a new connection
 		acceptor.async_accept(*newClient, std::bind(&TCPStreamingServer::async_handle_accept, this, newClient, _1));

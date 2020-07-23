@@ -43,8 +43,8 @@ namespace comms
 				outputMessageQ.pop();
 
 			// invokes write error callback
-			if (onWrite)
-				onWrite(clientLifeKeeper, error);
+			if (onWriteDone)
+				onWriteDone(clientLifeKeeper, error);
 
 			// disconnects
 			close(error);
@@ -81,12 +81,12 @@ namespace comms
 			}
 
 			// invoke write error callback (use pending messages)
-			if (onWrite)
+			if (onWriteDone)
 			{
 				if (stopRequested)
-					onWrite(clientLifeKeeper, boost::asio::error::operation_aborted);
+					onWriteDone(clientLifeKeeper, boost::asio::error::operation_aborted);
 				else
-					onWrite(clientLifeKeeper, boost::asio::error::not_connected);
+					onWriteDone(clientLifeKeeper, boost::asio::error::not_connected);
 			}
 
 			return;
@@ -114,8 +114,8 @@ namespace comms
 		{
 			readOperationPending = false;
 
-			if (onRead)
-				onRead(clientLifeKeeper, boost::asio::error::operation_aborted);
+			if (onReadDone)
+				onReadDone(clientLifeKeeper, boost::asio::error::operation_aborted);
 
 			return;
 		}
@@ -125,8 +125,8 @@ namespace comms
 		{
 			readOperationPending = false;
 
-			if (onRead)
-				onRead(clientLifeKeeper, boost::asio::error::not_connected);
+			if (onReadDone)
+				onReadDone(clientLifeKeeper, boost::asio::error::not_connected);
 
 			return;
 		}
@@ -150,8 +150,8 @@ namespace comms
 		if (error || bytes_transferred != bytes_requested)
 		{
 			// invoke read callback with error
-			if (onRead)
-				onRead(clientLifeKeeper, error);
+			if (onReadDone)
+				onReadDone(clientLifeKeeper, error);
 
 			// disconnects
 			close(error);
@@ -163,8 +163,8 @@ namespace comms
 		++networkStatistics.messagesReceived;
 
 		// invoke read callback to inform the user that we completed (error should be 0)
-		if (onRead)
-			onRead(clientLifeKeeper, boost::system::error_code());
+		if (onReadDone)
+			onReadDone(clientLifeKeeper, boost::system::error_code());
 
 	}
 
@@ -181,8 +181,8 @@ namespace comms
 		if (error != boost::asio::error::operation_aborted)
 		{
 			// oh no, time out
-			if (onRead)
-				onRead(clientLifeKeeper, comms::error::TimedOut);
+			if (onReadDone)
+				onReadDone(clientLifeKeeper, comms::error::TimedOut);
 
 			// closes the connection because user requested time out
 			close(comms::error::TimedOut);
@@ -207,9 +207,9 @@ namespace comms
 			}
 		}
 
-		if (onConnected)
+		if (onConnectDone)
 		{
-			onConnected(clientLifeKeeper, errorToReport);
+			onConnectDone(clientLifeKeeper, errorToReport);
 		}
 
 	}
@@ -232,8 +232,8 @@ namespace comms
 			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
 			// let the user know that something went wrong
-			if (onConnected)
-				onConnected(clientLifeKeeper, comms::error::TimedOut);
+			if (onConnectDone)
+				onConnectDone(clientLifeKeeper, comms::error::TimedOut);
 
 			// cleans up
 			close();

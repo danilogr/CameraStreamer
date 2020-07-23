@@ -117,7 +117,7 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus),
-		acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
+		acceptor(io_context, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 		remoteCommandsCallbacks["startCamera"] = startCameraCallback;
@@ -155,7 +155,7 @@ public:
 		// is running the server
 		if (std::this_thread::get_id() != sThread->get_id())
 		{
-			this->io_service.post(std::bind(&RemoteControlServer::ForwardToAll, this, messageStr));
+			boost::asio::post(io_context, std::bind(&RemoteControlServer::ForwardToAll, this, messageStr));
 			return;
 		}
 
@@ -189,7 +189,7 @@ public:
 		if (IsThreadRunning())
 		{
 			// stops io service
-			io_service.stop();
+			io_context.stop();
 
 			// is it running ?
 			if (sThread && sThread->joinable())
@@ -203,7 +203,7 @@ public:
 		{
 			client->close();
 
-			// callbacks won't be called because io_service is not running anymore
+			// callbacks won't be called because io_context is not running anymore
 		}
 
 		// erase list of clients
@@ -232,7 +232,7 @@ public:
 	}
 
 	// event queue
-	boost::asio::io_service io_service;
+	boost::asio::io_context io_context;
 
 
 private:
@@ -250,8 +250,8 @@ private:
 	{
 
 		Logger::Log("Remote") << "Waiting for connections on port " << appStatus->GetControlPort() << std::endl;
-		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
-		io_service.run();	      // starts listening for connections
+		aync_accept_connection(); // adds some work to the io_context, otherwise it exits
+		io_context.run();	      // starts listening for connections
 	}
 
 
@@ -261,7 +261,7 @@ private:
 		using namespace std::placeholders; // for  _1, _2, ...
 
 		// creates a new socket to received the connection
-		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_service);
+		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_context);
 
 		// waits for a new connection
 		acceptor.async_accept(*newClient, std::bind(&RemoteControlServer::async_handle_accept, this, newClient, _1));

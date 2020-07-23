@@ -5,7 +5,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
-#include <boost/asio/io_context.hpp> // future work -> move from io_service to io_context
+#include <boost/asio/io_context.hpp> // future work -> move from io_context to io_context
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/write.hpp>
@@ -36,11 +36,10 @@ namespace comms
    is not set yet.
 
    Callbacks:
-   - onConnected(socket)
-   - onDisconnected(socket)
-   - onConnectError(socket, error)
-   - onWriteError (socket,error code, pending operations missed)
-   - onReadError (socket,error code)
+   - onConnectDone(socket, error) 
+   - onWriteDone (socket, error code) 
+   - onReadDone (socket, error code) 
+   - onDisconnected(socket, error code) 
 
 
    Inspiration:
@@ -64,12 +63,12 @@ protected:
 
 
 	// constructors are private to force everyone to make a shared_copy
-	ReliableCommunicationClientX(boost::asio::io_service& io_service) : io_service(io_service), tag(0),
-		connectDeadlineTimer(io_service), readDeadlineTimer(io_service), stopRequested (false), readOperationPending(false) {}
+	ReliableCommunicationClientX(boost::asio::io_context& io_context) : io_context(io_context), tag(0),
+		connectDeadlineTimer(io_context), readDeadlineTimer(io_context), stopRequested (false), readOperationPending(false) {}
 
 
 	// constructor that receives an existing socket (probably connected)
-	ReliableCommunicationClientX(std::shared_ptr<boost::asio::ip::tcp::socket> connection, bool incomingConnection = true) : ReliableCommunicationClientX(io_service) // c++11 only (delegating constructors)
+	ReliableCommunicationClientX(std::shared_ptr<boost::asio::ip::tcp::socket> connection, bool incomingConnection = true) : ReliableCommunicationClientX(io_context) // c++11 only (delegating constructors)
 	{
 		tcpClient = connection;
 		updateConnectionDetails();
@@ -125,9 +124,9 @@ protected:
 	//
 
 
-	// the core of boost::asio is an io_service
+	// the core of boost::asio is an io_context
 	// this socket class either receives one directly or it inherits one from a socket
-	boost::asio::io_service& io_service;
+	boost::asio::io_context& io_context;
 	std::shared_ptr<boost::asio::ip::tcp::socket> tcpClient;
 
 	// write buffer (users can only call one write at a time, so this class buffers repetead requests)
@@ -153,10 +152,10 @@ public:
 		return c;
 	}
 
-	// creates a RelaibleCommunicationClientX based on an existing io_service
-	static std::shared_ptr<ReliableCommunicationClientX> createClient(boost::asio::io_service& io_service)
+	// creates a RelaibleCommunicationClientX based on an existing io_context
+	static std::shared_ptr<ReliableCommunicationClientX> createClient(boost::asio::io_context& io_context)
 	{
-		std::shared_ptr<ReliableCommunicationClientX> c(new ReliableCommunicationClientX(io_service));
+		std::shared_ptr<ReliableCommunicationClientX> c(new ReliableCommunicationClientX(io_context));
 		return c;
 	}
 
@@ -173,9 +172,9 @@ public:
 		if (connected())
 			return false;
 
-		boost::asio::ip::tcp::resolver resolver(io_service);
+		boost::asio::ip::tcp::resolver resolver(io_context);
 		auto endpoints = resolver.resolve(host, boost::lexical_cast<std::string>(port));
-		tcpClient = std::make_shared<boost::asio::ip::tcp::socket>(io_service);
+		tcpClient = std::make_shared<boost::asio::ip::tcp::socket>(io_context);
 
 		boost::asio::async_connect(*tcpClient, endpoints, std::bind(&ReliableCommunicationClientX::connect_done, this, shared_from_this(), _1, _2));
 
@@ -221,7 +220,7 @@ public:
 		if (stopRequested)
 			return false;
 
-		io_service.post(std::bind(&ReliableCommunicationClientX::write_request, this, shared_from_this(), buffer));
+		boost::asio::post(io_context, std::bind(&ReliableCommunicationClientX::write_request, this, shared_from_this(), buffer));
 		return true;
 	}
 
@@ -233,7 +232,7 @@ public:
 			return false;
 
 		readOperationPending = true;
-		io_service.post(std::bind(&ReliableCommunicationClientX::read_request, this, shared_from_this(), buffer, count));
+		boost::asio::post(io_context,std::bind(&ReliableCommunicationClientX::read_request, this, shared_from_this(), buffer, count));
 		return true;
 	}
 
@@ -272,7 +271,7 @@ public:
 			// let others know that this socket is no more - this should be called after all pending operations are done failing
 			if (isConnected && onDisconnected)
 			{
-				io_service.post(std::bind(onDisconnected, shared_from_this(), error));
+				boost::asio::post(io_context, std::bind(onDisconnected, shared_from_this(), error));
 			}
 		}
 
@@ -288,16 +287,16 @@ public:
 	}
 
 	// invoked when the socket successfully connected to a server
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnected;
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnectDone;
 
 	// invoked when the socket disconnected from the server
 	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onDisconnected;
 
 	// invoked when the socket failed to write to the server for various reaons (or in the future, when it timed out)
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onWrite;
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onWriteDone;
 
 	// invoked when the socket failed to read from the server for various reasons (or when it timed out)
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onRead;
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onReadDone;
 
 
 };

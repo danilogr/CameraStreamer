@@ -95,11 +95,11 @@ void TCPRelayCamera::CameraLoop()
 	using namespace boost::asio;
 	using namespace boost::asio::ip;
 
-	// all asio methods rely on io_service
-	boost::asio::io_service io_service;
+	// all asio methods rely on io_context
+	boost::asio::io_context io_context;
 
 	// we need a way to stop operations that take too long
-	boost::asio::deadline_timer deadlineTimer(io_service);
+	boost::asio::deadline_timer deadlineTimer(io_context);
 
 	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera polling thread: " << std::this_thread::get_id << std::endl;
 
@@ -115,7 +115,7 @@ void TCPRelayCamera::CameraLoop()
 		totalTries = 0;
 		
 		// creates client tcp socket
-		tcp::socket client_socket(io_service);
+		tcp::socket client_socket(io_context);
 
 		//
 		// Step #1) OPEN CAMERA --> here it means that it connects to the socket

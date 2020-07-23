@@ -51,8 +51,8 @@ void RemoteClient::close()
 			socket = nullptr;
 		}
 
-		// if io_service is not running, we need to make sure our statistics are correct
-		if (server.io_service.stopped())
+		// if io_context is not running, we need to make sure our statistics are correct
+		if (server.io_context.stopped())
 		{
 			// add a new count of packets dropped
 			statistics.messagesDropped += outputMessageQ.size();
@@ -65,14 +65,14 @@ bool RemoteClient::send(std::shared_ptr<std::vector<uchar> > message)
 	if (socket)
 	{
 		// thread is not running anymore...
-		if (server.io_service.stopped())
+		if (server.io_context.stopped())
 		{
 			Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Error sending message! RemoteControlServer is not running!" << std::endl;
 			return false;
 		}
 
 		// makes sure that we are running from the right thread before continuing
-		server.io_service.post(std::bind(&RemoteClient::write_request, shared_from_this(), message));
+		boost::asio::post(server.io_context, std::bind(&RemoteClient::write_request, shared_from_this(), message));
 		return true;
 		
 	}
