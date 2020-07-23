@@ -46,7 +46,13 @@
     <Filter Include="Source Files\Network\Protocols">
       <UniqueIdentifier>{feac2c89-7c27-4c40-827d-6a29696d59b1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Network\NetworkBuffer">
+    <Filter Include="Source Files\Network\Comms">
+      <UniqueIdentifier>{25ece380-8729-4e5d-9181-aa2a7213701a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Comms">
+      <UniqueIdentifier>{dfee6002-2339-49c0-8a6c-cfe4001715dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Comms\NetworkBuffer">
       <UniqueIdentifier>{b631b09b-96ba-412d-bc33-f7a0ae560f52}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -66,9 +72,6 @@
     <ClCompile Include="TCPRelayCamera.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
-    <ClCompile Include="PacketReader.cpp">
-      <Filter>Source Files\Network</Filter>
-    </ClCompile>
     <ClCompile Include="RemoteControlServer.cpp">
       <Filter>Source Files\Applications</Filter>
     </ClCompile>
@@ -87,11 +90,14 @@
     <ClCompile Include="CameraStreamer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PacketReader.cpp">
+      <Filter>Source Files\Network\Protocols</Filter>
+    </ClCompile>
     <ClCompile Include="PacketWriter.cpp">
-      <Filter>Source Files\Network</Filter>
+      <Filter>Source Files\Network\Protocols</Filter>
     </ClCompile>
     <ClCompile Include="ReliableCommunicationClientX.cpp">
-      <Filter>Source Files\Network</Filter>
+      <Filter>Source Files\Network\Comms</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -110,9 +116,6 @@
     <ClInclude Include="TCPRelayCamera.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
-    <ClInclude Include="PacketReader.h">
-      <Filter>Header Files\Network</Filter>
-    </ClInclude>
     <ClInclude Include="CompilerConfiguration.h">
       <Filter>Header Files\Compiler Settings</Filter>
     </ClInclude>
@@ -124,9 +127,6 @@
     </ClInclude>
     <ClInclude Include="ApplicationStatus.h">
       <Filter>Header Files\Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="NetworkStatistics.h">
-      <Filter>Header Files\Network</Filter>
     </ClInclude>
     <ClInclude Include="RemoteControlServer.h">
       <Filter>Header Files\Applications</Filter>
@@ -143,20 +143,26 @@
     <ClInclude Include="Frame.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
-    <ClInclude Include="PacketWriter.h">
-      <Filter>Header Files\Network</Filter>
-    </ClInclude>
     <ClInclude Include="ReliableCommunicationClientX.h">
-      <Filter>Header Files\Network</Filter>
+      <Filter>Header Files\Network\Comms</Filter>
     </ClInclude>
     <ClInclude Include="NetworkBuffer.h">
-      <Filter>Header Files\Network\NetworkBuffer</Filter>
-    </ClInclude>
-    <ClInclude Include="FrameNetworkBuffer.h">
-      <Filter>Header Files\Network\NetworkBuffer</Filter>
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
     </ClInclude>
     <ClInclude Include="VectorNetworkBuffer.h">
-      <Filter>Header Files\Network\NetworkBuffer</Filter>
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameNetworkBuffer.h">
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketReader.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketWriter.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkStatistics.h">
+      <Filter>Header Files\Network\Comms</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
