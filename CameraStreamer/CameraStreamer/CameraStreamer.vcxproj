@@ -225,6 +225,7 @@
     <ClInclude Include="NetworkBuffer.h" />
     <ClInclude Include="PacketReader.h" />
     <ClInclude Include="PacketWriter.h" />
+    <ClInclude Include="CommsErrors.h" />
     <ClInclude Include="ReplayCamera.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="RealSense.h" />

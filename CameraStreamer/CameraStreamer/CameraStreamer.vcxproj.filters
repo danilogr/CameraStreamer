@@ -164,5 +164,8 @@
     <ClInclude Include="NetworkStatistics.h">
       <Filter>Header Files\Network\Comms</Filter>
     </ClInclude>
+    <ClInclude Include="CommsErrors.h">
+      <Filter>Header Files\Network\Comms</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -177,10 +177,10 @@ namespace comms
 		if (error != boost::asio::error::operation_aborted)
 		{
 			// oh no, time out
+			if (onRead)
+				onRead(clientLifeKeeper, comms::error::TimedOut);
 
-			// (todo) invoke read timeout callback
-
-			// (todo) if true, close connection
+			// closes the connection because user requested time out
 			close();
 		}
 	}

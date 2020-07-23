@@ -11,6 +11,7 @@
 #include <boost/asio/write.hpp>
 #include <boost/asio/read.hpp>
 
+#include "CommsErrors.h"
 #include "NetworkStatistics.h"
 #include "NetworkBuffer.h"
 
@@ -45,8 +46,8 @@ namespace comms
    https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/example/cpp03/timeouts/async_tcp_client.cpp
 
    Notes:
-   - TCPClientX can only be created as a shared_ptr through the method Create as most of its
-     internal methods keep a shared_ptr to itself
+   - ReliableCommunicationClientX can only be created as a shared_ptr through the method Create
+     as most of its internal methods keep a shared_ptr to itself
 
    Author:
    - Danilo Gasques (gasques@ucsd.edu)
