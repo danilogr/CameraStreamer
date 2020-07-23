@@ -127,12 +127,12 @@ struct CameraStatistics
 		}
 	}
 
-	long long durationInSeconds()
+	inline long long durationInSeconds()
 	{
 		return std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
 	}
 
-	long long totalDurationInSeconds()
+	inline long long totalDurationInSeconds()
 	{
 		return std::chrono::duration_cast<std::chrono::seconds>(endTimeTotal - startTimeTotal).count();
 	}

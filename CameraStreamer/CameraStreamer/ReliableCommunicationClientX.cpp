@@ -47,7 +47,7 @@ namespace comms
 				onWrite(clientLifeKeeper, error);
 
 			// disconnects
-			close();
+			close(error);
 
 			return;
 		}
@@ -154,7 +154,7 @@ namespace comms
 				onRead(clientLifeKeeper, error);
 
 			// disconnects
-			close();
+			close(error);
 
 			return;
 		}
@@ -185,6 +185,30 @@ namespace comms
 				onRead(clientLifeKeeper, comms::error::TimedOut);
 
 			// closes the connection because user requested time out
+			close(comms::error::TimedOut);
+		}
+	}
+
+	void ReliableCommunicationClientX::connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
+		const boost::system::error_code& error)
+	{
+		// we don't need to timeout when a stop was requested or the tcpClient was never set in first place
+		// (both conditions will lead to an immediate error from the socket)
+		if (stopRequested || !tcpClient)
+			return;
+
+		// operation_aborted means that a timer was rescheduled. We don't care about those scenarios
+		// hence, if this timer wasn't aborted
+		if (error != boost::asio::error::operation_aborted)
+		{
+			// cancel any pending operations
+			tcpClient->close();
+
+			// let the user know that something went wrong
+			if (onConnected)
+				onConnected(clientLifeKeeper, comms::error::TimedOut);
+
+			// cleans up
 			close();
 		}
 	}

@@ -1,7 +1,8 @@
 #include "RemoteControlServer.h"
 
 
-RemoteClient::RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection) : server(server)
+RemoteClient::RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection) 
+	: server(server), statistics(true) // true indicated an incoming connection
 {
 	// access socket
 	socket = connection;
@@ -22,6 +23,7 @@ RemoteClient::~RemoteClient()
 	// disconnects the socket if it is still connected (this should not happen here)
 	if (socket && socket->is_open())
 	{
+		statistics.disconnected();
 		socket->close();
 	}
 
@@ -29,7 +31,7 @@ RemoteClient::~RemoteClient()
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] "
 		<< statistics.bytesSent << " bytes (" << statistics.messagesSent << " messages sent and " << statistics.messagesDropped << " dropped) -"
 		<< statistics.bytesReceived << " bytes (" << statistics.messagesReceived << " messages received) -"
-		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connected).count() / 1000.0f << " sec" << std::endl;
+		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connectedTime).count() / 1000.0f << " sec" << std::endl;
 }
 
 void RemoteClient::close()
@@ -39,6 +41,9 @@ void RemoteClient::close()
 	{
 		if (socket->is_open())
 		{
+			// closes connection in the statistics reporter
+			statistics.disconnected();
+
 			// closes the connection
 			socket->close();
 

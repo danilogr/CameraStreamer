@@ -86,6 +86,7 @@ public:
 			{
 				// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
 				clientsStatistics[client].messagesDropped += clientsQs[client].size();
+				clientsStatistics[client].disconnected();
 				client->close();
 			}
 			catch (std::exception e)
@@ -96,7 +97,7 @@ public:
 			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << ":"
 				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << "packets sent; " << clientsStatistics[client].messagesDropped << " dropped) -"
-				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
+				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connectedTime).count() / 1000.0f << " sec" << std::endl;
 		}
 
 		// erase list of clients
@@ -289,7 +290,7 @@ private:
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
 			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
-			clientsStatistics[newClient] = NetworkStatistics();								// starts trackings stats for this client
+			clientsStatistics[newClient] = NetworkStatistics(true);						// starts trackings stats for this client
 			clientsStatistics[newClient].remoteAddress = newClient->remote_endpoint().address().to_string();
 			clientsStatistics[newClient].remotePort = newClient->remote_endpoint().port();
 
@@ -312,12 +313,13 @@ private:
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
 				if (clients.find(client) != clients.end())
 				{
+					clientsStatistics[client].disconnected();
 					clientsStatistics[client].messagesDropped++;
 
 					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " --> "
 						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << " packets sent and " << clientsStatistics[client].messagesDropped << " dropped) -"
-						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
+						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connectedTime).count() / 1000.0f << " sec" << std::endl;
 					
 					clientsQs.erase(client);
 					clients.erase(client);

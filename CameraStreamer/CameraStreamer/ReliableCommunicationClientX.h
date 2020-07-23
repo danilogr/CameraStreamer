@@ -71,14 +71,13 @@ protected:
 	ReliableCommunicationClientX(std::shared_ptr<boost::asio::ip::tcp::socket> connection, bool incomingConnection = true) : ReliableCommunicationClientX(io_service) // c++11 only (delegating constructors)
 	{
 		tcpClient = connection;
+		updateConnectionDetails();
+		networkStatistics.incomingConnection = incomingConnection;
 	}
 
 	
-	//
-	// main static methods - most of the socket functions are written as static methods
-	// because they will access the socket indirectly through a shared pointer
-	//
-
+	// method invoked asynchronously when a connect operation is taking too long
+	void connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
 
 	// write request added to the event loop queue whenever requesting to write to a client. Writes the entire buffer
 	void write_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer);
@@ -99,7 +98,6 @@ protected:
 
 	// method invoked asynchronously when a read operation is taking too long
 	void read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
-
 	
 	//
 	// methods used to update client related details
@@ -163,15 +161,43 @@ public:
 		return (tcpClient && tcpClient->is_open());
 	}
 
-	bool connect()
+	bool connect(const std::string& host, int port)
 	{
 		// cannot connect when already connected
 		if (connected())
 			return false;
 
+		//tcpClient =
+
 		// todo: create tcp client
 		// todo: start async connect
 		// return true
+
+	}
+
+	/// <summary>
+	/// Connects to a tcp server running at host:port.
+	/// Waits a max of @timeout ms before cancelling all operations if unable to connect
+	/// (Accepts hostnames, ipv4, ipv6 and other operating-system dependent URIs)
+	/// </summary>
+	/// <param name="host">hostname</param>
+	/// <param name="port">port</param>
+	/// <param name="timeout">time</param>
+	/// <returns></returns>
+	bool connect(const std::string& host, int port, std::chrono::milliseconds timeout)
+	{
+		using namespace std::placeholders; // for  _1, _2, ...
+
+		// cannot connect when already connected
+		if (connected())
+			return false;
+
+		// sets deadline for as many milliseconds as the user requested
+		connectDeadlineTimer.expires_from_now(timeout);
+		connectDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::connect_timeout_done, this, shared_from_this(), _1));
+
+		// invokes connect
+		connect(host, port);
 
 	}
 
@@ -249,7 +275,7 @@ public:
 	}
 
 	// invoked when the socket successfully connected to a server
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>)> onConnected;
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnected;
 
 	// invoked when the socket disconnected from the server
 	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onDisconnected;
