@@ -28,13 +28,13 @@
    functions (connect, read, write).
 
    Callbacks:
-   - onConnected
-   - onDisconnected
-   - onConnectError
-   - onConnectTimeout
-   - onWriteError
-   - onReadTimeout
-   - onReadError
+   - onConnected(socket)
+   - onDisconnected(socket)
+   - onConnectError(socket, error)
+   - onConnectTimeout(socket)
+   - onWriteError (socket,error code, pending operations missed)
+   - onReadTimeout(socket)
+   - onReadError (socket,error code)
 
 
    Inspiration:
@@ -91,6 +91,9 @@ protected:
 	// method invoked asynchronously when a read operation has finalized
 	void read_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
 					size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred);
+
+	// method invoked asynchronously when a read operation is taking too long
+	void read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
 
 	
 	//
@@ -155,8 +158,15 @@ public:
 		return (tcpClient && tcpClient->is_open());
 	}
 
-	void connect()
+	bool connect()
 	{
+		// cannot connect when already connected
+		if (connected())
+			return false;
+
+		// todo: create tcp client
+		// todo: start async connect
+		// return true
 
 	}
 

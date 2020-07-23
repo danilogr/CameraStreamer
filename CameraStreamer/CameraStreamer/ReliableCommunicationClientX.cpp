@@ -43,6 +43,8 @@ void ReliableCommunicationClientX::write_done(std::shared_ptr<ReliableCommunicat
 		// connected still? time to disconnect
 		close();
 
+		// todo: invoke write error callback
+
 		return;
 	}
 
@@ -61,16 +63,21 @@ void ReliableCommunicationClientX::write_next_buffer(std::shared_ptr<ReliableCom
 	// not supposed to keep going / socket is gone
 	if (stopRequested || !tcpClient)
 	{
+
 		// did we have any pending messages?
-		if (outputMessageQ.size() != 0)
+		const int pendingMessages = outputMessageQ.size();
+		if (pendingMessages != 0)
 		{
 			// update statistics (we are going to drop this and other messages that were enqueued)
-			networkStatistics.messagesDropped += outputMessageQ.size();
+			networkStatistics.messagesDropped += pendingMessages;
 
 			// clears the queue
 			while (outputMessageQ.size() > 0)
 				outputMessageQ.pop();
 		}
+
+		// todo: invoke write error callback (use pending messages)
+
 		return;
 	}
 
@@ -91,9 +98,10 @@ void ReliableCommunicationClientX::read_request(std::shared_ptr<ReliableCommunic
 {
 	using namespace std::placeholders; // for  _1, _2, ...
 
-	// can't keep reading if disconnected
-	if (!tcpClient || stopRequested)
+	// can't keep reading if not connected
+	if (stopRequested || !tcpClient)
 	{
+		// todo: invoked read error callback
 		return;
 	}
 
@@ -121,7 +129,22 @@ void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCom
 	// everything went well. this counts as a message
 	++networkStatistics.messagesReceived;
 
-	// invoke read callback
+	// (todo) invoke read callback
 
 }
 
+void ReliableCommunicationClientX::read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
+	const boost::system::error_code& error)
+{
+	// operation_aborted means that a timer was rescheduled. We don't care about those scenarios
+	// hence, if this timer wasn't aborted
+	if (error != boost::asio::error::operation_aborted)
+	{
+		// oh no, time out
+
+		// (todo) invoke read timeout callback
+
+		// (todo) if true, close connection
+		close();
+	}
+}
