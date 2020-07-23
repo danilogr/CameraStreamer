@@ -75,24 +75,25 @@ protected:
 	// because they will access the socket indirectly through a shared pointer
 	//
 
-	// called when done writing to cleint
-	static void write_done(std::shared_ptr<ReliableCommunicationClientX> client,
-		NetworkBufferPtr buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
 
-	static void write_next_message(std::shared_ptr<ReliableCommunicationClientX> client);
+	// write request added to the event loop queue whenever requesting to write to a client. Writes the entire buffer
+	void write_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer);
 
-	// start reading for the client
-	static void read_header_async(std::shared_ptr<ReliableCommunicationClientX> client);
+	// method invoked asynchronously when a write operation has finalized
+	void write_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
+					const boost::system::error_code& error, std::size_t bytes_transferred);
 
-	static void read_request(std::shared_ptr<ReliableCommunicationClientX> client, NetworkBufferPtr buffer,
-		size_t length);
+	// method invoked within write_done to start writing the next buffer in the queue
+	void write_next_buffer(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper);
 
-	static void read_message_done(std::shared_ptr<ReliableCommunicationClientX> client,
-		NetworkBufferPtr buffer, size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred);
+	// read requst added to the event loop queue whenever a user requests a read. Reads as many bytes as defined in length
+	void read_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer, size_t length);
 
-	static void write_request(std::shared_ptr<ReliableCommunicationClientX> client,
-		NetworkBufferPtr message);
+	// method invoked asynchronously when a read operation has finalized
+	void read_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
+					size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred);
 
+	
 	//
 	// methods used to update client related details
 	//
@@ -153,15 +154,19 @@ public:
 	// returns true if socket is connected
 	bool connected()
 	{
-		return (socket && socket->is_open());
+		return (tcpClient && tcpClient->is_open());
 	}
 
-	void connect();
+	void connect()
+	{
 
-	const std::string& remoteAddress() const { return networkStatistics.remoteAddress; }
-	int remotePort() const { return networkStatistics.remotePort; }
-	const std::string& localAddress() const { return networkStatistics.localAddress; }
-	int localPort() const { return networkStatistics.localPort; }
+	}
+
+	// figure out what is up here
+	//const std::string& remoteAddress() const { return networkStatistics.remoteAddress; }
+	//int remotePort() const { return networkStatistics.remotePort; }
+	//const std::string& localAddress() const { return networkStatistics.localAddress; }
+	//int localPort() const { return networkStatistics.localPort; }
 
 
 	// (non-blocking) writes a buffer to the remote endpoint (no protocol). returns false if a stop was requested
@@ -170,7 +175,7 @@ public:
 		if (stopRequested)
 			return false;
 
-		io_service.post(std::bind(&ReliableCommunicationClientX::write_request, shared_from_this(), buffer));
+		io_service.post(std::bind(&ReliableCommunicationClientX::write_request, this, shared_from_this(), buffer));
 		return true;
 	}
 
@@ -180,7 +185,7 @@ public:
 		if (stopRequested)
 			return false;
 
-		io_service.post(std::bind(&ReliableCommunicationClientX::read_request, shared_from_this(), buffer));
+		io_service.post(std::bind(&ReliableCommunicationClientX::read_request, this, shared_from_this(), buffer, count));
 		return true;
 	}
 
