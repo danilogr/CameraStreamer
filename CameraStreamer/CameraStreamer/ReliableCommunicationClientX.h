@@ -14,6 +14,9 @@
 #include "NetworkStatistics.h"
 #include "NetworkBuffer.h"
 
+namespace comms
+{
+
 /**
  * ReliableCommunicationClientX is a TCP Client from the series
    Comms by Weibel Lab - see https://github.com/weibellab/comms
@@ -179,7 +182,7 @@ public:
 	void setTag(int val) { tag = val; }
 
 	// (non-blocking) writes a buffer to the remote endpoint (no protocol). returns false if a stop was requested
-	bool write(NetworkBufferPtr buffer)
+	bool write(const NetworkBufferPtr& buffer)
 	{
 		if (stopRequested)
 			return false;
@@ -189,41 +192,59 @@ public:
 	}
 
 	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
-	bool read(NetworkBufferPtr buffer, size_t count)
+	bool read(const NetworkBufferPtr& buffer, size_t count)
 	{
-		if (stopRequested)
+		// cannot read if already reading or if stop was requested
+		if (stopRequested || readOperationPending)
 			return false;
 
+		readOperationPending = true;
 		io_service.post(std::bind(&ReliableCommunicationClientX::read_request, this, shared_from_this(), buffer, count));
 		return true;
 	}
 
 	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
-	bool read(NetworkBufferPtr buffer, size_t count, std::chrono::milliseconds timeout)
+	bool read(const NetworkBufferPtr& buffer, size_t count, std::chrono::milliseconds timeout)
 	{
+		// cannot read if already reading or if stop was requested
 		if (stopRequested || readOperationPending)
 			return false;
+
+		// todo: sets deadline
+
+		// reads
+		read(buffer, count);
 	}
 
 	// stops socket
-	void close()
+	void close(const boost::system::error_code& error = boost::system::error_code())
 	{
 		stopRequested = true;
 		if (tcpClient && tcpClient->is_open())
 		{
+			// cancel pending operations for this socket
 			tcpClient->close();
+
+			// let others know that this socket is no more - this should be called after all pending operations are done failing
+			if (onDisconnected)
+			{
+				io_service.post(std::bind(onDisconnected, shared_from_this(), error));
+			}
 		}
+
+		// this makes sure that the same socket cannot be re-used 
+		// (thereby not messing with pending operations)
+		tcpClient == nullptr;
 	}
 
 	// destructor
 	~ReliableCommunicationClientX()
 	{
 		close();
-		tcpClient = nullptr;
 	}
 
 	// invoked when the socket successfully connected to a server
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnected;
+	std::function<void(std::shared_ptr<ReliableCommunicationClientX>)> onConnected;
 
 	// invoked when the socket disconnected from the server
 	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onDisconnected;
@@ -237,3 +258,4 @@ public:
 
 };
 
+}
