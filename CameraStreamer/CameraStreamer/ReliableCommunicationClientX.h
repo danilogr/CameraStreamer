@@ -30,9 +30,8 @@
    Callbacks:
    - onConnected
    - onDisconnected
-   - onError
+   - onConnectError
    - onConnectTimeout
-   - onWriteTimeout
    - onWriteError
    - onReadTimeout
    - onReadError
@@ -59,7 +58,7 @@ protected:
 
 
 	// constructors are private to force everyone to make a shared_copy
-	ReliableCommunicationClientX(boost::asio::io_service& io_service) : io_service(io_service), remotePort(0), localPort(0), tag(0),
+	ReliableCommunicationClientX(boost::asio::io_service& io_service) : io_service(io_service), tag(0),
 	writeTimeout(io_service), readTimeout(io_service), stopRequested (false), readOperationPending(false) {}
 
 
@@ -123,9 +122,8 @@ protected:
 	// write buffer (users can only call one write at a time, so this class buffers repetead requests)
 	std::queue<NetworkBufferPtr> outputMessageQ;
 
-	// book keeping
-	std::string remoteAddress, localAddress;
-	int remotePort, localPort, tag;
+	// tag can be set by the user to uniquely identify a connection
+	int tag;
 
 	// timeout timers
 	boost::asio::steady_timer writeTimeout;
@@ -162,12 +160,12 @@ public:
 
 	}
 
-	// figure out what is up here
-	//const std::string& remoteAddress() const { return networkStatistics.remoteAddress; }
-	//int remotePort() const { return networkStatistics.remotePort; }
-	//const std::string& localAddress() const { return networkStatistics.localAddress; }
-	//int localPort() const { return networkStatistics.localPort; }
-
+	const std::string& remoteAddress() const { return networkStatistics.remoteAddress; }
+	int remotePort() const { return networkStatistics.remotePort; }
+	const std::string& localAddress() const { return networkStatistics.localAddress; }
+	int localPort() const { return networkStatistics.localPort; }
+	int getTag() const { return tag; }
+	void setTag(int val) { tag = val; }
 
 	// (non-blocking) writes a buffer to the remote endpoint (no protocol). returns false if a stop was requested
 	bool write(NetworkBufferPtr buffer)

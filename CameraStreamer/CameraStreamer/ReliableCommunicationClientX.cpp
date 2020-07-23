@@ -111,17 +111,9 @@ void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCom
 	networkStatistics.bytesReceived += bytes_transferred;
 
 	// any problems?
-	if (error)
+	if (error || bytes_transferred != bytes_requested)
 	{
 		// remove itself from the server
-		close();
-		return;
-	}
-
-	// did we read the right amount? (sanit check)
-	if (bytes_transferred != bytes_requested)
-	{
-		// disconnect client
 		close();
 		return;
 	}
@@ -130,7 +122,6 @@ void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCom
 	++networkStatistics.messagesReceived;
 
 	// invoke read callback
-	
 
 }
 
