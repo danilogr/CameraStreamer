@@ -3,48 +3,100 @@
 namespace comms
 {
 
-	void ReliableCommunicationClientX::write_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr message)
+	void ReliableCommunicationClientX::write(NetworkBufferPtr& message, const ReliableCommunicationCallback& onWriteCallback)
 	{
-		// is the client still connected?
-		if (stopRequested || tcpClient)
+		using namespace std::placeholders; // for  _1, _2, ...
+
+		// operation aborted
+		if (stopRequested)
 		{
 			++networkStatistics.messagesDropped; // whoops
+			if (onWriteCallback)
+				boost::asio::post(io_context, std::bind(onWriteCallback, shared_from_this(), boost::asio::error::operation_aborted));
+
 			return;
 		}
 
-		// adds message to client Q
-		outputMessageQ.push(message);
+		// there is not even a connection here
+		if (!tcpClient)
+		{
+			if (onWriteCallback)
+				boost::asio::post(io_context, std::bind(onWriteCallback, shared_from_this(), boost::asio::error::not_connected));
 
-		// if this is the first message, then there is no pending messages so
-		// we can start writing to clients
+			return;
+		}
+
+
+		// adds message to client Q
+		outputMessageQ.push(BufferCallbackTuple(message, onWriteCallback));
+
+		// if this is the first message, then there are no pending messages in the queue
+		// (and no async writing pending to execute messages in the queue)
 		if (outputMessageQ.size() == 1)
 		{
-			// only message? let's send it
-			write_next_buffer(clientLifeKeeper);
+			// something to write? let's get it!
+			BufferCallbackTuple bufferCallbackTuple = outputMessageQ.back();
+			NetworkBufferPtr& msgBuffer = std::get<0>(bufferCallbackTuple);
+
+			// starts writing for this client (buffer is there for a worst case scenario)
+			boost::asio::async_write(*tcpClient, boost::asio::buffer(msgBuffer.Data(), msgBuffer.Size()),
+				std::bind(&ReliableCommunicationClientX::write_request_done, this, shared_from_this(), msgBuffer, std::get<1>(bufferCallbackTuple), _1, _2));
 		}
 	}
 
 
 	// called when done writing to client
-	void ReliableCommunicationClientX::write_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
-		NetworkBufferPtr buffer, const boost::system::error_code& error, std::size_t bytes_transferred)
+	void ReliableCommunicationClientX::write_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
+		NetworkBufferPtr buffer, const ReliableCommunicationCallback& onWriteCallback, 
+		const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
+		using namespace std::placeholders; // for  _1, _2, ...
+
 		// updates the number of bytes sent
 		networkStatistics.bytesSent += bytes_transferred;
 
-		// there's nothing much we can do here besides remove the client if we get an error sending a message to it
-		if (error)
+		// lovely! let's invoke the right callback!
+		if (!error)
 		{
+			// pops the last written message (this message)
+			outputMessageQ.pop();
+
+			// updates statistics for this client
+			networkStatistics.messagesSent++;
+
+			// invokes callback (yay!)
+			if (onWriteCallback)
+			{
+				onWriteCallback(clientLifeKeeper, error);
+			}
+
+		}
+
+		// did this operation fail or did someone stop the socket?
+		if (error || stopRequested)
+		{
+			// report the correct error
+			boost::system::error_code errorToReport = stopRequested ? boost::asio::error::operation_aborted : error;
+			
 			// update statistics (we are going to drop this and other messages that were enqueued)
-			networkStatistics.messagesDropped += outputMessageQ.size() + 1; // accounts for this message
+			networkStatistics.messagesDropped += outputMessageQ.size();
 
-			// clears the queue
+			// clears the queue invoking all callbacks!!
 			while (outputMessageQ.size() > 0)
-				outputMessageQ.pop();
+			{
+				// something to write? let's get it!
+				BufferCallbackTuple bufferCallbackTuple = outputMessageQ.back();
+				ReliableCommunicationCallback& onWriteCallback = std::get<1>(bufferCallbackTuple);
 
-			// invokes write error callback
-			if (onWriteDone)
-				onWriteDone(clientLifeKeeper, error);
+				// report the error to all pending write operations
+				if (onWriteCallback)
+				{
+					onWriteCallback(clientLifeKeeper, errorToReport);
+				}
+				
+				// pops this write request and goes to the next one
+				outputMessageQ.pop();
+			}
 
 			// disconnects
 			close(error);
@@ -52,56 +104,19 @@ namespace comms
 			return;
 		}
 
-		// pops the last written message
-		outputMessageQ.pop();
-		networkStatistics.messagesSent++;
-
 		// moves on with next writes
-		write_next_buffer(clientLifeKeeper);
-	}
-
-	void ReliableCommunicationClientX::write_next_buffer(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper)
-	{
-		using namespace std::placeholders; // for  _1, _2, ...
-
-		// not supposed to keep going / socket is gone
-		if (stopRequested || !tcpClient)
+		if (outputMessageQ.size() > 0)
 		{
+			// something to write? let's get it!
+			BufferCallbackTuple bufferCallbackTuple = outputMessageQ.back();
+			NetworkBufferPtr& msgBuffer = std::get<0>(bufferCallbackTuple);
 
-			// did we have any pending messages?
-			const int pendingMessages = outputMessageQ.size();
-			if (pendingMessages != 0)
-			{
-				// update statistics (we are going to drop this and other messages that were enqueued)
-				networkStatistics.messagesDropped += pendingMessages;
-
-				// clears the queue
-				while (outputMessageQ.size() > 0)
-					outputMessageQ.pop();
-			}
-
-			// invoke write error callback (use pending messages)
-			if (onWriteDone)
-			{
-				if (stopRequested)
-					onWriteDone(clientLifeKeeper, boost::asio::error::operation_aborted);
-				else
-					onWriteDone(clientLifeKeeper, boost::asio::error::not_connected);
-			}
-
-			return;
+			// starts writing for this client
+			boost::asio::async_write(*tcpClient, boost::asio::buffer(msgBuffer.Data(), msgBuffer.Size()),
+				std::bind(&ReliableCommunicationClientX::write_request_done, this, shared_from_this(), msgBuffer, std::get<1>(bufferCallbackTuple), _1, _2));
 		}
-
-		// nothing to write? -> done with asynchronous writings
-		if (outputMessageQ.size() == 0)
-			return;
-
-		// something to write? let's get it!
-		NetworkBufferPtr msgBuffer = outputMessageQ.back();
-
-		// starts writing for this client
-		boost::asio::async_write(*tcpClient, boost::asio::buffer(msgBuffer.Data(), msgBuffer.Size()), std::bind(&ReliableCommunicationClientX::write_done, this, clientLifeKeeper, msgBuffer, _1, _2));
 	}
+
 
 
 	void ReliableCommunicationClientX::read(NetworkBufferPtr& buffer, size_t count, const ReliableCommunicationCallback& onReadCallback, std::chrono::milliseconds timeout)
@@ -122,7 +137,7 @@ namespace comms
 		if (stopRequested)
 		{
 			if (onReadCallback)
-				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::operation_aborted);
+				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::operation_aborted));
 
 			return;
 		}
@@ -131,7 +146,7 @@ namespace comms
 		if (!tcpClient)
 		{
 			if (onReadCallback)
-				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::not_connected);
+				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::not_connected));
 
 			return;
 		}
@@ -159,6 +174,9 @@ namespace comms
 		NetworkBufferPtr buffer, const ReliableCommunicationCallback& onReadCallback, 
 		size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
+		// no need for a deadline anymore
+		readDeadlineTimer.cancel();
+
 		// done reading. Allow user to request again
 		readOperationPending = false;
 
@@ -228,10 +246,53 @@ namespace comms
 		}
 	}
 
+	void ReliableCommunicationClientX::connect(const std::string& host, int port,
+		const ReliableCommunicationCallback& onConnectCallback, std::chrono::milliseconds timeout)
+	{
+		static const std::chrono::milliseconds zero = std::chrono::milliseconds{ 0 };
+		using namespace std::placeholders; // for  _1, _2, ...
 
-	void ReliableCommunicationClientX::connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error,
+		// cannot connect when already connected
+		if (connected())
+		{
+			if (onConnectCallback)
+			{
+				boost::asio::post(io_context, std::bind(onConnectCallback, shared_from_this(), boost::asio::error::already_connected));
+			}
+
+			return;
+		}
+
+		// if tcpClient is defined but not connected, a connection is on the way, so we will ignore this (as a callback will come soon)
+		if (tcpClient)
+			return;
+
+		// starts resolving remote address
+		boost::asio::ip::tcp::resolver resolver(io_context);
+		auto endpoints = resolver.resolve(host, boost::lexical_cast<std::string>(port));
+
+		// creates a new tcpClient (safe to do here because all pending operations are done - if the socket was used before)
+		tcpClient = std::make_shared<boost::asio::ip::tcp::socket>(io_context);
+		connectCallbackInvoked = false;
+
+		// sets deadline for as many milliseconds as the user requested
+		if (timeout > zero)
+		{
+			connectDeadlineTimer.expires_from_now(timeout);
+			connectDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::connect_timeout_done, this, shared_from_this(), onConnectCallback, _1));
+		}
+
+		boost::asio::async_connect(*tcpClient, endpoints, std::bind(&ReliableCommunicationClientX::connect_done, this, shared_from_this(), onConnectCallback, _1, _2));
+	}
+
+
+	void ReliableCommunicationClientX::connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, 
+		const ReliableCommunicationCallback& onConnectCallback, const boost::system::error_code& error,
 		const boost::asio::ip::tcp::endpoint& endpoint)
 	{
+		// no need for a deadline anymore
+		connectDeadlineTimer.cancel();
+
 		// did we connect?
 		boost::system::error_code errorToReport = error;
 		if (!errorToReport)
@@ -239,23 +300,28 @@ namespace comms
 			if (stopRequested || !tcpClient)
 			{
 				errorToReport = comms::error::Cancelled;
+
 			} else {
-				// updates statistics
+
+				// connected. yay! updates statistics
+				socketEverConnect = true;
 				networkStatistics.connected();
 				updateConnectionDetails();
 			}
 		}
 
-		if (onConnectDone)
+		// invokes onConnectCallback if it hasn't been invoked yet
+		if (onConnectCallback && !connectCallbackInvoked)
 		{
-			onConnectDone(clientLifeKeeper, errorToReport);
+			connectCallbackInvoked = true;
+			onConnectCallback(clientLifeKeeper, errorToReport);
 		}
 
 	}
 
 
 	void ReliableCommunicationClientX::connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
-		const boost::system::error_code& error)
+		const ReliableCommunicationCallback& onConnectCallback,	const boost::system::error_code& error)
 	{
 		// we don't need to timeout when a stop was requested or the tcpClient was never set in first place
 		// (both conditions will lead to an immediate error from the socket)
@@ -266,15 +332,18 @@ namespace comms
 		// hence, if this timer wasn't aborted
 		if (error != boost::asio::error::operation_aborted)
 		{
-			// cancel any pending operations
+			// prepare the socket to stop reading or writing
 			boost::system::error_code e;
 			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
 			// let the user know that something went wrong
-			if (onConnectDone)
-				onConnectDone(clientLifeKeeper, comms::error::TimedOut);
+			if (onConnectCallback && !connectCallbackInvoked)
+			{
+				onConnectCallback(clientLifeKeeper, comms::error::TimedOut);
+				connectCallbackInvoked = true;
+			}
 
-			// cleans up
+			// cleans up after dealing with a bunch of callbacks
 			close();
 		}
 	}
