@@ -29,6 +29,7 @@
 #include "CompilerConfiguration.h"
 #include "AzureKinect.h"
 #include "RealSense.h"
+#include "TCPRelayCamera.h"
 
 // 5) version specific 
 #include "Version.h"
@@ -72,6 +73,12 @@ int main(int argc, char* argv[])
 		#ifdef ENABLE_RS2
 		{"rs2", &RealSense::Create},
 		#endif
+
+		// TCP Relay support
+		#ifdef  ENABLE_TCPCLIENT_RELAY_CAMERA
+		{"tcp-relay", &TCPRelayCamera::Create},
+		#endif //  ENABLE_TCPCLIENT_RELAY_CAMERA
+
 	};
 	
 

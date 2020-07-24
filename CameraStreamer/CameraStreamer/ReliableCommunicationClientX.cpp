@@ -104,18 +104,25 @@ namespace comms
 	}
 
 
-	void ReliableCommunicationClientX::read_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
-		NetworkBufferPtr buffer, size_t bytes_requested)
+	void ReliableCommunicationClientX::read(NetworkBufferPtr& buffer, size_t count, const ReliableCommunicationCallback& onReadCallback, std::chrono::milliseconds timeout)
 	{
+		static const std::chrono::milliseconds zero = std::chrono::milliseconds{ 0 };
 		using namespace std::placeholders; // for  _1, _2, ...
+
+		// another read operation in progress?
+		if (readOperationPending)
+		{
+			if (onReadCallback)
+				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::try_again));
+
+			return;
+		}
 
 		// operation aborted
 		if (stopRequested)
 		{
-			readOperationPending = false;
-
-			if (onReadDone)
-				onReadDone(clientLifeKeeper, boost::asio::error::operation_aborted);
+			if (onReadCallback)
+				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::operation_aborted);
 
 			return;
 		}
@@ -123,35 +130,50 @@ namespace comms
 		// there is not even a connection here
 		if (!tcpClient)
 		{
-			readOperationPending = false;
-
-			if (onReadDone)
-				onReadDone(clientLifeKeeper, boost::asio::error::not_connected);
+			if (onReadCallback)
+				boost::asio::post(io_context, std::bind(onReadCallback, shared_from_this(), boost::asio::error::not_connected);
 
 			return;
 		}
 
+		// make sure that onReadCallback is only called once in case a time out timer is set
+		readCallbackInvoked = false;
+
+		// make sure that we block other read operations
+		readOperationPending = true;
+
+		// did we set a timer?
+		if (timeout > zero)
+		{
+			// starts the deadline timer
+			readDeadlineTimer.expires_from_now(timeout);
+			readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), _1));
+		}
+
 		// reads the entire message
-		boost::asio::async_read(*tcpClient, boost::asio::buffer(buffer.Data(), bytes_requested),
-			boost::asio::transfer_exactly(bytes_requested), std::bind(&ReliableCommunicationClientX::read_request_done, this, clientLifeKeeper, buffer, bytes_requested, _1, _2));
+		boost::asio::async_read(*tcpClient, boost::asio::buffer(buffer.Data(), count),
+			boost::asio::transfer_exactly(count), std::bind(&ReliableCommunicationClientX::read_request_done, this, shared_from_this(), buffer, onReadCallback, count, _1, _2));
 	}
 
 	void ReliableCommunicationClientX::read_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
-		NetworkBufferPtr buffer, size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred)
+		NetworkBufferPtr buffer, const ReliableCommunicationCallback& onReadCallback, 
+		size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
-
-		// done reading. Allow user to read more
+		// done reading. Allow user to request again
 		readOperationPending = false;
 
 		// saves the amount of bytes read
 		networkStatistics.bytesReceived += bytes_transferred;
 
 		// any problems?
-		if (error || bytes_transferred != bytes_requested)
+		if (error)
 		{
 			// invoke read callback with error
-			if (onReadDone)
-				onReadDone(clientLifeKeeper, error);
+			if (onReadCallback && !readCallbackInvoked)
+			{
+				readCallbackInvoked = true;
+				onReadCallback(clientLifeKeeper, error);
+			}
 
 			// disconnects
 			close(error);
@@ -159,30 +181,47 @@ namespace comms
 			return;
 		}
 
+		// outcome of boost::asio::transfer_exactly
+		assert(bytes_requested == bytes_transferred);
+
 		// everything went well. this counts as a message
 		++networkStatistics.messagesReceived;
 
 		// invoke read callback to inform the user that we completed (error should be 0)
-		if (onReadDone)
-			onReadDone(clientLifeKeeper, boost::system::error_code());
+		if (onReadCallback && !readCallbackInvoked)
+		{
+			readCallbackInvoked = true;
+			onReadCallback(clientLifeKeeper, error);
+		}
 
 	}
 
 	void ReliableCommunicationClientX::read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
-		const boost::system::error_code& error)
+		const ReliableCommunicationCallback& onReadCallback, const boost::system::error_code& error)
 	{
 		// we don't need to timeout when a stop was requested or the tcpClient was never set in first place
-		// (both conditions will lead to an immediate error from the socket)
+		// (both conditions will lead to a callback getting posted by the read method)
+		// case 1: condition below is valid during a call to ReliableCommunicationClientX::read (then it doesn't even start a timer / never reaches here)
+		// case 2: condition below becomes valid after a call to ReliableCommunicationClientX::read
+		//       -> this means that onReadCallback will be called from ReliableCommunicationClientX::read_quest_done with an error such as operation_aborted
+		//       -> the timeout is not owned by the tcp socket, so it will continue normally, eventually hitting the condition below.
+		//          hence, not doing anything is fine
 		if (stopRequested || !tcpClient)
 			return;
 
-		// operation_aborted means that a timer was rescheduled. We don't care about those scenarios
-		// hence, if this timer wasn't aborted
+		// operation_aborted means that a timer was rescheduled (a read operation ended sucessfully and another one started)
+		// if this timer wasn't aborted, it means that read took too long
 		if (error != boost::asio::error::operation_aborted)
 		{
-			// oh no, time out
-			if (onReadDone)
-				onReadDone(clientLifeKeeper, comms::error::TimedOut);
+			// prepare the socket to stop reading or writing
+			boost::system::error_code e;
+			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
+
+			if (!readCallbackInvoked && onReadCallback)
+			{
+				readCallbackInvoked = true; // in the unlikely scenario  read finalizes sucessfully at the same time as the timer, we have to avoid calling onReadCallback twice
+				onReadCallback(clientLifeKeeper, comms::error::TimedOut);
+			}
 
 			// closes the connection because user requested time out
 			close(comms::error::TimedOut);

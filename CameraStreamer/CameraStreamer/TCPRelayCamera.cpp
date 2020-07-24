@@ -8,14 +8,10 @@
 #ifdef ENABLE_TCPCLIENT_RELAY_CAMERA
 
 #include <iostream>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/array.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/read_until.hpp>
-#include <boost/asio/streambuf.hpp>
-
 #include <libyuv.h>
+#include <boost/asio.hpp> // io_context
+#include "ReliableCommunicationClientX.h" // better async tcp socket
+
 
 const char* TCPRelayCamera::TCPRelayCameraConstStr = "TCPRelayCam";
 
@@ -92,15 +88,7 @@ std::shared_ptr<Frame> YUVReadFrame(boost::asio::ip::tcp::socket& clientSocket, 
 
 void TCPRelayCamera::CameraLoop()
 {
-	using namespace boost::asio;
-	using namespace boost::asio::ip;
-
-	// all asio methods rely on io_context
-	boost::asio::io_context io_context;
-
-	// we need a way to stop operations that take too long
-	boost::asio::deadline_timer deadlineTimer(io_context);
-
+	
 	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera polling thread: " << std::this_thread::get_id << std::endl;
 
 	// if the thread is stopped but we did execute the connected callback,
@@ -108,14 +96,23 @@ void TCPRelayCamera::CameraLoop()
 	bool didWeCallConnectedCallback = false;
 	unsigned long long totalTries = 0;
 
+	// all asio methods rely on io_context. 
+	boost::asio::io_context io_context;
+
 	while (thread_running)
 	{
 		// start again ...
 		didWeCallConnectedCallback = false;
 		totalTries = 0;
+
 		
-		// creates client tcp socket
-		tcp::socket client_socket(io_context);
+		// creates tcp socket
+		std::shared_ptr<comms::ReliableCommunicationClientX> tcpClient = comms::ReliableCommunicationClientX::createClient(io_context);
+		tcpClient->setTag(totalTries);
+
+
+	
+
 
 		//
 		// Step #1) OPEN CAMERA --> here it means that it connects to the socket

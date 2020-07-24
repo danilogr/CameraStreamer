@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <queue>
+#include <tuple>
 
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
@@ -19,6 +20,10 @@
 namespace comms
 {
 
+	class ReliableCommunicationClientX;
+
+	typedef std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> ReliableCommunicationCallback;
+
 /**
  * ReliableCommunicationClientX is a TCP Client from the series
    Comms by Weibel Lab - see https://github.com/weibellab/comms
@@ -34,16 +39,6 @@ namespace comms
    set and when the request operation (connect, write, read) returns true. If the requested operation
    returns false, then the user should investigate whether or not a close has been invoked or the socket
    is not set yet.
-
-   Callbacks:
-   - onConnectDone(socket, error) 
-   - onWriteDone (socket, error code) 
-   - onReadDone (socket, error code) 
-   - onDisconnected(socket, error code) 
-
-
-   Inspiration:
-   https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/example/cpp03/timeouts/async_tcp_client.cpp
 
    Notes:
    - ReliableCommunicationClientX can only be created as a shared_ptr through the method Create
@@ -64,7 +59,8 @@ protected:
 
 	// constructors are private to force everyone to make a shared_copy
 	ReliableCommunicationClientX(boost::asio::io_context& io_context) : io_context(io_context), tag(0),
-		connectDeadlineTimer(io_context), readDeadlineTimer(io_context), stopRequested (false), readOperationPending(false) {}
+		connectDeadlineTimer(io_context), readDeadlineTimer(io_context), stopRequested (false), readOperationPending(false),
+		readCallbackInvoked(false), connectCallbackInvoked(false) {}
 
 
 	// constructor that receives an existing socket (probably connected)
@@ -77,14 +73,16 @@ protected:
 
 
 	// method invoked asynchronously when done connecting to a client
-	void connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error,
-		const boost::asio::ip::tcp::endpoint& endpoint);
+	void connect_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, ReliableCommunicationCallback onConnectDoneCallback,
+		const boost::system::error_code& error,	const boost::asio::ip::tcp::endpoint& endpoint);
 
 	// method invoked asynchronously when a connect operation is taking too long
-	void connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
+	void connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, ReliableCommunicationCallback onConnectDoneCallback,
+		const boost::system::error_code& error);
 
 	// write request added to the event loop queue whenever requesting to write to a client. Writes the entire buffer
-	void write_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer);
+	void write_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
+		ReliableCommunicationCallback onConnectDoneCallback = {});
 
 	// method invoked asynchronously when a write operation has finalized
 	void write_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
@@ -93,15 +91,14 @@ protected:
 	// method invoked within write_done to start writing the next buffer in the queue
 	void write_next_buffer(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper);
 
-	// read requst added to the event loop queue whenever a user requests a read. Reads as many bytes as defined in length
-	void read_request(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer, size_t length);
-
-	// method invoked asynchronously when a read operation has finalized
+		// method invoked asynchronously when a read operation has finalized
 	void read_request_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, NetworkBufferPtr buffer,
-					size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred);
+		const ReliableCommunicationCallback& onReadCallback, size_t bytes_requested, const boost::system::error_code& error,
+		std::size_t bytes_transferred);
 
 	// method invoked asynchronously when a read operation is taking too long
-	void read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const boost::system::error_code& error);
+	void read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper, const ReliableCommunicationCallback& onReadCallback,
+		const boost::system::error_code& error);
 	
 	//
 	// methods used to update client related details
@@ -130,7 +127,8 @@ protected:
 	std::shared_ptr<boost::asio::ip::tcp::socket> tcpClient;
 
 	// write buffer (users can only call one write at a time, so this class buffers repetead requests)
-	std::queue<NetworkBufferPtr> outputMessageQ;
+	typedef std::pair<NetworkBufferPtr, ReliableCommunicationCallback> bufferCallbackTuple;
+	std::queue<bufferCallbackTuple> outputMessageQ;
 
 	// tag can be set by the user to uniquely identify a connection
 	int tag;
@@ -140,6 +138,8 @@ protected:
 	boost::asio::steady_timer readDeadlineTimer;
 	bool stopRequested;
 	bool readOperationPending;
+	bool readCallbackInvoked;
+	bool connectCallbackInvoked;
 	
 public:
 
@@ -165,7 +165,7 @@ public:
 		return (tcpClient && tcpClient->is_open());
 	}
 
-	bool connect(const std::string& host, int port)
+	bool connect(const std::string& host, int port, const ReliableCommunicationCallback& onConnectCallback)
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 		// cannot connect when already connected
@@ -190,7 +190,7 @@ public:
 	/// <param name="port">port</param>
 	/// <param name="timeout">time</param>
 	/// <returns></returns>
-	bool connect(const std::string& host, int port, std::chrono::milliseconds timeout)
+	bool connect(const std::string& host, int port, std::chrono::milliseconds timeout, const ReliableCommunicationCallback& onConnectCallback)
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 
@@ -203,7 +203,7 @@ public:
 		connectDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::connect_timeout_done, this, shared_from_this(), _1));
 
 		// invokes connect
-		return connect(host, port);
+		return connect(host, port, onConnectCallback);
 
 	}
 
@@ -215,7 +215,7 @@ public:
 	void setTag(int val) { tag = val; }
 
 	// (non-blocking) writes a buffer to the remote endpoint (no protocol). returns false if a stop was requested
-	bool write(const NetworkBufferPtr& buffer)
+	bool write(NetworkBufferPtr& buffer)
 	{
 		if (stopRequested)
 			return false;
@@ -225,33 +225,7 @@ public:
 	}
 
 	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
-	bool read(const NetworkBufferPtr& buffer, size_t count)
-	{
-		// cannot read if already reading or if stop was requested
-		if (stopRequested || readOperationPending)
-			return false;
-
-		readOperationPending = true;
-		boost::asio::post(io_context,std::bind(&ReliableCommunicationClientX::read_request, this, shared_from_this(), buffer, count));
-		return true;
-	}
-
-	// (non-blocking) reads as many bytes as specified in @param count into @param buffer. returns false if socket is not connected or stopped
-	bool read(const NetworkBufferPtr& buffer, size_t count, std::chrono::milliseconds timeout)
-	{
-		using namespace std::placeholders; // for  _1, _2, ...
-
-		// cannot read if already reading or if stop was requested
-		if (stopRequested || readOperationPending)
-			return false;
-
-		// sets deadline for as many milliseconds as the user requested
-		readDeadlineTimer.expires_from_now(timeout);
-		readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), _1));
-
-		// invokes read operation
-		return read(buffer, count);
-	}
+	void read(NetworkBufferPtr& buffer, size_t count, const ReliableCommunicationCallback& onReadCallback, std::chrono::milliseconds timeout = std::chrono::milliseconds{ 0 });
 
 	// stops socket
 	void close(const boost::system::error_code& error = boost::system::error_code())
@@ -286,18 +260,8 @@ public:
 		close();
 	}
 
-	// invoked when the socket successfully connected to a server
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onConnectDone;
-
 	// invoked when the socket disconnected from the server
 	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onDisconnected;
-
-	// invoked when the socket failed to write to the server for various reaons (or in the future, when it timed out)
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onWriteDone;
-
-	// invoked when the socket failed to read from the server for various reasons (or when it timed out)
-	std::function<void(std::shared_ptr<ReliableCommunicationClientX>, const boost::system::error_code&)> onReadDone;
-
 
 };
 
