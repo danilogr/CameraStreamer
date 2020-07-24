@@ -108,7 +108,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 	if (error || !client->socket)
 	{
 		// update statistics (we are going to drop this and other messages that were enqueued)
-		client->statistics.messagesDropped += client->outputMessageQ.size() + 1; // accounts for this message
+		client->statistics.messagesDropped += client->outputMessageQ.size();  // the queue has this and other messages
 
 		// clears the queue
 		while (client->outputMessageQ.size() > 0)
