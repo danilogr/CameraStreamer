@@ -9,11 +9,96 @@
 
 #include <iostream>
 #include <libyuv.h>
-#include <boost/asio.hpp> // io_context
-#include "ReliableCommunicationClientX.h" // better async tcp socket
 
 
 const char* TCPRelayCamera::TCPRelayCameraConstStr = "TCPRelayCam";
+
+/// <summary>
+/// Currently, we don't have a formal way of describing protocols (and we don't
+/// have time to work on it now). Hence, this class is a prototype of what
+/// a protocol definition might look like. It is hardcoded for the
+/// "depacketization" of Raw YUV420 packets coming from the WebRTC broker
+/// (in the future, we want to support a couple more protocols)
+/// </summary>
+struct FutureYUVProtocolClass
+{
+
+	static const char* ProtocolName;
+
+	bool initialized;
+	bool colorFrame;
+	unsigned int colorWidth, colorHeight;
+
+	bool depthFrame;
+	unsigned int depthWidth, depthHeight;
+	
+
+	FutureYUVProtocolClass() : initialized(false), colorFrame(false), colorWidth(0), colorHeight(0),
+		depthFrame(false), depthWidth(0), depthHeight(0) {}
+
+
+	constexpr bool HasFixedHeaderSize()
+	{
+		return true;
+	}
+
+	constexpr size_t FixedHeaderSize()
+	{
+		return sizeof(uint32_t) * 3;
+	}
+
+	// returns true if it was able to parse width, height of the next frame given a header
+	bool ParseHeader(const unsigned char* header, size_t headerLength, size_t& frameSize)
+	{
+		// sanity check
+		if (headerLength < FixedHeaderSize()) return false;
+
+		frameSize   = ((const uint32_t*)header)[0]; // first integer is the entire frame size
+		colorWidth  = ((const uint32_t*)header)[1]; // second integer is the width
+		colorHeight = ((const uint32_t*)header)[2]; // third integer is the height
+
+		frameSize -= sizeof(uint32_t) * 2;			// frameSize included the number of bytes taken for colorWidth and colorHeight
+		return true;
+	}
+
+	// yuv protocol doesn't  support depth at all. it can always return false
+	bool supportsDepth()
+	{
+		return false;
+	}
+
+	// yuv protocol always supports color, so it can always return true
+	bool supportsColor()
+	{
+		return true;
+	}
+
+	// parses a frame and returns a shared_ptr<Frame> to an RGBA frame
+	std::shared_ptr<Frame> ParseFrame(const unsigned char* data, size_t dataLength)
+	{
+		using namespace libyuv;
+		const unsigned int colorWidthHalf = colorWidth >> 1;
+		const unsigned int colorHeightHalf = colorHeight >> 1;
+
+		const unsigned char* frameY = data;
+		const unsigned char* frameU = data + colorWidth*colorHeight;
+		const unsigned char* frameV = frameU + colorWidthHalf* colorHeightHalf;
+
+		// creates BGRA frame
+		std::shared_ptr<Frame> rgbFrame = Frame::Create(colorWidth, colorHeight, FrameType::Encoding::RGBA32);
+
+		I420ToRGBA((const uint8_t*)frameY, colorWidth,
+			(const uint8_t*)frameU, colorWidthHalf,
+			(const uint8_t*)frameV, colorWidthHalf,
+			rgbFrame->getData(), colorWidth, colorWidth, colorHeight);
+
+		return rgbFrame;
+	}
+
+};
+
+const char* FutureYUVProtocolClass::ProtocolName = "RAWYUV420";
+
 
 bool TCPRelayCamera::LoadConfigurationSettings()
 {
@@ -43,75 +128,27 @@ bool TCPRelayCamera::LoadConfigurationSettings()
 	return false;
 }
 
-// yuv protocol: future uses would rely on a different protocol
-void YUVReadHeader(boost::asio::ip::tcp::socket &clientSocket, int& width, int& height)
-{
-
-
-}
-
-// yuv protocol: future uses
-std::shared_ptr<Frame> YUVReadFrame(boost::asio::ip::tcp::socket& clientSocket, int width, int height)
-{
-
-	using namespace libyuv;
-
-
-	char* frameY;
-	char* frameU;
-	char* frameV;
-
-	// creates BGRA frame
-	std::shared_ptr<Frame> rgbFrame = Frame::Create(width, height, FrameType::Encoding::RGBA32);
-
-	I422ToRGBA( (const uint8_t *) frameY, width,
-			    (const uint8_t *) frameU, width / 2,
-			    (const uint8_t *) frameV, width / 2,
-		rgbFrame->getData(), width, width, height);
-
-	return rgbFrame;
-
-
-}
-
-// Get Resolution
-//byte[] resolution = new byte[sizeof(int) * 2];
-//Buffer.BlockCopy(BitConverter.GetBytes((int)frame.Width), 0, resolution, 0, sizeof(int));
-//Buffer.BlockCopy(BitConverter.GetBytes((int)frame.Height), 0, resolution, sizeof(int), sizeof(int));
-// Add Resolution as header
-//byte[] combined = new byte[frame.Buffer.Length + resolution.Length];
-//Buffer.BlockCopy(resolution, 0, combined, 0, resolution.Length);
-//Buffer.BlockCopy(frame.Buffer, 0, combined, resolution.Length, frame.Buffer.Length);
-// Send
-//CommOutput.Send(combined);
 
 
 void TCPRelayCamera::CameraLoop()
 {
 	
 	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera polling thread: " << std::this_thread::get_id << std::endl;
-
-	// if the thread is stopped but we did execute the connected callback,
-	// then we will execute the disconnected callback to maintain consistency
-	bool didWeCallConnectedCallback = false;
 	unsigned long long totalTries = 0;
 
-	// all asio methods rely on io_context. 
-	boost::asio::io_context io_context;
 
 	while (thread_running)
 	{
-		// start again ...
+		//  makes sure to execute a disconnect callback whenever a connected callback has been called
 		didWeCallConnectedCallback = false;
-		totalTries = 0;
-
 		
 		// creates tcp socket
 		std::shared_ptr<comms::ReliableCommunicationClientX> tcpClient = comms::ReliableCommunicationClientX::createClient(io_context);
 		tcpClient->setTag(totalTries);
 
+		// creates shared memory for reading the header
+		// (todo: in the future, this should be based on the protocol implementation)
 
-	
 
 
 		//
@@ -166,8 +203,8 @@ void TCPRelayCamera::CameraLoop()
 				{
 					// did something fail?
 					Logger::Log(TCPRelayCameraConstStr) << "ERROR! Could not connect to camera: " << e.what() << std::endl;
-					if (client_socket.is_open())
-						client_socket.close();
+					//if (client_socket.is_open())
+//						client_socket.close();
 					colorCameraEnabled = false;
 					depthCameraEnabled = false;
 					std::this_thread::sleep_for(std::chrono::seconds(1));

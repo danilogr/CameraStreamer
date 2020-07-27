@@ -17,7 +17,7 @@
 
 // boost requirements for this camera
 #include <boost/asio.hpp>
-
+#include "ReliableCommunicationClientX.h"
 
 /**
   TCP Relay camera relays incoming streams (yuv, rgb, jpeg, etc...)
@@ -96,6 +96,23 @@ protected:
 
 	// used in all camera logs
 	static const char* TCPRelayCameraConstStr;
+
+	//
+	// this class uses an asynchronous socket
+	// so it needs to handle all socket events in separate methods
+	//
+
+	void onSocketConnect(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+	void onSocketRead(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+	void onSocketDisconnect(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+
+	//
+	// the following variables help us understand the state of the network camera
+	//
+
+	bool didWeCallConnectedCallback;	// if true, we have to call the disconnected callback
+	unsigned long long totalTries;		// how many times it tried to reconnect to the server 
+	boost::asio::io_context io_context;	// all asio methods rely on io_context.
 
 public:
 

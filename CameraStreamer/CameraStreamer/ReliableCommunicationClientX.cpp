@@ -319,7 +319,6 @@ namespace comms
 
 	}
 
-
 	void ReliableCommunicationClientX::connect_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
 		const ReliableCommunicationCallback& onConnectCallback,	const boost::system::error_code& error)
 	{
