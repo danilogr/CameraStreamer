@@ -79,13 +79,6 @@ class TCPRelayCamera : public Camera
 	// hostPort as found in the configuration file
 	int hostPort;
 
-	// where we should connect to
-	boost::asio::ip::tcp::endpoint hostEndpoint;
-
-
-	// header size in bytes
-	unsigned int headerSize;
-
 protected:
 
 	// method that finds a suitable camera given what is set in the app status
@@ -103,8 +96,15 @@ protected:
 	//
 
 	void onSocketConnect(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+	void onSocketReadHeader(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
 	void onSocketRead(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
-	void onSocketDisconnect(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+	void onSocketDisconnect(std::shared_ptr<comms::ReliableCommunicationClientX> oldConnection, const boost::system::error_code& e);
+	
+	//
+	// invoked after a time out or when starting a new connection
+	//
+	void startAsyncConnection(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e);
+
 
 	//
 	// the following variables help us understand the state of the network camera
@@ -113,6 +113,18 @@ protected:
 	bool didWeCallConnectedCallback;	// if true, we have to call the disconnected callback
 	unsigned long long totalTries;		// how many times it tried to reconnect to the server 
 	boost::asio::io_context io_context;	// all asio methods rely on io_context.
+
+	// object used for internal timeouts
+	boost::asio::deadline_timer reconnectTimer;
+	std::shared_ptr<comms::ReliableCommunicationClientX> tcpClient;
+
+
+	// memory buffer responsible for the header
+	std::shared_ptr< std::vector<unsigned char> > headerBuffer;
+
+	// memory buffer responsible for the raw network frame
+	std::shared_ptr< std::vector<unsigned char> > frameBuffer;
+
 
 public:
 
@@ -125,7 +137,7 @@ public:
 	}
 
 	TCPRelayCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration),
-		hostPort(0), headerSize(0)
+		didWeCallConnectedCallback(false), totalTries(0), hostPort(0), reconnectTimer(io_context)
 	{
 
 	}

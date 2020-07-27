@@ -8,97 +8,12 @@
 #ifdef ENABLE_TCPCLIENT_RELAY_CAMERA
 
 #include <iostream>
-#include <libyuv.h>
+
+#include "VectorNetworkBuffer.h"
+#include "FrameNetworkBuffer.h"
 
 
 const char* TCPRelayCamera::TCPRelayCameraConstStr = "TCPRelayCam";
-
-/// <summary>
-/// Currently, we don't have a formal way of describing protocols (and we don't
-/// have time to work on it now). Hence, this class is a prototype of what
-/// a protocol definition might look like. It is hardcoded for the
-/// "depacketization" of Raw YUV420 packets coming from the WebRTC broker
-/// (in the future, we want to support a couple more protocols)
-/// </summary>
-struct FutureYUVProtocolClass
-{
-
-	static const char* ProtocolName;
-
-	bool initialized;
-	bool colorFrame;
-	unsigned int colorWidth, colorHeight;
-
-	bool depthFrame;
-	unsigned int depthWidth, depthHeight;
-	
-
-	FutureYUVProtocolClass() : initialized(false), colorFrame(false), colorWidth(0), colorHeight(0),
-		depthFrame(false), depthWidth(0), depthHeight(0) {}
-
-
-	constexpr bool HasFixedHeaderSize()
-	{
-		return true;
-	}
-
-	constexpr size_t FixedHeaderSize()
-	{
-		return sizeof(uint32_t) * 3;
-	}
-
-	// returns true if it was able to parse width, height of the next frame given a header
-	bool ParseHeader(const unsigned char* header, size_t headerLength, size_t& frameSize)
-	{
-		// sanity check
-		if (headerLength < FixedHeaderSize()) return false;
-
-		frameSize   = ((const uint32_t*)header)[0]; // first integer is the entire frame size
-		colorWidth  = ((const uint32_t*)header)[1]; // second integer is the width
-		colorHeight = ((const uint32_t*)header)[2]; // third integer is the height
-
-		frameSize -= sizeof(uint32_t) * 2;			// frameSize included the number of bytes taken for colorWidth and colorHeight
-		return true;
-	}
-
-	// yuv protocol doesn't  support depth at all. it can always return false
-	bool supportsDepth()
-	{
-		return false;
-	}
-
-	// yuv protocol always supports color, so it can always return true
-	bool supportsColor()
-	{
-		return true;
-	}
-
-	// parses a frame and returns a shared_ptr<Frame> to an RGBA frame
-	std::shared_ptr<Frame> ParseFrame(const unsigned char* data, size_t dataLength)
-	{
-		using namespace libyuv;
-		const unsigned int colorWidthHalf = colorWidth >> 1;
-		const unsigned int colorHeightHalf = colorHeight >> 1;
-
-		const unsigned char* frameY = data;
-		const unsigned char* frameU = data + colorWidth*colorHeight;
-		const unsigned char* frameV = frameU + colorWidthHalf* colorHeightHalf;
-
-		// creates BGRA frame
-		std::shared_ptr<Frame> rgbFrame = Frame::Create(colorWidth, colorHeight, FrameType::Encoding::RGBA32);
-
-		I420ToRGBA((const uint8_t*)frameY, colorWidth,
-			(const uint8_t*)frameU, colorWidthHalf,
-			(const uint8_t*)frameV, colorWidthHalf,
-			rgbFrame->getData(), colorWidth, colorWidth, colorHeight);
-
-		return rgbFrame;
-	}
-
-};
-
-const char* FutureYUVProtocolClass::ProtocolName = "RAWYUV420";
-
 
 bool TCPRelayCamera::LoadConfigurationSettings()
 {
@@ -112,13 +27,12 @@ bool TCPRelayCamera::LoadConfigurationSettings()
 		// creates the asio endpoint based on configuration settings
 		hostAddr = configuration->GetCameraCustomString("host", "localhost", true);
 		hostPort = configuration->GetCameraCustomInt("port", 1234, true);
-		hostEndpoint = tcp::endpoint(address::from_string(hostAddr), hostPort);
 
 		// selects correct header parser
 		// (does not need to do anything for now)
 		// but in the future, it will be something like
 		// protocol = "LWHYUV420"
-		// instantiates a new protocol parser based on script
+		// instantiates a new drotocol parser based on script
 
 		// serial number? might be protocol dependent, but for now
 		cameraSerialNumber = hostAddr + std::string(":") + configuration->GetCameraCustomString("port", "1234", false);
@@ -130,25 +44,112 @@ bool TCPRelayCamera::LoadConfigurationSettings()
 
 
 
+void TCPRelayCamera::startAsyncConnection(std::shared_ptr<comms::ReliableCommunicationClientX> oldConnection, const boost::system::error_code& e)
+{
+	if (e == boost::asio::error::operation_aborted)
+		return;
+
+	if (thread_running)
+	{
+		using namespace std::placeholders; // for  _1, _2, ...
+
+		tcpClient = comms::ReliableCommunicationClientX::createClient(io_context);
+		tcpClient->onDisconnected = std::bind(&TCPRelayCamera::onSocketDisconnect, this, _1, _2);
+		tcpClient->setTag(totalTries);
+
+		Logger::Log(TCPRelayCameraConstStr) << "Connecting to " << hostAddr << ':' << hostPort << std::endl;
+		tcpClient->connect(hostAddr, hostPort, std::bind(&TCPRelayCamera::onSocketConnect, this, _1, _2), std::chrono::milliseconds(1000));
+	}
+
+}
+
+
+void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e)
+{
+	// this shouldn't really happen
+	if (socket != tcpClient);
+
+	// got header and we can continue?
+	if (!e && thread_running)
+	{
+
+	}
+}
+
+void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e)
+{
+
+}
+
+void TCPRelayCamera::onSocketConnect(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e)
+{
+
+	using namespace std::placeholders; // for  _1, _2, ...
+
+	// tcpClient is the current connection. Any prior events from older connections should be ignored
+	if (!socket || socket != tcpClient) return;
+
+	if (!e)
+	{
+		// great, we are connected!
+		Logger::Log(TCPRelayCameraConstStr) << "Connected to " << socket->remoteAddress() << ':' << socket->remotePort() << std::endl;
+
+		// if the thread was cancelled, we will disconnect and wait for the disconnected event
+		if (!thread_running)
+		{
+			if (!e)
+				socket->close();
+		}
+		else {
+			// we are finally good to start reading frames
+
+			// we need to get camera info from the stream before we report that we are connected.
+			// Thus, we will read a header, and then read the first frame
+
+			// wraps shared_ptr in a generic shared_ptr wrapper used by ReliableCommunicationTCPClientX
+			comms::VectorNetworkBuffer<unsigned char> buffer(headerBuffer);
+
+			// async read
+			socket->read(buffer, headerBuffer->size(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
+		}
+		
+
+	} else if (e == comms::error::TimedOut)
+	{
+		Logger::Log(TCPRelayCameraConstStr) << "Timed out..." << std::endl;
+		++totalTries;
+
+	}
+	else {
+		Logger::Log(TCPRelayCameraConstStr) << "Error connecting to remote host:" << e << std::endl;
+		++totalTries;
+	}
+
+	// if it hasn't returned so far, it means that we are going to try again
+	if (thread_running)
+	{
+		Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
+		reconnectTimer.expires_from_now(boost::posix_time::seconds(1));
+		reconnectTimer.async_wait(std::bind(&TCPRelayCamera::startAsyncConnection, tcpClient, _1));
+	}
+}
+
+
 void TCPRelayCamera::CameraLoop()
 {
+	using namespace std::placeholders; // for  _1, _2, ...
 	
-	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera polling thread: " << std::this_thread::get_id << std::endl;
+	Logger::Log(TCPRelayCameraConstStr) << "Started TCP Relay Camera thread: " << std::this_thread::get_id << std::endl;
 	unsigned long long totalTries = 0;
-
 
 	while (thread_running)
 	{
 		//  makes sure to execute a disconnect callback whenever a connected callback has been called
 		didWeCallConnectedCallback = false;
 		
-		// creates tcp socket
-		std::shared_ptr<comms::ReliableCommunicationClientX> tcpClient = comms::ReliableCommunicationClientX::createClient(io_context);
-		tcpClient->setTag(totalTries);
 
-		// creates shared memory for reading the header
-		// (todo: in the future, this should be based on the protocol implementation)
-
+		// object responsible for handlinng the incoming network packet and decoding it into something our tool can make sense
+		std::shared_ptr<FutureYUVProtocolClass> depacketizer;
 
 
 		//
@@ -169,8 +170,71 @@ void TCPRelayCamera::CameraLoop()
 				break;
 			}
 
+			depacketizer = std::make_shared<FutureYUVProtocolClass>();
+
+
+			Logger::Log(TCPRelayCameraConstStr) << "Using protocol " << depacketizer->ProtocolName << std::endl;
+
+			try
+			{
+				if (depacketizer->HasFixedHeaderSize())
+				{
+
+					// allocate memory needed to read the header
+					headerBuffer = std::make_shared<std::vector<unsigned char> >(depacketizer->FixedHeaderSize());
+
+					// now all the operations migrate to an asynchronous model
+					boost::asio::post(io_context, std::bind(&TCPRelayCamera::startAsyncConnection, this, nullptr, boost::system::error_code()));
+
+					// runs the async event loop until an exception happens or until we are done
+					io_context.run();
+
+					//
+					// Step #3) Shutdown
+					//
+
+					// stop statistics
+					statistics.StopCounting();
+
+					// let other threads know that we are not capturing anymore
+					appStatus->UpdateCaptureStatus(false, false);
+
+					// stop cameras that might be running
+					if (IsAnyCameraEnabled())
+					{
+						// closes connection
+						if (tcpClient && tcpClient->connected())
+							tcpClient->close();
+
+						depthCameraEnabled = false;
+						colorCameraEnabled = false;
+					}
+
+					// calls the camera disconnect callback if we called onCameraConnect() - consistency
+					if (didWeCallConnectedCallback && onCameraDisconnect)
+						onCameraDisconnect();
+
+
+				} else {
+					Logger::Log(TCPRelayCameraConstStr) << "Protocol " << depacketizer->ProtocolName << " does not support fixed header size! Use a different protocol!" << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+				}
+			}
+			catch (const std::exception& e)
+			{
+				Logger::Log(TCPRelayCameraConstStr) << "Unexpected error " << e.what() << std::endl;
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			}
+
+			// waits one second before restarting...
+			if (thread_running)
+			{
+				Logger::Log(TCPRelayCameraConstStr) << "Restarting device..." << std::endl;
+			}
+
+
 			// try to connect
-						// tries to start the streaming pipeline
+			// tries to start the streaming pipeline
 			while (!IsAnyCameraEnabled() && thread_running)
 			{
 				try

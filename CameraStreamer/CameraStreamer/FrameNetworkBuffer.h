@@ -8,7 +8,7 @@
 namespace comms
 {
 	// CameraStreamer extension of NetworkBufferPtr to wrap a frame
-	class FrameNetworkBuffer : NetworkBufferPtr
+	class FrameNetworkBuffer : public NetworkBufferPtr
 	{
 
 	protected:

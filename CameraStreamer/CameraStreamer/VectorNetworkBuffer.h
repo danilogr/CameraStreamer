@@ -9,7 +9,7 @@ namespace comms
 {
 
 	template <class T>
-	class VectorNetworkBuffer : NetworkBufferPtr
+	class VectorNetworkBuffer : public NetworkBufferPtr
 	{
 
 	protected:
