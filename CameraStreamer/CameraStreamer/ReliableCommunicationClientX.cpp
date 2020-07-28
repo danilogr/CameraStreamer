@@ -15,6 +15,8 @@ namespace comms
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
 
+		// std::cout << "1 - write request " << message->size() << "\n\n";
+
 		// operation aborted
 		if (stopRequested)
 		{
@@ -25,6 +27,8 @@ namespace comms
 			return;
 		}
 
+		// std::cout << "2 - write request " << message->size() << "\n\n";
+
 		// there is not even a connection here
 		if (!tcpClient)
 		{
@@ -34,6 +38,8 @@ namespace comms
 			return;
 		}
 
+
+		// std::cout << "3 - write request " << message->size() << "\n\n";
 
 		// adds message to client Q
 		outputMessageQ.push(BufferCallbackTuple(message, onWriteCallback));
@@ -46,8 +52,12 @@ namespace comms
 			BufferCallbackTuple bufferCallbackTuple = outputMessageQ.back();
 			NetworkBufferPtr& msgBuffer = std::get<0>(bufferCallbackTuple);
 
+
+			// std::cout << "4 - write start! \n\n";
+
+
 			// starts writing for this client (buffer is there for a worst case scenario)
-			boost::asio::async_write(*tcpClient, boost::asio::buffer(msgBuffer.Data(), msgBuffer.Size()),
+			boost::asio::async_write(*tcpClient, boost::asio::buffer(GetBufferData(msgBuffer), msgBuffer->size()),
 				std::bind(&ReliableCommunicationClientX::write_request_done, this, shared_from_this(), msgBuffer, std::get<1>(bufferCallbackTuple), _1, _2));
 		}
 	}
@@ -59,6 +69,9 @@ namespace comms
 		const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
+
+
+		// std::cout << "1 - write done - " << buffer->size() <<  " - " << bytes_transferred << " - " <<  error.message() << "\n\n";
 
 		// updates the number of bytes sent
 		networkStatistics.bytesSent += bytes_transferred;
@@ -79,6 +92,8 @@ namespace comms
 			}
 
 		}
+
+		// std::cout << "2 - write done\n\n";
 
 		// did this operation fail or did someone stop the socket?
 		if (error || stopRequested)
@@ -112,6 +127,8 @@ namespace comms
 			return;
 		}
 
+		// std::cout << "3 - write done\n\n";
+
 		// moves on with next writes
 		if (outputMessageQ.size() > 0)
 		{
@@ -120,7 +137,7 @@ namespace comms
 			NetworkBufferPtr& msgBuffer = std::get<0>(bufferCallbackTuple);
 
 			// starts writing for this client
-			boost::asio::async_write(*tcpClient, boost::asio::buffer(msgBuffer.Data(), msgBuffer.Size()),
+			boost::asio::async_write(*tcpClient, boost::asio::buffer(GetBufferData(msgBuffer), msgBuffer->size()),
 				std::bind(&ReliableCommunicationClientX::write_request_done, this, shared_from_this(), msgBuffer, std::get<1>(bufferCallbackTuple), _1, _2));
 		}
 	}
@@ -129,6 +146,9 @@ namespace comms
 
 	void ReliableCommunicationClientX::read(NetworkBufferPtr& buffer, size_t count, const ReliableCommunicationCallback& onReadCallback, std::chrono::milliseconds timeout)
 	{
+
+		// std::cout << "1 - read request - " << buffer->size() << " " << this << "\n\n";
+
 		static const std::chrono::milliseconds zero = std::chrono::milliseconds{ 0 };
 		using namespace std::placeholders; // for  _1, _2, ...
 
@@ -141,6 +161,10 @@ namespace comms
 			return;
 		}
 
+
+		// std::cout << "2 - read request - " << buffer->size() << " " << this <<  "\n\n";
+
+
 		// operation aborted
 		if (stopRequested)
 		{
@@ -150,6 +174,9 @@ namespace comms
 			return;
 		}
 
+		// std::cout << "3 - read request - " << buffer->size() << " " << this << "\n\n";
+
+
 		// there is not even a connection here
 		if (!tcpClient)
 		{
@@ -158,6 +185,10 @@ namespace comms
 
 			return;
 		}
+
+
+		// std::cout << "4 - read request - " << buffer->size() << " " << this << "\n\n";
+
 
 		// make sure that onReadCallback is only called once in case a time out timer is set
 		readCallbackInvoked = false;
@@ -174,7 +205,7 @@ namespace comms
 		}
 
 		// reads the entire message
-		boost::asio::async_read(*tcpClient, boost::asio::buffer(buffer.Data(), count),
+		boost::asio::async_read(*tcpClient, boost::asio::buffer(GetBufferData(buffer), count),
 			boost::asio::transfer_exactly(count), std::bind(&ReliableCommunicationClientX::read_request_done, this, shared_from_this(), buffer, onReadCallback, count, _1, _2));
 	}
 
@@ -182,6 +213,11 @@ namespace comms
 		NetworkBufferPtr buffer, const ReliableCommunicationCallback& onReadCallback, 
 		size_t bytes_requested, const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
+
+		// std::cout << "1 - read done - " << buffer->size() << " " << bytes_transferred << " " << error.message() << " " << this << "\n\n";
+
+
+
 		// no need for a deadline anymore
 		readDeadlineTimer.cancel();
 
@@ -206,6 +242,8 @@ namespace comms
 
 			return;
 		}
+		// std::cout << "2 - read done - " << this << "\n\n";
+
 
 		// outcome of boost::asio::transfer_exactly
 		assert(bytes_requested == bytes_transferred);
@@ -216,6 +254,8 @@ namespace comms
 		// invoke read callback to inform the user that we completed (error should be 0)
 		if (onReadCallback && !readCallbackInvoked)
 		{
+			// std::cout << "3 - read done - " << this << "\n\n";
+
 			readCallbackInvoked = true;
 			onReadCallback(clientLifeKeeper, error);
 		}
@@ -225,6 +265,9 @@ namespace comms
 	void ReliableCommunicationClientX::read_timeout_done(std::shared_ptr<ReliableCommunicationClientX> clientLifeKeeper,
 		const ReliableCommunicationCallback& onReadCallback, const boost::system::error_code& error)
 	{
+		// std::cout << "1 - read timeout - " << " " << error.message() << this << "\n\n";
+
+
 		// we don't need to timeout when a stop was requested or the tcpClient was never set in first place
 		// (both conditions will lead to a callback getting posted by the read method)
 		// case 1: condition below is valid during a call to ReliableCommunicationClientX::read (then it doesn't even start a timer / never reaches here)
@@ -235,16 +278,26 @@ namespace comms
 		if (stopRequested || !tcpClient)
 			return;
 
+
+		// std::cout << "2 - read timeout - " << " " << this << "\n\n";
+
+
 		// operation_aborted means that a timer was rescheduled (a read operation ended sucessfully and another one started)
 		// if this timer wasn't aborted, it means that read took too long
 		if (error != boost::asio::error::operation_aborted)
 		{
+
+
+			// std::cout << "3 - read timeout - " << " " << this << "\n\n";
+
 			// prepare the socket to stop reading or writing
 			boost::system::error_code e;
 			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
 			if (!readCallbackInvoked && onReadCallback)
 			{
+				// std::cout << "4 - read timeout - " << " " << this << "\n\n";
+
 				readCallbackInvoked = true; // in the unlikely scenario  read finalizes sucessfully at the same time as the timer, we have to avoid calling onReadCallback twice
 				onReadCallback(clientLifeKeeper, comms::error::TimedOut);
 			}
@@ -276,8 +329,20 @@ namespace comms
 			return;
 
 		// starts resolving remote address
+		boost::system::error_code resolverErrc;
+		
 		boost::asio::ip::tcp::resolver resolver(io_context);
-		auto endpoints = resolver.resolve(host, boost::lexical_cast<std::string>(port));
+		auto endpoints = resolver.resolve(host, boost::lexical_cast<std::string>(port), resolver.numeric_service, resolverErrc);
+
+		// if the resolver fails, then we can complain directly to the user
+		if (resolverErrc)
+		{
+			boost::asio::post(std::bind(onConnectCallback, shared_from_this(), resolverErrc));
+			return;
+		}
+
+		// if the resolver succeeds, we can move on with connecting
+		pendingConnectCallbacks = endpoints.size();
 
 		// creates a new tcpClient (safe to do here because all pending operations are done - if the socket was used before)
 		tcpClient = std::make_shared<boost::asio::ip::tcp::socket>(io_context);
@@ -298,7 +363,14 @@ namespace comms
 		const ReliableCommunicationCallback& onConnectCallback, const boost::system::error_code& error,
 		const boost::asio::ip::tcp::endpoint& endpoint)
 	{
-		// no need for a deadline anymore
+		--pendingConnectCallbacks;
+
+		// tried one host, but it didn't work. Ignore this callback
+		if (error && pendingConnectCallbacks > 0) return;
+
+		// if here, it means that we tried all the possible options, and either connected / haven't connected
+
+		// no need for a deadline anymore (if it hasn't been called yet)
 		connectDeadlineTimer.cancel();
 
 		// did we connect?

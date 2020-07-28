@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <memory>
+
 namespace comms
 {
 	/*
@@ -15,7 +18,7 @@ namespace comms
 	 * implementation specific case) only uses 16 bytes - 8 bytes for vtable and 8 bytes for the shared_ptr
 	 *
 	 * author: gasques@ucsd.edu
-	 */
+	
 	class NetworkBufferPtr
 	{
 	public:
@@ -29,5 +32,11 @@ namespace comms
 		virtual unsigned char* Data() { return nullptr;  }
 
 	};
+
+	 */
+
+	typedef std::shared_ptr<std::vector<unsigned char> > NetworkBufferPtr;
+
+	inline unsigned char* GetBufferData(NetworkBufferPtr& b) { return b ? &(*b)[0] : 0; }
 
 }

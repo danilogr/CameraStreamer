@@ -2,6 +2,9 @@
 
 #include <memory>
 
+/*
+ Future work: find a way of accepting differnt types of networkbuffers :)
+
 #include "NetworkBuffer.h"
 #include "Frame.h"
 
@@ -39,4 +42,4 @@ namespace comms
 
 	};
 
-}
+}*/

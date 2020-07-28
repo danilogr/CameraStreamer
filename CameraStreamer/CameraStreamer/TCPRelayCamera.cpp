@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#include "VectorNetworkBuffer.h"
+//#include "VectorNetworkBuffer.h"
 #include "FrameNetworkBuffer.h"
 
 // custom packet readers
@@ -53,6 +53,9 @@ bool TCPRelayCamera::LoadConfigurationSettings()
 
 void TCPRelayCamera::onSocketDisconnect(std::shared_ptr<comms::ReliableCommunicationClientX> oldConnection, const boost::system::error_code& e)
 {
+
+	using namespace std::placeholders; // for  _1, _2, ...
+
 	Logger::Log(TCPRelayCameraConstStr) << "Disconnected from " << oldConnection->remoteAddress() << ':' << oldConnection->remotePort() << std::endl;
 	// print network statistics
 
@@ -77,10 +80,20 @@ void TCPRelayCamera::onSocketDisconnect(std::shared_ptr<comms::ReliableCommunica
 		// if we are supposed to reconnect, an asynchronous request will
 		// be pending and dealing with it!
 
+
+		// try again after done disconnecting
+		if (thread_running)
+		{
+			Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
+			reconnectTimer.expires_from_now(boost::posix_time::seconds(1));
+			reconnectTimer.async_wait(std::bind(&TCPRelayCamera::startAsyncConnection, this, tcpClient, _1));
+		}
+
 	}
 	else {
 		Logger::Log(TCPRelayCameraConstStr) << "Something is not right... " << std::endl;
 	}
+
 }
 
 
@@ -98,7 +111,7 @@ void TCPRelayCamera::startAsyncConnection(std::shared_ptr<comms::ReliableCommuni
 		tcpClient->setTag(totalTries);
 
 		Logger::Log(TCPRelayCameraConstStr) << "Connecting to " << hostAddr << ':' << hostPort << std::endl;
-		tcpClient->connect(hostAddr, hostPort, std::bind(&TCPRelayCamera::onSocketConnect, this, _1, _2), std::chrono::milliseconds(1000));
+		tcpClient->connect(hostAddr, hostPort, std::bind(&TCPRelayCamera::onSocketConnect, this, _1, _2), std::chrono::milliseconds(3000));
 	}
 
 }
@@ -109,7 +122,7 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 
 	using namespace std::placeholders; // for  _1, _2, ...
 	// this shouldn't really happen
-	if (socket != tcpClient);
+	if (socket != tcpClient) return;
 
 	// got header and we can continue?
 	if (!e && thread_running)
@@ -122,7 +135,7 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 			{
 				// read a header again
 				++statistics.framesCaptured;
-				comms::VectorNetworkBuffer<unsigned char> buffer(headerBuffer);
+				comms::NetworkBufferPtr buffer(headerBuffer);
 				socket->read(buffer, packetReader->FixedHeaderSize(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
 				return;
 			}
@@ -168,6 +181,8 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 
 				// invokes camera connect callback
 				didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+
+				// tell others that the camera connected
 				if (onCameraConnect)
 					onCameraConnect();
 			}
@@ -180,8 +195,7 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 			}
 
 			// read the entire network packet (asynchronously)
-			comms::VectorNetworkBuffer<unsigned char> buffer(frameBuffer);
-			socket->read(buffer, packetReader->getNetworkFrameSize(), std::bind(&TCPRelayCamera::onSocketRead, this, _1, _2), getFrameTimeout);
+			socket->read(frameBuffer, packetReader->getNetworkFrameSize(), std::bind(&TCPRelayCamera::onSocketRead, this, _1, _2), getFrameTimeout);
 			return;
 
 		}
@@ -195,20 +209,11 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 
 	}
 	else if (e) {
-		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e << std::endl;
+		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e.message() << std::endl;
 		++totalTries;
 		++statistics.framesFailed;
 		statistics.StopCounting();
 	}
-
-	// if it hasn't returned so far, it means that we are going to try again
-	if (thread_running)
-	{
-		Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
-		reconnectTimer.expires_from_now(boost::posix_time::seconds(1));
-		reconnectTimer.async_wait(std::bind(&TCPRelayCamera::startAsyncConnection, this, tcpClient, _1));
-	}
-
 }
 
 void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e)
@@ -230,8 +235,7 @@ void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationCl
 				onFramesReady(packetReader->getLastFrameTimestamp(), packetReader->getLastColorFrame(), packetReader->getLastDepthFrame());
 
 			// read another frame
-			comms::VectorNetworkBuffer<unsigned char> buffer(headerBuffer);
-			socket->read(buffer, packetReader->FixedHeaderSize(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
+			socket->read(headerBuffer, packetReader->FixedHeaderSize(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
 
 			return;
 		}
@@ -244,18 +248,10 @@ void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationCl
 		}
 	}
 	else if (e) {
-		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e << std::endl;
+		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e.message() << std::endl;
 		++totalTries;
 		++statistics.framesFailed;
 		statistics.StopCounting();
-	}
-
-	// if it hasn't returned so far, it means that we are going to try again
-	if (thread_running)
-	{
-		Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
-		reconnectTimer.expires_from_now(boost::posix_time::seconds(1));
-		reconnectTimer.async_wait(std::bind(&TCPRelayCamera::startAsyncConnection, this, tcpClient, _1));
 	}
 
 }
@@ -286,10 +282,11 @@ void TCPRelayCamera::onSocketConnect(std::shared_ptr<comms::ReliableCommunicatio
 			// Thus, we will read a header, and then read the first frame
 
 			// wraps shared_ptr in a generic shared_ptr wrapper used by ReliableCommunicationTCPClientX
-			comms::VectorNetworkBuffer<unsigned char> buffer(headerBuffer);
+
 
 			// async read
-			socket->read(buffer, headerBuffer->size(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
+			socket->read(headerBuffer, headerBuffer->size(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);
+			return;
 		}
 		
 
@@ -300,7 +297,7 @@ void TCPRelayCamera::onSocketConnect(std::shared_ptr<comms::ReliableCommunicatio
 
 	}
 	else {
-		Logger::Log(TCPRelayCameraConstStr) << "Error connecting to remote host:" << e << std::endl;
+		Logger::Log(TCPRelayCameraConstStr) << "Error connecting to remote host: " << e.message() << std::endl;
 		++totalTries;
 	}
 

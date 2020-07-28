@@ -62,7 +62,7 @@ protected:
 	// constructors are private to force everyone to make a shared_copy
 	ReliableCommunicationClientX(boost::asio::io_context& io_context_) : io_context(io_context_), tag(0),
 		connectDeadlineTimer(io_context_), readDeadlineTimer(io_context_), stopRequested (false), readOperationPending(false),
-		readCallbackInvoked(false), connectCallbackInvoked(false), socketEverConnect(false){}
+		readCallbackInvoked(false), connectCallbackInvoked(false), socketEverConnect(false), pendingConnectCallbacks(0) {}
 
 
 	// constructor that receives an existing socket (probably connected)
@@ -145,6 +145,10 @@ protected:
 	bool readCallbackInvoked;
 	bool connectCallbackInvoked;
 	bool socketEverConnect;
+
+	// when connecting to a host, a set of different options might be available. 
+	// this variable makes sure to report to the user only when the last try is finalized
+	int pendingConnectCallbacks; 
 	
 public:
 
