@@ -19,30 +19,30 @@ HEIGHT = int(sys.argv[3])
 if (WIDTH % 4 != 0):
     print("Invalid width %d! (It should be divisible by 4)"%WIDTH)
 
-if (HEIGHT % 4 ! = 0)
+if (HEIGHT % 4 != 0):
     print("Invalid height %d! (It should be divisible by 4)"%HEIGHT)
 
-PORT = int(sys.argv[2]) if len(sys.argv) >= 4 else 51234
+PORT = int(sys.argv[4]) if len(sys.argv) >= 4 else 40123
 
 # ------------------------------------------------------------------------------------------ OPENING FILE / CACULATING FRAMES
 
 # Opens file
 print("Opening file %s ..." % FILENAME)
-f = open(FILENAME, "rb")
-fileSize = os.path.getsize(FILENAME
-frameSize = (WIDTH * HEIGHT * 1.5)
+fileSize = os.path.getsize(FILENAME)
+frameSize = int(WIDTH * HEIGHT * 1.5)
 frameCount = math.floor(fileSize / frameSize)
 
-print("File has %d mb - %d frames or %f minutes (at 30fps)" % (filesize/(1024*1024), frameCount, frameCount/(30*60)))
+print("File has %d mb - %d frames or %f minutes (at 30fps)" % (fileSize/(1024*1024), frameCount, frameCount/(30*60)))
 
 # ------------------------------------------------------------------------------------------ CREATING SOCKET
 
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = ('localhost', PORT)
+server_address = ('0.0.0.0', PORT)
 print("Listening at %d" % PORT)
 
 # Listen for incoming connections
+sock.bind(server_address)
 sock.listen(1)
 
 # ------------------------------------------------------------------------------------------ HELPER FUNCTION TO SEND FRAME (todo: modularize)
@@ -59,9 +59,9 @@ def sendEntireMessage(sock, message):
 # ------------------------------------------------------------------------------------------ CREATE HEADER
 
 
-frameSizeEnc = (framesize + 8).to_bytes(2, "little") # frameSize + 4 bytes for height + 4 bytes for width
-heightEncoded = HEIGHT.to_bytes(2, "little")
-widthEncoded = WIDTH.to_bytes(2, "little")
+frameSizeEnc = (frameSize + 8).to_bytes(4, "little") # frameSize + 4 bytes for height + 4 bytes for width
+heightEncoded = HEIGHT.to_bytes(4, "little")
+widthEncoded = WIDTH.to_bytes(4, "little")
 messageHeader = b"".join([frameSizeEnc, widthEncoded, heightEncoded])
 
 
@@ -73,11 +73,23 @@ while True:
     connection, client_address = sock.accept()
     print("New client connected - ", client_address)
 
-    while True:
-        # read from the file
+    # opens the file
+    with open(FILENAME, "rb") as f:
+        # read as many bytes as necessary for the yuv frame
+        yuvframe = f.read(frameSize)
+        while yuvframe:
+            # write header
+            sendEntireMessage(connection, messageHeader)
 
-        # write header
+            # write the amount read
+            sendEntireMessage(connection, yuvframe)
 
-        # write the amount read
+            # read from the file
+            yuvframe = f.read(frameSize)
+        # done reading the file
+        print("Streamed the file.. repeating after a reconnect...")
+    
+    # closes connection
+    connection.close()
 
     
