@@ -17,7 +17,12 @@
 
 // boost requirements for this camera
 #include <boost/asio.hpp>
+
+// sockets
 #include "ReliableCommunicationClientX.h"
+
+// network protocols
+#include "ProtocolPacketReader.h"
 
 /**
   TCP Relay camera relays incoming streams (yuv, rgb, jpeg, etc...)
@@ -125,6 +130,8 @@ protected:
 	// memory buffer responsible for the raw network frame
 	std::shared_ptr< std::vector<unsigned char> > frameBuffer;
 
+	// pointer to code responsible for de-packetizing network packets
+	std::shared_ptr<ProtocolPacketReader> packetReader;
 
 public:
 

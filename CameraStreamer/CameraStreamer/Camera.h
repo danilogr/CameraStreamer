@@ -254,25 +254,25 @@ public:
 		Stop();
 	}
 
-	bool IsThreadRunning()
+	inline bool IsThreadRunning()
 	{
 		return (sThread && sThread->joinable());
 	}
 
 	// Returns true if kinect is opened and streaming video
-	bool IsAnyCameraEnabled()
+	inline bool IsAnyCameraEnabled()
 	{
 		return colorCameraEnabled || depthCameraEnabled;
 	}
 
 	// returns true if the depth camera is opened and streaming video
-	bool IsDepthCameraEnabled()
+	inline bool IsDepthCameraEnabled()
 	{
 		return depthCameraEnabled;
 	}
 
 	// returns true if the color camera is opened and streaming video
-	bool IsColorCameraEnabled()
+	inline bool IsColorCameraEnabled()
 	{
 		return colorCameraEnabled;
 	}

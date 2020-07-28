@@ -4,17 +4,19 @@
 #include <queue>
 #include <tuple>
 
+// asynchronous networking api
 #include <boost/asio.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/io_context.hpp> // future work -> move from io_context to io_context
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/lexical_cast.hpp>
+#include <boost/asio/io_context.hpp>
 
+// custom boost::system::error_code errors
 #include "CommsErrors.h"
+
+// network statistics data structure
 #include "NetworkStatistics.h"
+
+// network buffer pointer -> wraps varied shared_pointers
 #include "NetworkBuffer.h"
 
 namespace comms

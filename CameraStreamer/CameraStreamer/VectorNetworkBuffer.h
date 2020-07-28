@@ -14,11 +14,11 @@ namespace comms
 
 	protected:
 
-		std::shared_ptr<std::vector<T>> buffer;
+		std::shared_ptr<std::vector<T> > buffer;
 
 	public:
 
-		VectorNetworkBuffer(std::shared_ptr<std::vector<T> buffer) : buffer(buffer) {}
+		VectorNetworkBuffer(std::shared_ptr<std::vector<T> > incomingBuffer) : buffer(incomingBuffer) {}
 
 		// whether or not the buffer is still valid
 		virtual bool Allocated()

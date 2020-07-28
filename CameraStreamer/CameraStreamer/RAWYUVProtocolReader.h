@@ -12,24 +12,30 @@ protected:
 
 public:
 
-	std::shared_ptr<ProtocolPacketReader> Create()
+	static std::shared_ptr<ProtocolPacketReader> Create()
 	{
-		return new RAWYUVProtocolReader();
+		return std::shared_ptr<ProtocolPacketReader>(new RAWYUVProtocolReader());
 	}
 
 	virtual bool HasFixedHeaderSize() const { return true; }
 	virtual size_t FixedHeaderSize() const { return sizeof(uint32_t) * 3; }
 
-	virtual bool ParseHeader(const unsigned char* header, size_t headerLength, size_t& frameSize)
+	virtual bool ParseHeader(const unsigned char* header, size_t headerLength)
 	{
 		// sanity check
 		if (headerLength < FixedHeaderSize()) return false;
 
-		frameSize = ((const uint32_t*)header)[0];		 // first integer is the entire frame size
-		colorFrameWidth = ((const uint32_t*)header)[1];  // second integer is the width
-		colorFrameHeight = ((const uint32_t*)header)[2]; // third integer is the height
+		// no timestamp info is available for this protocol
+		lastFrameTimestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
 
-		frameSize -= sizeof(uint32_t) * 2;				 // frameSize included the number of bytes taken for colorWidth and colorHeight
+		// how much should be read next
+		networkFrameSize = ((const uint32_t*)header)[0];		 // first integer is the entire frame size
+		networkFrameSize -= sizeof(uint32_t) * 2;				 // frameSize included the number of bytes taken for colorWidth and colorHeight
+
+		// resolution of the next frame available
+		colorFrameWidth = ((const uint32_t*)header)[1];			 // second integer is the width
+		colorFrameHeight = ((const uint32_t*)header)[2];		 // third integer is the height
+
 		return true;
 	}
 
@@ -40,7 +46,7 @@ public:
 	// yuv protocol always supports color, so it can always return true
 	virtual bool supportsColor() const { return true;  }
 
-	virtual std::shared_ptr<Frame> ParseFrame(const unsigned char* data, size_t dataLength, std::chrono::microseconds& timestamp);
+	virtual bool ParseFrame(const unsigned char* data, size_t dataLength);
 
 	virtual const std::string ProtocolName() const { return RAWYUVProtocolName; }
 };

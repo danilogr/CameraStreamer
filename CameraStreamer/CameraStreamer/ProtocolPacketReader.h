@@ -21,19 +21,27 @@ protected:
 
 	size_t networkFrameSize;
 
+	std::shared_ptr<Frame> lastColorFrame;
+	std::shared_ptr<Frame> lastDepthFrame;
+
 	ProtocolPacketReader() : initialized(false), colorFrameAvailable(false),
 		colorFrameWidth(0), colorFrameHeight(0), depthFrameAvailable(0),
 		depthFrameWidth(0), depthFrameHeight(0), networkFrameSize(0) {}
 
+	std::chrono::microseconds lastFrameTimestamp;
+
 public:
 
-	inline size_t getNetworkFrameSize() { return networkFrameSize; }
-	inline bool isColorFrameAvailable() { return colorFrameAvailable; }
-	inline bool isDepthFrameAvailable() { return depthFrameAvailable; }
-	inline unsigned int getDepthFrameHeight() { return depthFrameHeight; }
-	inline unsigned int getDepthFrameWidth() { return depthFrameWidth; }
-	inline unsigned int getColorFrameWidth() { return colorFrameWidth; }
-	inline unsigned int getColorFrameHeight() { return colorFrameHeight; }
+	inline size_t getNetworkFrameSize() const { return networkFrameSize; }
+	inline bool isColorFrameAvailable() const { return colorFrameAvailable; }
+	inline bool isDepthFrameAvailable() const { return depthFrameAvailable; }
+	inline unsigned int getDepthFrameHeight() const { return depthFrameHeight; }
+	inline unsigned int getDepthFrameWidth() const { return depthFrameWidth; }
+	inline unsigned int getColorFrameWidth() const { return colorFrameWidth; }
+	inline unsigned int getColorFrameHeight() const { return colorFrameHeight; }
+	inline std::shared_ptr<Frame> getLastColorFrame() const { return lastColorFrame; }
+	inline std::shared_ptr<Frame> getLastDepthFrame() const { return lastDepthFrame; }
+	inline const std::chrono::microseconds& getLastFrameTimestamp() const { return lastFrameTimestamp; }
 
 	/// <summary>
 	/// Does this protocol use a fixed header size in bytes?
@@ -52,9 +60,8 @@ public:
 	/// </summary>
 	/// <param name="header">header buffer pointer</param>
 	/// <param name="headerLength">header buffer length in bytes</param>
-	/// <param name="frameSize">(out) size in bytes of the frame encoded by this header</param>
 	/// <returns>True if the header was parsed successfully</returns>
-	virtual bool ParseHeader(const unsigned char* header, size_t headerLength, size_t& frameSize) = 0;
+	virtual bool ParseHeader(const unsigned char* header, size_t headerLength) = 0;
 	
 	/// <summary>
 	/// Does this protocol support depth frames?
@@ -73,9 +80,8 @@ public:
 	/// </summary>
 	/// <param name="data">pointer to a buffer</param>
 	/// <param name="dataLength">bytes to read from data</param>
-	/// <param name="timestamp">Timestamp for this frame (or current time if not availble)</param>
-	/// <returns>A valid Frame if everything went well. nullptr otherwise</returns>
-	virtual std::shared_ptr<Frame> ParseFrame(const unsigned char* data, size_t dataLength, std::chrono::microseconds &timestamp) = 0;
+	/// <returns>true if lastColorFrame and lastDepthFrame have valid frames (including nullptr)</returns>
+	virtual bool ParseFrame(const unsigned char* data, size_t dataLength) = 0;
 
 
 	/// <summary>

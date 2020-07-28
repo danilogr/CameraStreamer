@@ -55,6 +55,18 @@
     <Filter Include="Header Files\Network\Comms\NetworkBuffer">
       <UniqueIdentifier>{b631b09b-96ba-412d-bc33-f7a0ae560f52}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Network\Protocols\Readers">
+      <UniqueIdentifier>{b5ffe408-5249-440e-9883-3a6d91481eb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Protocols\Writers">
+      <UniqueIdentifier>{84842e65-15aa-45a4-a76a-4449e991512a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols\Readers">
+      <UniqueIdentifier>{593e4ac6-35f7-4596-bd95-c0d1aa0f4b71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols\Writers">
+      <UniqueIdentifier>{eecd3d04-a5cc-4a12-9161-f74e0ee8ef7c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp">
@@ -90,14 +102,11 @@
     <ClCompile Include="CameraStreamer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PacketReader.cpp">
-      <Filter>Source Files\Network\Protocols</Filter>
-    </ClCompile>
-    <ClCompile Include="PacketWriter.cpp">
-      <Filter>Source Files\Network\Protocols</Filter>
-    </ClCompile>
     <ClCompile Include="ReliableCommunicationClientX.cpp">
       <Filter>Source Files\Network\Comms</Filter>
+    </ClCompile>
+    <ClCompile Include="RAWYUVProtocolReader.cpp">
+      <Filter>Source Files\Network\Protocols\Readers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -155,17 +164,20 @@
     <ClInclude Include="FrameNetworkBuffer.h">
       <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
     </ClInclude>
-    <ClInclude Include="PacketReader.h">
-      <Filter>Header Files\Network\Protocols</Filter>
-    </ClInclude>
-    <ClInclude Include="PacketWriter.h">
-      <Filter>Header Files\Network\Protocols</Filter>
-    </ClInclude>
     <ClInclude Include="NetworkStatistics.h">
       <Filter>Header Files\Network\Comms</Filter>
     </ClInclude>
     <ClInclude Include="CommsErrors.h">
       <Filter>Header Files\Network\Comms</Filter>
+    </ClInclude>
+    <ClInclude Include="ProtocolPacketReader.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="ProtocolPacketWriter.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="RAWYUVProtocolReader.h">
+      <Filter>Header Files\Network\Protocols\Readers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

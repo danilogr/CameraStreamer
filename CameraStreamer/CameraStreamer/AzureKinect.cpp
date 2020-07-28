@@ -270,12 +270,9 @@ void AzureKinect::CameraLoop()
 			Logger::Log(AzureKinectConstStr) << "Started capturing" << std::endl;
 
 			// invokes camera connect callback
-			if (thread_running && onCameraConnect)
-			{
-				didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+			didWeCallConnectedCallback = true; // we will need this later in case the thread is stopped
+			if (onCameraConnect)
 				onCameraConnect();
-			}
-
 
 			// capture loop
 			try

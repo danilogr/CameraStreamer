@@ -1,5 +1,13 @@
 #include "ReliableCommunicationClientX.h"
 
+#include <boost/asio/buffer.hpp>
+
+#include <boost/asio/write.hpp>
+#include <boost/asio/read.hpp>
+
+#include <boost/lexical_cast.hpp>
+
+
 namespace comms
 {
 
@@ -162,7 +170,7 @@ namespace comms
 		{
 			// starts the deadline timer
 			readDeadlineTimer.expires_from_now(timeout);
-			readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), _1));
+			readDeadlineTimer.async_wait(std::bind(&ReliableCommunicationClientX::read_timeout_done, this, shared_from_this(), onReadCallback, _1));
 		}
 
 		// reads the entire message

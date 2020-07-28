@@ -3,7 +3,11 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 0; // breaking changes
 const unsigned int VERSION_MINOR = 9;
-const unsigned int VERSION_PATCH = 8;
+const unsigned int VERSION_PATCH = 9;
+
+// 0.9.9
+// TCPRelayCamera
+// - introducing a relay camera for RAW YUV420 network packets
 
 // 0.9.8
 // Configuration
