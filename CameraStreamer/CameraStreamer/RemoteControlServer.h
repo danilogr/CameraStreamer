@@ -102,6 +102,9 @@ public:
 class RemoteControlServer
 {
 
+	// event queue
+	boost::asio::io_context io_context;
+
 	// support remote commands
 	std::map < std::string, std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> > remoteCommandsCallbacks;
 
@@ -116,7 +119,7 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus),
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), io_context(),
 		acceptor(io_context, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
 		using namespace std::placeholders; // for  _1, _2, ...
@@ -230,9 +233,6 @@ public:
 		// client did not exist?
 		return false;
 	}
-
-	// event queue
-	boost::asio::io_context io_context;
 
 
 private:
