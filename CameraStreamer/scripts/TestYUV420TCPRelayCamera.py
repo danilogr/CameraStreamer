@@ -4,6 +4,7 @@ import os
 import numpy as np
 import cv2
 import math
+import time
 
 
 # ------------------------------------------------------------------------------------------ PARAMETERS
@@ -72,7 +73,7 @@ while True:
     print("Waiting for a connection...")
     connection, client_address = sock.accept()
     print("New client connected - ", client_address)
-
+    #time.sleep(2)
     # opens the file
     with open(FILENAME, "rb") as f:
         # read as many bytes as necessary for the yuv frame
@@ -86,6 +87,7 @@ while True:
 
             # read from the file
             yuvframe = f.read(frameSize)
+            time.sleep(0.01)
         # done reading the file
         print("Streamed the file.. repeating after a reconnect...")
     
