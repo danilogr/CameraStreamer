@@ -19,20 +19,56 @@
     <Filter Include="Source Files\Cameras">
       <UniqueIdentifier>{ca0df2fe-4259-4e61-891f-51a590025d27}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Network">
+      <UniqueIdentifier>{9e313ed9-7b2d-4f01-9791-bb2e9b142997}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network">
+      <UniqueIdentifier>{460e356c-10b8-4e77-8c61-a4aad8be9c74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Applications">
+      <UniqueIdentifier>{f8ab5cd1-8c3b-4e8a-918a-885c0a654ee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Applications">
+      <UniqueIdentifier>{1912961f-b27c-4644-a1e4-c2f82cba6431}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Compiler Settings">
+      <UniqueIdentifier>{d15993c6-5fba-418e-8080-d88e422bad82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utils">
+      <UniqueIdentifier>{1fa9b8ad-3ce8-46e9-9df4-259b335d9f54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{66cb255c-7995-413f-ae90-2c24a940c1f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Protocols">
+      <UniqueIdentifier>{dc703b1e-6a9a-42d5-925f-75b14f0a92e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols">
+      <UniqueIdentifier>{feac2c89-7c27-4c40-827d-6a29696d59b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Comms">
+      <UniqueIdentifier>{25ece380-8729-4e5d-9181-aa2a7213701a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Comms">
+      <UniqueIdentifier>{dfee6002-2339-49c0-8a6c-cfe4001715dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Comms\NetworkBuffer">
+      <UniqueIdentifier>{b631b09b-96ba-412d-bc33-f7a0ae560f52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Protocols\Readers">
+      <UniqueIdentifier>{b5ffe408-5249-440e-9883-3a6d91481eb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Network\Protocols\Writers">
+      <UniqueIdentifier>{84842e65-15aa-45a4-a76a-4449e991512a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols\Readers">
+      <UniqueIdentifier>{593e4ac6-35f7-4596-bd95-c0d1aa0f4b71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Network\Protocols\Writers">
+      <UniqueIdentifier>{eecd3d04-a5cc-4a12-9161-f74e0ee8ef7c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RemoteControlServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TCPStreamingServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VideoRecorder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ApplicationStatus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
@@ -42,35 +78,38 @@
     <ClCompile Include="RealSense.cpp">
       <Filter>Source Files\Cameras</Filter>
     </ClCompile>
+    <ClCompile Include="ReplayCamera.cpp">
+      <Filter>Source Files\Cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="TCPRelayCamera.cpp">
+      <Filter>Source Files\Cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="RemoteControlServer.cpp">
+      <Filter>Source Files\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="VideoRecorder.cpp">
+      <Filter>Source Files\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="ApplicationStatus.cpp">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="Configuration.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="TCPStreamingServer.cpp">
+      <Filter>Source Files\Applications</Filter>
     </ClCompile>
     <ClCompile Include="CameraStreamer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ReliableCommunicationClientX.cpp">
+      <Filter>Source Files\Network\Comms</Filter>
+    </ClCompile>
+    <ClCompile Include="RAWYUVProtocolReader.cpp">
+      <Filter>Source Files\Network\Protocols\Readers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Frame.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Statistics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RemoteControlServer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TCPStreamingServer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VideoRecorder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ApplicationStatus.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
@@ -80,14 +119,65 @@
     <ClInclude Include="RealSense.h">
       <Filter>Header Files\Cameras</Filter>
     </ClInclude>
+    <ClInclude Include="ReplayCamera.h">
+      <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="TCPRelayCamera.h">
+      <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
     <ClInclude Include="CompilerConfiguration.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Compiler Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Header Files\Utils</Filter>
     </ClInclude>
     <ClInclude Include="Configuration.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ApplicationStatus.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="RemoteControlServer.h">
+      <Filter>Header Files\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="TCPStreamingServer.h">
+      <Filter>Header Files\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="VideoRecorder.h">
+      <Filter>Header Files\Applications</Filter>
     </ClInclude>
     <ClInclude Include="Version.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame.h">
+      <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="ReliableCommunicationClientX.h">
+      <Filter>Header Files\Network\Comms</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkBuffer.h">
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorNetworkBuffer.h">
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameNetworkBuffer.h">
+      <Filter>Header Files\Network\Comms\NetworkBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkStatistics.h">
+      <Filter>Header Files\Network\Comms</Filter>
+    </ClInclude>
+    <ClInclude Include="CommsErrors.h">
+      <Filter>Header Files\Network\Comms</Filter>
+    </ClInclude>
+    <ClInclude Include="ProtocolPacketReader.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="ProtocolPacketWriter.h">
+      <Filter>Header Files\Network\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="RAWYUVProtocolReader.h">
+      <Filter>Header Files\Network\Protocols\Readers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

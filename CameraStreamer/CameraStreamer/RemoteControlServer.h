@@ -10,8 +10,6 @@
 #include <queue>
 #include <thread>
 #include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <opencv2/opencv.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -20,13 +18,13 @@
 
 #include "ApplicationStatus.h"
 #include "Logger.h"
-#include "Statistics.h"
+#include "NetworkStatistics.h"
 
 using boost::asio::ip::tcp;
 
 class RemoteControlServer; // forward declaration for the RemoteClient implementation
 const unsigned int RemoteClientHeaderLength = sizeof(uint32_t);
-const unsigned int RemoteClientMaxIncoingMessage= 1024*1024*100; // 100kb
+const unsigned int RemoteClientMaxIncomingMessageLength= 1024*1024*100; // 100kb
 
 class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 {
@@ -34,16 +32,16 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 	RemoteControlServer& server;
 
 	// keeps track of messages received and sent
-	Statistics statistics;
+	NetworkStatistics statistics;
 
 	// read buffer
 	boost::asio::streambuf request;
 
-	// write buffer (we can only call we asyn	c write once, so we have to buffer messages until they are fully written)
+	// write buffer (we can only call one async write once, so we have to buffer messages until they are fully written)
 	std::queue<std::shared_ptr<std::vector<uchar> > > outputMessageQ;
 
 	// all the messages received will be stored here until they are consumed
-	uint32_t incomingMessageSize;
+	uint32_t incomingMessageLength;
 
 	// client connection
 	std::shared_ptr<tcp::socket> socket;
@@ -51,7 +49,6 @@ class RemoteClient : public std::enable_shared_from_this<RemoteClient>
 
 	// constructor is private to force everyone to make a shared_copy
 	RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection);
-
 
 	// called when done writing to cleint
 	static void write_done(std::shared_ptr<RemoteClient> client, std::shared_ptr < std::vector<uchar> > buffer, const boost::system::error_code& error, std::size_t bytes_transferred);
@@ -105,6 +102,9 @@ public:
 class RemoteControlServer
 {
 
+	// event queue
+	boost::asio::io_context io_context;
+
 	// support remote commands
 	std::map < std::string, std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> > remoteCommandsCallbacks;
 
@@ -119,9 +119,9 @@ public:
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> stopRecordingCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> shutdownCallback,
 		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeExposureCallback,
-		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), acceptor(io_service, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
+		std::function<void(std::shared_ptr<RemoteClient>, const rapidjson::Document&)> changeGainCallback) : appStatus(appStatus), io_context(),
+		acceptor(io_context, tcp::endpoint(tcp::v4(), appStatus->GetControlPort()))
 	{
-	
 		using namespace std::placeholders; // for  _1, _2, ...
 		remoteCommandsCallbacks["startCamera"] = startCameraCallback;
 		remoteCommandsCallbacks["stopCamera"] = stopCameraCallback;
@@ -131,9 +131,8 @@ public:
 		remoteCommandsCallbacks["changeExposure"] = changeExposureCallback;
 		remoteCommandsCallbacks["changeGain"] = changeGainCallback;
 		remoteCommandsCallbacks["ping"] = std::bind(&RemoteControlServer::pingRequest, this, _1, _2);
-
-
 	};
+
 	~RemoteControlServer()
 	{
 		Stop();
@@ -159,7 +158,7 @@ public:
 		// is running the server
 		if (std::this_thread::get_id() != sThread->get_id())
 		{
-			this->io_service.post(std::bind(&RemoteControlServer::ForwardToAll, this, messageStr));
+			boost::asio::post(io_context, std::bind(&RemoteControlServer::ForwardToAll, this, messageStr));
 			return;
 		}
 
@@ -193,7 +192,7 @@ public:
 		if (IsThreadRunning())
 		{
 			// stops io service
-			io_service.stop();
+			io_context.stop();
 
 			// is it running ?
 			if (sThread && sThread->joinable())
@@ -207,7 +206,7 @@ public:
 		{
 			client->close();
 
-			// callbacks won't be called because io_service is not running anymore
+			// callbacks won't be called because io_context is not running anymore
 		}
 
 		// erase list of clients
@@ -235,9 +234,6 @@ public:
 		return false;
 	}
 
-	// event queue
-	boost::asio::io_service io_service;
-
 
 private:
 	// tcp server that listens and waits for clients
@@ -254,8 +250,8 @@ private:
 	{
 
 		Logger::Log("Remote") << "Waiting for connections on port " << appStatus->GetControlPort() << std::endl;
-		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
-		io_service.run();	      // starts listening for connections
+		aync_accept_connection(); // adds some work to the io_context, otherwise it exits
+		io_context.run();	      // starts listening for connections
 	}
 
 
@@ -265,7 +261,7 @@ private:
 		using namespace std::placeholders; // for  _1, _2, ...
 
 		// creates a new socket to received the connection
-		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_service);
+		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_context);
 
 		// waits for a new connection
 		acceptor.async_accept(*newClient, std::bind(&RemoteControlServer::async_handle_accept, this, newClient, _1));

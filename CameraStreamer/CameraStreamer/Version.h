@@ -3,7 +3,21 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 0; // breaking changes
 const unsigned int VERSION_MINOR = 9;
-const unsigned int VERSION_PATCH = 7;
+const unsigned int VERSION_PATCH = 9;
+
+// 0.9.9
+// TCPRelayCamera
+// - introducing a relay camera for RAW YUV420 network packets
+//
+// App status:
+// - reporting streaming color or depth will be disabled if not supported by the camera
+
+// 0.9.8
+// Configuration
+// - Reports missing configuration fields with more context. e.g., "camera.type" instead of "type"
+// 
+// VideoRecorder
+// - Fixed bug that would prevent recording from working
 
 // 0.9.7
 // Camera:

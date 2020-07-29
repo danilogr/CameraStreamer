@@ -79,6 +79,7 @@ private:
 	// camera specific configuration (stored as a json document)
 	// stores configuration specific information in memory
 	rapidjson::Document parsedConfigurationFile;
+	rapidjson::Value parsedCameraConfigurationFile;
 	
 	// cached version of the configuration file
 	std::vector<char> configurationFileString;
@@ -171,7 +172,7 @@ public:
 
 
 	//
-	// Saving and laoding
+	// Saving and loading
 	//
 	
 
@@ -180,5 +181,15 @@ public:
 
 	// Saves configuration to a json file
 	bool SaveConfiguration(const std::string& filepath);
+
+
+	//
+	// Load/Set camera configuration from json
+	//
+
+	std::string GetCameraCustomString(const std::string& fieldName, const std::string& defaultVal = std::string(), bool warn = false);
+	bool GetCameraCustomBool(const std::string& fieldName, bool defaultValue, bool warn = false);
+	int GetCameraCustomInt(const std::string& fieldName, int defaultValue, bool warn = false);
+	float GetCameraCustomFloat(const std::string& fieldName, float defaultValue, bool warn = false);
 
 };

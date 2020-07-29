@@ -16,7 +16,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "Logger.h"
-#include "Statistics.h"
+#include "NetworkStatistics.h"
 #include "Configuration.h"
 #include "ApplicationStatus.h"
 
@@ -39,7 +39,7 @@ class TCPStreamingServer
 public:
 	TCPStreamingServer(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : appStatus(appStatus),
 		configuration(configuration), streamingColor(false), streamingDepth(false), streamingJPEGLengthValue(false),
-		acceptor(io_service, tcp::endpoint(tcp::v4(), configuration->GetStreamerPort()))
+		acceptor(io_context, tcp::endpoint(tcp::v4(), configuration->GetStreamerPort()))
 	{
 		Logger::Log("Streamer") << "Listening on " << configuration->GetStreamerPort() << std::endl;
 	}
@@ -65,7 +65,7 @@ public:
 		if (IsThreadRunning())
 		{
 			// stops io service
-			io_service.stop();
+			io_context.stop();
 
 			// is it running ? wait for it to finish
 			if (sThread && sThread->joinable())
@@ -85,7 +85,8 @@ public:
 			try
 			{
 				// thread is not running, so we need to account for the packets we were about to send, but didn't send in time
-				clientsStatistics[client].packetsDropped += clientsQs[client].size();
+				clientsStatistics[client].messagesDropped += clientsQs[client].size();
+				clientsStatistics[client].disconnected();
 				client->close();
 			}
 			catch (std::exception e)
@@ -95,8 +96,8 @@ public:
 
 			Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 			Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << ":"
-				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << "packets sent; " << clientsStatistics[client].packetsDropped << " dropped) -"
-				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
+				<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << "packets sent; " << clientsStatistics[client].messagesDropped << " dropped) -"
+				<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connectedTime).count() / 1000.0f << " sec" << std::endl;
 		}
 
 		// erase list of clients
@@ -115,7 +116,7 @@ public:
 		// is running the server
 		if (std::this_thread::get_id() != sThread->get_id())
 		{
-			this->io_service.post(std::bind(&TCPStreamingServer::ForwardToAll, this, color, depth));
+			boost::asio::post(io_context, std::bind(&TCPStreamingServer::ForwardToAll, this, color, depth));
 			return;
 		}
 
@@ -200,7 +201,7 @@ public:
 				while (clientsQs[client].size() > 1)
 				{
 					clientsQs[client].pop();
-					clientsStatistics[client].packetsDropped++;
+					clientsStatistics[client].messagesDropped++;
 				}
 
 				// adds message to client Q
@@ -217,7 +218,7 @@ public:
 
 private:
 	// event queue
-	boost::asio::io_service io_service;
+	boost::asio::io_context io_context;
 
 	// tcp server that listens and waits for clients
 	tcp::acceptor acceptor;
@@ -229,7 +230,7 @@ private:
 	// set with all clients currently connected to the server
 	std::set<std::shared_ptr< tcp::socket> > clients;
 	std::map < std::shared_ptr< tcp::socket>, std::queue < std::shared_ptr < std::vector<uchar> > > > clientsQs;
-	std::map < std::shared_ptr< tcp::socket>, Statistics > clientsStatistics;
+	std::map < std::shared_ptr< tcp::socket>, NetworkStatistics > clientsStatistics;
 	std::mutex clientSetMutex;
 
 	// this method implements the main thread for TCPStreamingServer
@@ -257,8 +258,8 @@ private:
 			Logger::Log("Streamer") << "Streaming using JPEG Length Value Protocol " << std::endl;
 		}
 
-		aync_accept_connection(); // adds some work to the io_service, otherwise it exits
-		io_service.run();	      // starts listening for connections
+		aync_accept_connection(); // adds some work to the io_context, otherwise it exits
+		io_context.run();	      // starts listening for connections
 		
 		// make sure others knows that the thread is not running
 		streamingColor = false;
@@ -274,7 +275,7 @@ private:
 		using namespace std::placeholders; // for  _1, _2, ...
 
 		// creates a new socket to received the connection
-		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_service);
+		std::shared_ptr<tcp::socket> newClient = std::make_shared<tcp::socket>(io_context);
 
 		// waits for a new connection
 		acceptor.async_accept(*newClient, std::bind(&TCPStreamingServer::async_handle_accept, this, newClient, _1));
@@ -289,7 +290,7 @@ private:
 			const std::lock_guard<std::mutex> lock(clientSetMutex);
 			clients.insert(newClient);
 			clientsQs[newClient] = std::queue<std::shared_ptr<std::vector<uchar> > >(); // creates a new Q for this client
-			clientsStatistics[newClient] = Statistics();								// starts trackings stats for this client
+			clientsStatistics[newClient] = NetworkStatistics(true);						// starts trackings stats for this client
 			clientsStatistics[newClient].remoteAddress = newClient->remote_endpoint().address().to_string();
 			clientsStatistics[newClient].remotePort = newClient->remote_endpoint().port();
 
@@ -312,12 +313,13 @@ private:
 				const std::lock_guard<std::mutex> lock(clientSetMutex);
 				if (clients.find(client) != clients.end())
 				{
-					clientsStatistics[client].packetsDropped++;
+					clientsStatistics[client].disconnected();
+					clientsStatistics[client].messagesDropped++;
 
 					Logger::Log("Streamer") << "Client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " disconnected" << std::endl;
 					Logger::Log("Streamer") << "[Stats] Sent client " << clientsStatistics[client].remoteAddress << ':' << clientsStatistics[client].remotePort << " --> "
-						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].packetsSent << " packets sent and " << clientsStatistics[client].packetsDropped << " dropped) -"
-						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connected).count() / 1000.0f << " sec" << std::endl;
+						<< clientsStatistics[client].bytesSent << " bytes (" << clientsStatistics[client].messagesSent << " packets sent and " << clientsStatistics[client].messagesDropped << " dropped) -"
+						<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - clientsStatistics[client].connectedTime).count() / 1000.0f << " sec" << std::endl;
 					
 					clientsQs.erase(client);
 					clients.erase(client);
@@ -329,7 +331,7 @@ private:
 
 		// pops the last read
 		clientsQs[client].pop();
-		clientsStatistics[client].packetsSent++;
+		clientsStatistics[client].messagesSent++;
 		clientsStatistics[client].bytesSent += bytes_transferred;
 
 		// moves on

@@ -33,7 +33,7 @@ class VideoRecorder
 	std::shared_ptr<ApplicationStatus> appStatus;
 
 	// event queue
-	boost::asio::io_service io_service;
+	boost::asio::io_context io_context;
 
 	// pointer to the thread that will be managing client connections
 	std::shared_ptr<std::thread> sThread;
@@ -178,7 +178,7 @@ class VideoRecorder
 	}
 
 	// work that keeps the thread busy
-	std::shared_ptr<boost::asio::io_service::work> m_work;
+	std::shared_ptr<boost::asio::io_context::work> m_work;
 
 
 	// this method is called internally when it is time to save a frame to file
@@ -192,7 +192,8 @@ class VideoRecorder
 			{
 				try
 				{
-					cv::Mat frame(colorFrame->getHeight(), colorFrame->getWidth() , CV_8UC4, colorFrame->getData());
+					unsigned int type = (colorFrame->getPixelLen() == 3) ? CV_8UC3 : CV_8UC4;
+					cv::Mat frame(colorFrame->getHeight(), colorFrame->getWidth() , type, colorFrame->getData());
 					colorVideoWriter.write(frame);
 					++internalColorFramesRecorded;
 				}
@@ -275,7 +276,7 @@ public:
 
 		// puts a request to stop from the internal event queue (making sure that all video frames queued
 		// are saved/handled before that event is processed)
-		io_service.post(std::bind(&VideoRecorder::RequestInternalStop, this));
+		boost::asio::post(io_context, std::bind(&VideoRecorder::RequestInternalStop, this));
 
 		// is this request happening on a different thread than the recorder's thread?
 		if (std::this_thread::get_id() != sThread->get_id())
@@ -289,7 +290,7 @@ public:
 		
 	}
 
-	// basically starts an io_service with "work"
+	// basically starts an io_context with "work"
 	void VideoRecorderThreadLoop()
 	{
 		Logger::Log("Recorder") << "Thread started" << std::endl;
@@ -298,10 +299,10 @@ public:
 		acceptNewTasks = true;
 
 		// creates work for the thread
-		m_work = std::make_shared<boost::asio::io_service::work>(io_service);
+		m_work = std::make_shared<boost::asio::io_context::work>(io_context);
 
 		// runs service
-		io_service.run();
+		io_context.run();
 
 		acceptNewTasks = false;
 
@@ -341,13 +342,13 @@ public:
 		}
 
 		// can we record? what's the resolution so far
-		if (color && appStatus->IsColorCameraEnabled())
+		if (color && !appStatus->IsColorCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
 			return false;
 		}
 
-		if (depth && appStatus->IsDepthCameraEnabled())
+		if (depth && !appStatus->IsDepthCameraEnabled())
 		{
 			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
 			return false;
@@ -411,7 +412,7 @@ public:
 
 		// we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
-		io_service.post(std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight));
+		boost::asio::post(io_context, std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight));
 		
 		// we start accepting frame requests
 		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
@@ -443,7 +444,7 @@ public:
 			externalIsRecordingDepth = false;
 
 			// stops recording internally
-			io_service.post(std::bind(&VideoRecorder::InternalStopRecording, this));
+			boost::asio::post(io_context, std::bind(&VideoRecorder::InternalStopRecording, this));
 			return true;
 		}
 
@@ -496,7 +497,7 @@ public:
 		}
 
 		// good to go!
-		io_service.post(std::bind(&VideoRecorder::InternalRecordFrame, this, timenow, color, depth));
+		boost::asio::post(io_context, std::bind(&VideoRecorder::InternalRecordFrame, this, timenow, color, depth));
 		return true;
 	}
 

@@ -162,7 +162,7 @@ protected:
 	virtual void CameraLoop();
 
 	// parses app status to configure device
-	bool LoadConfigurationSettings();
+	virtual bool LoadConfigurationSettings();
 	
 
 };

@@ -1,7 +1,8 @@
 #include "RemoteControlServer.h"
 
 
-RemoteClient::RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection) : server(server)
+RemoteClient::RemoteClient(RemoteControlServer& server, std::shared_ptr<tcp::socket> connection) 
+	: server(server), statistics(true) // true indicated an incoming connection
 {
 	// access socket
 	socket = connection;
@@ -22,14 +23,15 @@ RemoteClient::~RemoteClient()
 	// disconnects the socket if it is still connected (this should not happen here)
 	if (socket && socket->is_open())
 	{
+		statistics.disconnected();
 		socket->close();
 	}
 
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Client disconnected" << std::endl;
 	Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "Stats] "
-		<< statistics.bytesSent << " bytes (" << statistics.packetsSent << " messages sent and " << statistics.packetsDropped << " dropped) -"
-		<< statistics.bytesReceived << " bytes (" << statistics.packetsReceived << " messages received) -"
-		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connected).count() / 1000.0f << " sec" << std::endl;
+		<< statistics.bytesSent << " bytes (" << statistics.messagesSent << " messages sent and " << statistics.messagesDropped << " dropped) -"
+		<< statistics.bytesReceived << " bytes (" << statistics.messagesReceived << " messages received) -"
+		<< " Duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - statistics.connectedTime).count() / 1000.0f << " sec" << std::endl;
 }
 
 void RemoteClient::close()
@@ -39,6 +41,9 @@ void RemoteClient::close()
 	{
 		if (socket->is_open())
 		{
+			// closes connection in the statistics reporter
+			statistics.disconnected();
+
 			// closes the connection
 			socket->close();
 
@@ -46,11 +51,11 @@ void RemoteClient::close()
 			socket = nullptr;
 		}
 
-		// if io_service is not running, we need to make sure our statistics are correct
-		if (server.io_service.stopped())
+		// if io_context is not running, we need to make sure our statistics are correct
+		if (server.io_context.stopped())
 		{
 			// add a new count of packets dropped
-			statistics.packetsDropped += outputMessageQ.size();
+			statistics.messagesDropped += outputMessageQ.size();
 		}
 	}
 }
@@ -60,14 +65,14 @@ bool RemoteClient::send(std::shared_ptr<std::vector<uchar> > message)
 	if (socket)
 	{
 		// thread is not running anymore...
-		if (server.io_service.stopped())
+		if (server.io_context.stopped())
 		{
 			Logger::Log("Remote") << '[' << remoteAddress << ':' << remotePort << "] Error sending message! RemoteControlServer is not running!" << std::endl;
 			return false;
 		}
 
 		// makes sure that we are running from the right thread before continuing
-		server.io_service.post(std::bind(&RemoteClient::write_request, shared_from_this(), message));
+		boost::asio::post(server.io_context, std::bind(&RemoteClient::write_request, shared_from_this(), message));
 		return true;
 		
 	}
@@ -103,7 +108,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 	if (error || !client->socket)
 	{
 		// update statistics (we are going to drop this and other messages that were enqueued)
-		client->statistics.packetsDropped += client->outputMessageQ.size() + 1; // accounts for this message
+		client->statistics.messagesDropped += client->outputMessageQ.size();  // the queue has this and other messages
 
 		// clears the queue
 		while (client->outputMessageQ.size() > 0)
@@ -118,7 +123,7 @@ void RemoteClient::write_done(std::shared_ptr<RemoteClient> client, std::shared_
 	// pops the last read
 	client->outputMessageQ.pop();
 
-	client->statistics.packetsSent++;
+	client->statistics.messagesSent++;
 	
 	// moves on with next writes
 	write_next_message(client);
@@ -136,7 +141,7 @@ void RemoteClient::write_next_message(std::shared_ptr<RemoteClient> client)
 	if (!client->socket)
 		return;
 
-	// nothing to write? -> done with asynchronous writings
+	// nothing to write? -> done with asynchronous writingsf
 	if (client->outputMessageQ.size() == 0)
 		return;
 
@@ -154,7 +159,7 @@ void RemoteClient::write_request(std::shared_ptr<RemoteClient> client, std::shar
 	// is the client still connected?
 	if (!client->socket)
 	{
-		++client->statistics.packetsDropped; // whoops
+		++client->statistics.messagesDropped; // whoops
 		return;
 	}
 
@@ -182,7 +187,7 @@ void RemoteClient::read_header_async(std::shared_ptr<RemoteClient> client)
 	using namespace std::placeholders; // for  _1, _2, ...
 
 	// readsheader
-	boost::asio::async_read(*client->socket, boost::asio::buffer(&client->incomingMessageSize, RemoteClientHeaderLength), boost::asio::transfer_exactly(RemoteClientHeaderLength), std::bind(&RemoteClient::read_message_async, client, _1, _2));
+	boost::asio::async_read(*client->socket, boost::asio::buffer(&client->incomingMessageLength, RemoteClientHeaderLength), boost::asio::transfer_exactly(RemoteClientHeaderLength), std::bind(&RemoteClient::read_message_async, client, _1, _2));
 }
 
 
@@ -219,10 +224,10 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 	}
 
 	// is the message too big?
-	if (client->incomingMessageSize > RemoteClientMaxIncoingMessage)
+	if (client->incomingMessageLength > RemoteClientMaxIncomingMessageLength)
 	{
 		// log error
-		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort <<']' <<" Message is too long (" << client->incomingMessageSize << ")!" << std::endl;
+		Logger::Log("Remote") << '[' << client->remoteAddress << ':' << client->remotePort <<']' <<" Message is too long (" << client->incomingMessageLength << ")!" << std::endl;
 
 
 		// disconnect client
@@ -231,10 +236,11 @@ void RemoteClient::read_message_async(std::shared_ptr<RemoteClient> client, cons
 	}
 
 	// now that we know that we have a reasonable message ready to be read - let's read it
-	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageSize);
+	std::shared_ptr < std::vector<uchar> > buffer = std::make_shared<std::vector<uchar> >(client->incomingMessageLength);
 
 	// reads the entire message
-	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()), boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));
+	boost::asio::async_read(*client->socket, boost::asio::buffer(*buffer, buffer->size()),
+		boost::asio::transfer_exactly(buffer->size()), std::bind(&RemoteClient::read_message_done, client, buffer, _1, _2));
 
 
 }
@@ -271,7 +277,7 @@ void RemoteClient::read_message_done(std::shared_ptr<RemoteClient> client, std::
 	}
 
 	// everything went well. this counts as a message
-	++client->statistics.packetsReceived;
+	++client->statistics.messagesReceived;
 
 	// parse message 
 	client->server.ParseMessage(buffer, client);

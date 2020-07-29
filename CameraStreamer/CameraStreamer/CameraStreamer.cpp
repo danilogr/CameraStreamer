@@ -29,6 +29,7 @@
 #include "CompilerConfiguration.h"
 #include "AzureKinect.h"
 #include "RealSense.h"
+#include "TCPRelayCamera.h"
 
 // 5) version specific 
 #include "Version.h"
@@ -72,6 +73,12 @@ int main(int argc, char* argv[])
 		#ifdef ENABLE_RS2
 		{"rs2", &RealSense::Create},
 		#endif
+
+		// TCP Relay support
+		#ifdef  ENABLE_TCPCLIENT_RELAY_CAMERA
+		{"tcp-relay", &TCPRelayCamera::Create},
+		#endif //  ENABLE_TCPCLIENT_RELAY_CAMERA
+
 	};
 	
 
@@ -105,10 +112,10 @@ int main(int argc, char* argv[])
 		VideoRecorder videoRecorderThread(appStatus, appStatus->GetCameraType());
 
 		// instantiate the correct camera
-		std::shared_ptr<Camera> depthCamera = SupportedCamerasSet[appStatus->GetCameraType()](appStatus, configuration);
+		std::shared_ptr<Camera> camera = SupportedCamerasSet[appStatus->GetCameraType()](appStatus, configuration);
 
 		// set up callbacks
-		depthCamera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+		camera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
 		{
 			// streams to client
 			server.ForwardToAll(color, depth);
@@ -124,24 +131,39 @@ int main(int argc, char* argv[])
 		
 		// prints device intrinsics the first time
 		bool printedIntrinsicsOnce = false;
-		depthCamera->onCameraConnect = [&]()
+		camera->onCameraConnect = [&]()
 		{
-			if (!printedIntrinsicsOnce && depthCamera)
+			if (!printedIntrinsicsOnce && camera)
 			{
-				depthCamera->PrintCameraIntrinsics();
+				camera->PrintCameraIntrinsics();
 				printedIntrinsicsOnce = true;
+
+				// also, make sure that the streaming software can handle the content comming from the camera
+				// (this only works to disable streaming in case it was expected)
+
+				if (appStatus && appStatus->GetStreamingColorEnabled())
+				{
+					appStatus->SetStreamingColorEnabled(camera->IsColorCameraEnabled());
+				}
+
+				if (appStatus && appStatus->GetStreamingDepthEnabled())
+				{
+					appStatus->SetStreamingDepthEnabled(camera->IsDepthCameraEnabled());
+				}
+				
 			}
+
 		};
 
-		depthCamera->onCameraDisconnect = [&]()
+		camera->onCameraDisconnect = [&]()
 		{
-			if (depthCamera)
+			if (camera)
 			{ 
-				Logger::Log("Camera") << "Captured " << depthCamera->statistics.framesCaptured << " frames in " << depthCamera->statistics.durationInSeconds() << " seconds (" << ((double)depthCamera->statistics.framesCaptured / (double)depthCamera->statistics.durationInSeconds()) << " fps) - Fails: " << depthCamera->statistics.framesFailed << " times" << std::endl;
+				Logger::Log("Camera") << "Captured " << camera->statistics.framesCaptured << " frames in " << camera->statistics.durationInSeconds() << " seconds (" << ((double)camera->statistics.framesCaptured / (double)camera->statistics.durationInSeconds()) << " fps) - Fails: " << camera->statistics.framesFailed << " times" << std::endl;
 			}
 		};
 
-		depthCamera->Run();
+		camera->Run();
 		server.Run();
 		videoRecorderThread.Run();
 
@@ -152,16 +174,16 @@ int main(int argc, char* argv[])
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
 			// sanity check
-			if (!depthCamera) return;
+			if (!camera) return;
 
 			// we are already running
-			if (depthCamera->IsAnyCameraEnabled())
+			if (camera->IsAnyCameraEnabled())
 			{
-				Logger::Log("Remote") << "(startKinect) Kinect is already running!" << std::endl;
+				Logger::Log("Remote") << "(startCamera) Camera is already running!" << std::endl;
 				return;
 			}
 
-			depthCamera->Run();
+			camera->Run();
 			
 		},
 
@@ -169,15 +191,15 @@ int main(int argc, char* argv[])
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
 			// sanity check
-			if (!depthCamera) return;
+			if (!camera) return;
 
-			if (!depthCamera->IsThreadRunning())
+			if (!camera->IsThreadRunning())
 			{
-				Logger::Log("Remote") << "(stopKinect) Kinect is not running!" << std::endl;
+				Logger::Log("Remote") << "(stopCamera) Camera is not running!" << std::endl;
 				return;
 			}
 
-			depthCamera->Stop();
+			camera->Stop();
 		},
 
 
@@ -243,8 +265,8 @@ int main(int argc, char* argv[])
 			server.Stop();
 
 			// stops cameras
-			if (depthCamera)
-				depthCamera->Stop();
+			if (camera)
+				camera->Stop();
 
 			// wait for video recording to end
 			videoRecorderThread.Stop();
@@ -258,11 +280,11 @@ int main(int argc, char* argv[])
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
 		{
 			// sanity check
-			if (!depthCamera) return;
+			if (!camera) return;
 
 			if (message.HasMember("value") && message["value"].IsNumber())
 			{
-				depthCamera->AdjustExposureBy(message["value"].GetInt());
+				camera->AdjustExposureBy(message["value"].GetInt());
 			}
 			else {
 				Logger::Log("Remote") << "(changeExposure) Error! No value received!" << std::endl;
@@ -275,11 +297,11 @@ int main(int argc, char* argv[])
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document& message)
 		{
 			// sanity check
-			if (!depthCamera) return;
+			if (!camera) return;
 
 			if (message.HasMember("value") && message["value"].IsNumber())
 			{
-				depthCamera->AdjustGainBy(message["value"].GetInt());
+				camera->AdjustGainBy(message["value"].GetInt());
 				
 			}
 			else {
@@ -303,10 +325,10 @@ int main(int argc, char* argv[])
 			switch (getchar())
 			{
 				case '+':
-					depthCamera->AdjustExposureBy(1);
+					camera->AdjustExposureBy(1);
 					break;
 				case '-':
-					depthCamera->AdjustExposureBy(-1);
+					camera->AdjustExposureBy(-1);
 					break;
 				case 'q':
 					exit = true;
@@ -327,7 +349,7 @@ int main(int argc, char* argv[])
 		server.Stop();
 
 		// stops cameras
-		depthCamera->Stop();
+		camera->Stop();
 
 		// wait for video recording to end
 		videoRecorderThread.Stop();

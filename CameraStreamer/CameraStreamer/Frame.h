@@ -11,6 +11,7 @@ struct FrameType
 	{
 		Mono8,
 		Mono16,
+		ABGR32,
 		ARGB32,
 		RGB24,
 		RGBA32,
@@ -35,6 +36,8 @@ struct FrameType
 		case Encoding::BGR24:
 			return 3;
 			break;
+		case Encoding::ABGR32:
+		case Encoding::ARGB32:
 		case Encoding::RGBA32:
 		case Encoding::BGRA32:
 			return 4;
