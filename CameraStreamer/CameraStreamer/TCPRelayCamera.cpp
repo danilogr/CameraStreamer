@@ -278,6 +278,7 @@ void TCPRelayCamera::onSocketConnect(std::shared_ptr<comms::ReliableCommunicatio
 		{
 			if (!e)
 				socket->close();
+			return;
 		}
 		else {
 			// we are finally good to start reading frames
