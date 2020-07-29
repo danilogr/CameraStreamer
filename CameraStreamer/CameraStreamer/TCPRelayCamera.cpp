@@ -207,7 +207,6 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 			Logger::Log(TCPRelayCameraConstStr) << "Error parsing header..." << std::endl;
 			++totalTries;
 			++statistics.framesFailed;
-			statistics.StopCounting();
 			socket->close();
 		}
 
@@ -216,8 +215,15 @@ void TCPRelayCamera::onSocketReadHeader(std::shared_ptr<comms::ReliableCommunica
 		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e.message() << std::endl;
 		++totalTries;
 		++statistics.framesFailed;
-		statistics.StopCounting();
 	}
+	else if (!thread_running)
+	{
+		++totalTries;
+		++statistics.framesFailed;
+		socket->close();
+	}
+
+	
 }
 
 void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationClientX> socket, const boost::system::error_code& e)
@@ -255,7 +261,12 @@ void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationCl
 		Logger::Log(TCPRelayCameraConstStr) << "Error reading frame: " << e.message() << std::endl;
 		++totalTries;
 		++statistics.framesFailed;
-		statistics.StopCounting();
+	}
+	else if (!thread_running)
+	{
+		++totalTries;
+		++statistics.framesFailed;
+		socket->close();
 	}
 
 }
