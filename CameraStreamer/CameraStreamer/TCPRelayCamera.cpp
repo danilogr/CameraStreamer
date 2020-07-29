@@ -89,7 +89,7 @@ void TCPRelayCamera::onSocketDisconnect(std::shared_ptr<comms::ReliableCommunica
 		if (thread_running)
 		{
 			Logger::Log(TCPRelayCameraConstStr) << "Trying again in 1 second..." << std::endl;
-			reconnectTimer.expires_from_now(boost::posix_time::seconds(1));
+			reconnectTimer.expires_from_now(boost::posix_time::milliseconds(10));
 			reconnectTimer.async_wait(std::bind(&TCPRelayCamera::startAsyncConnection, this, tcpClient, _1));
 		}
 
@@ -265,6 +265,7 @@ void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationCl
 	else if (!thread_running)
 	{
 		++totalTries;
+
 		++statistics.framesFailed;
 		socket->close();
 	}
