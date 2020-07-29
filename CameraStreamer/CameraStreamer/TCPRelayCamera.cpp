@@ -56,7 +56,11 @@ void TCPRelayCamera::onSocketDisconnect(std::shared_ptr<comms::ReliableCommunica
 
 	using namespace std::placeholders; // for  _1, _2, ...
 
-	Logger::Log(TCPRelayCameraConstStr) << "Disconnected from " << oldConnection->remoteAddress() << ':' << oldConnection->remotePort() << std::endl;
+	if (oldConnection)
+		Logger::Log(TCPRelayCameraConstStr) << "Disconnected from " << oldConnection->remoteAddress() << ':' << oldConnection->remotePort() << std::endl;
+	else
+		Logger::Log(TCPRelayCameraConstStr) << "Disconnected" << std::endl;
+
 	// print network statistics
 
 	if (tcpClient == oldConnection)

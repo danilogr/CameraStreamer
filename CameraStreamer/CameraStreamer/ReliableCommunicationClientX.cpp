@@ -217,12 +217,12 @@ namespace comms
 		// std::cout << "1 - read done - " << buffer->size() << " " << bytes_transferred << " " << error.message() << " " << this << "\n\n";
 
 
+		// done reading. Allow user to request again
+		readOperationPending = false;
 
 		// no need for a deadline anymore
 		readDeadlineTimer.cancel();
 
-		// done reading. Allow user to request again
-		readOperationPending = false;
 
 		// saves the amount of bytes read
 		networkStatistics.bytesReceived += bytes_transferred;

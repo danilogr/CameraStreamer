@@ -8,6 +8,9 @@ const unsigned int VERSION_PATCH = 9;
 // 0.9.9
 // TCPRelayCamera
 // - introducing a relay camera for RAW YUV420 network packets
+//
+// App status:
+// - reporting streaming color or depth will be disabled if not supported by the camera
 
 // 0.9.8
 // Configuration

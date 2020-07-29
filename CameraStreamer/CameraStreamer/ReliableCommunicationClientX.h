@@ -216,7 +216,7 @@ public:
 	void read(NetworkBufferPtr& buffer, size_t count, const ReliableCommunicationCallback& onReadCallback, std::chrono::milliseconds timeout = std::chrono::milliseconds{ 0 });
 
 	// stops socket
-	void close(const boost::system::error_code& error = boost::system::error_code())
+	void close(const boost::system::error_code& error = boost::system::error_code(), bool disposing = false)
 	{
 		// nothing to do here
 		if (stopRequested || !tcpClient)
@@ -244,7 +244,7 @@ public:
 			// let others know that this socket is no more - this should be called after all pending operations are done failing
 			if (onDisconnected)
 			{
-				boost::asio::post(io_context, std::bind(onDisconnected, shared_from_this(), error));
+				boost::asio::post(io_context, std::bind(onDisconnected, disposing ? nullptr : shared_from_this(), error));
 			}
 		}
 
@@ -253,7 +253,7 @@ public:
 	// destructor
 	~ReliableCommunicationClientX()
 	{
-		close();
+		close(boost::system::error_code(), true);
 	}
 
 	/// <summary>
