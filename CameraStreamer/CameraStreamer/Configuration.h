@@ -152,6 +152,9 @@ public:
 	int GetStreamingHeight() const { return streamingHeight; }
 	int GetStreamingWidth() const { return streamingWidth; }
 
+	void SetStreamingHeight(int val) { streamingHeight = val; }
+	void SetStreamingWidth(int val) { streamingWidth = val; }
+
 	const std::string& GetStreamingColorFormat() const { return streamingColorFormat; }
 	const std::string& GetStreamingDepthFormat() const { return streamingDepthFormat; }
 

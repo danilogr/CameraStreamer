@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
 {
 
 	// Hello world!
- 	Logger::Log("Main") << "CameraStreamer v." << VERSION_MAJOR << '.' << VERSION_MINOR << VERSION_PATCH << endl;
+ 	Logger::Log("Main") << "CameraStreamer v." << VERSION_MAJOR << '.' << VERSION_MINOR << '.' << VERSION_PATCH << endl;
 	Logger::Log("Main") << "To close this application, press 'q'" << endl << endl;
 
 
@@ -136,21 +136,35 @@ int main(int argc, char* argv[])
 			if (!printedIntrinsicsOnce && camera)
 			{
 				camera->PrintCameraIntrinsics();
-				printedIntrinsicsOnce = true;
+				printedIntrinsicsOnce = true;				
+			}
 
-				// also, make sure that the streaming software can handle the content comming from the camera
-				// (this only works to disable streaming in case it was expected)
+			// also, make sure that the streaming software can handle the content comming from the camera
+			// (this only works to disable streaming in case it was expected)
 
-				if (appStatus && appStatus->GetStreamingColorEnabled())
+			if (appStatus && appStatus->GetStreamingColorEnabled())
+			{
+				appStatus->SetStreamingColorEnabled(camera->IsColorCameraEnabled());
+				appStatus->SetStreamingWidth(camera->colorCameraParameters.resolutionWidth);
+				appStatus->SetStreamingHeight(camera->colorCameraParameters.resolutionHeight);
+			}
+
+			if (appStatus && appStatus->GetStreamingDepthEnabled())
+			{
+				appStatus->SetStreamingDepthEnabled(camera->IsDepthCameraEnabled());
+
+				if (!appStatus->GetStreamingColorEnabled())
 				{
-					appStatus->SetStreamingColorEnabled(camera->IsColorCameraEnabled());
+					appStatus->SetStreamingWidth(camera->depthCameraParameters.resolutionWidth);
+					appStatus->SetStreamingHeight(camera->depthCameraParameters.resolutionHeight);
 				}
+			}
 
-				if (appStatus && appStatus->GetStreamingDepthEnabled())
-				{
-					appStatus->SetStreamingDepthEnabled(camera->IsDepthCameraEnabled());
-				}
-				
+			// are we supposed to be recording? resume recording
+			if (appStatus && appStatus->HasPendingRequestToRecord())
+			{
+				videoRecorderThread.StartRecording(appStatus->HasPendingRequestToRecordColor(), appStatus->HasPendingRequestToRecordDepth(),
+					appStatus->GetRequestToRecordColorPath(), appStatus->GetRequestToRecordDepthPath());
 			}
 
 		};
@@ -160,6 +174,11 @@ int main(int argc, char* argv[])
 			if (camera)
 			{ 
 				Logger::Log("Camera") << "Captured " << camera->statistics.framesCaptured << " frames in " << camera->statistics.durationInSeconds() << " seconds (" << ((double)camera->statistics.framesCaptured / (double)camera->statistics.durationInSeconds()) << " fps) - Fails: " << camera->statistics.framesFailed << " times" << std::endl;
+			}
+
+			if (appStatus && appStatus->isRedirectingFramesToRecorder())
+			{
+				videoRecorderThread.StopRecording();
 			}
 		};
 
@@ -235,6 +254,7 @@ int main(int argc, char* argv[])
 				}
 			}
 			
+			appStatusPtr.UpdateIntentToRecord(recordingColor, recordingDepth, recordingColorPath, recordingDepthPath);
 			videoRecorderThread.StartRecording(recordingColor, recordingDepth, recordingColorPath, recordingDepthPath);
 
 		},
@@ -243,6 +263,7 @@ int main(int argc, char* argv[])
 		// on stop recording request
 		[&](std::shared_ptr<RemoteClient> client, const rapidjson::Document & message)
 		{
+			appStatusPtr.UpdateIntentToRecord(false, false);
 			videoRecorderThread.StopRecording();
 		},
 
@@ -253,6 +274,8 @@ int main(int argc, char* argv[])
 			Logger::Log("Remote") << "Received shutdown notice... " << endl;
 
 			// if recording, we stop recording...
+
+			appStatusPtr.UpdateIntentToRecord(false, false);
 
 			if (videoRecorderThread.isRecordingInProgress())
 				videoRecorderThread.StopRecording();
