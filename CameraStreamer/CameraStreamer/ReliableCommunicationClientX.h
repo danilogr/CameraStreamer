@@ -141,6 +141,7 @@ protected:
 	boost::asio::steady_timer connectDeadlineTimer;
 	boost::asio::steady_timer readDeadlineTimer;
 	bool stopRequested;
+
 	bool readOperationPending;
 	bool readCallbackInvoked;
 	bool connectCallbackInvoked;
@@ -243,9 +244,8 @@ public:
 
 			// let others know that this socket is no more - this should be called after all pending operations are done failing
 			if (onDisconnected)
-			{
 				boost::asio::post(io_context, std::bind(onDisconnected, disposing ? nullptr : shared_from_this(), error));
-			}
+
 		}
 
 	}

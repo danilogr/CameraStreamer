@@ -317,16 +317,19 @@ namespace comms
 		if (connected())
 		{
 			if (onConnectCallback)
-			{
 				boost::asio::post(io_context, std::bind(onConnectCallback, shared_from_this(), boost::asio::error::already_connected));
-			}
 
 			return;
 		}
 
 		// if tcpClient is defined but not connected, a connection is on the way, so we will ignore this (as a callback will come soon)
 		if (tcpClient)
+		{
+			if (onConnectCallback)
+				boost::asio::post(io_context, std::bind(onConnectCallback, shared_from_this(), boost::asio::error::in_progress));
+
 			return;
+		}
 
 		// starts resolving remote address
 		boost::system::error_code resolverErrc;
