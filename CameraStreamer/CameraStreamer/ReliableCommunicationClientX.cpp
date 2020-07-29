@@ -231,10 +231,10 @@ namespace comms
 		if (error)
 		{
 			// invoke read callback with error
-			if (onReadCallback && !readCallbackInvoked)
+			if (!readCallbackInvoked)
 			{
 				readCallbackInvoked = true;
-				onReadCallback(clientLifeKeeper, error);
+				if (onReadCallback) onReadCallback(clientLifeKeeper, error);
 			}
 
 			// disconnects
@@ -294,12 +294,12 @@ namespace comms
 			boost::system::error_code e;
 			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
-			if (!readCallbackInvoked && onReadCallback)
+			if (!readCallbackInvoked)
 			{
 				// std::cout << "4 - read timeout - " << " " << this << "\n\n";
 
 				readCallbackInvoked = true; // in the unlikely scenario  read finalizes sucessfully at the same time as the timer, we have to avoid calling onReadCallback twice
-				onReadCallback(clientLifeKeeper, comms::error::TimedOut);
+				if(onReadCallback) onReadCallback(clientLifeKeeper, comms::error::TimedOut);
 			}
 
 			// closes the connection because user requested time out
@@ -391,10 +391,10 @@ namespace comms
 		}
 
 		// invokes onConnectCallback if it hasn't been invoked yet
-		if (onConnectCallback && !connectCallbackInvoked)
+		if (!connectCallbackInvoked)
 		{
 			connectCallbackInvoked = true;
-			onConnectCallback(clientLifeKeeper, errorToReport);
+			if (onConnectCallback) onConnectCallback(clientLifeKeeper, errorToReport);
 		}
 
 	}
@@ -416,10 +416,10 @@ namespace comms
 			tcpClient->shutdown(boost::asio::ip::tcp::socket::shutdown_both, e);
 
 			// let the user know that something went wrong
-			if (onConnectCallback && !connectCallbackInvoked)
+			if (!connectCallbackInvoked)
 			{
-				onConnectCallback(clientLifeKeeper, comms::error::TimedOut);
 				connectCallbackInvoked = true;
+				if (onConnectCallback) onConnectCallback(clientLifeKeeper, comms::error::TimedOut);
 			}
 
 			// cleans up after dealing with a bunch of callbacks
