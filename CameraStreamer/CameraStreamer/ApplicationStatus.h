@@ -29,9 +29,9 @@ protected:
 	//
 
 	// recording: path for color and depth files
-	std::string recordingColorPath, recordingDepthPath;
+	std::string recordingColorPath, recordingDepthPath, requestedRecordingColorPath, requestedRecordingDepthPath;
 	// recording: are we recording?
-	bool isRecordingColor, isRecordingDepth;
+	bool isRecordingColor, isRecordingDepth, hasARequestToRecordColor, hasARequestToRecordDepth;
 	// recording: should the camera callback send frames to the recording thread?
 	bool _redirectFramesToRecorder;
 
@@ -64,7 +64,7 @@ protected:
 public:
 
 
-	ApplicationStatus() : isRecordingColor(false), isRecordingDepth(false), _redirectFramesToRecorder(false), 
+	ApplicationStatus() : isRecordingColor(false), isRecordingDepth(false), hasARequestToRecordColor(false), hasARequestToRecordDepth(false), _redirectFramesToRecorder(false),
 	streamingClients(0), streamingColorBitrate(0.0f), streamingDepthBitrate(0.0f), streamingCurrentFPS(0.0f),
 	isCameraDepthRunning(false), isCameraColorRunning(false) {};
 
@@ -132,6 +132,25 @@ public:
 	
 
 	// ============================================================================
+
+	/**
+	  * 
+	  */
+
+	void UpdateIntentToRecord(bool color, bool depth, const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
+	{
+		this->hasARequestToRecordColor = color;
+		this->hasARequestToRecordDepth = depth;
+		this->requestedRecordingColorPath = colorPath;
+		this->requestedRecordingDepthPath = depthPath;
+	}
+
+	bool HasPendingRequestToRecord() const { return (hasARequestToRecordColor || hasARequestToRecordDepth);  }
+
+	const std::string& GetRequestToRecordColorPath() const {return requestedRecordingColorPath; }
+	const std::string& GetRequestToRecordDepthPath() const { return requestedRecordingDepthPath; }
+	bool HasPendingRequestToRecordColor() const { return hasARequestToRecordColor; }
+	bool HasPendingRequestToRecordDepth() const { return hasARequestToRecordDepth; }
 
 	/**
 	 * Updates the application status internally (recording)

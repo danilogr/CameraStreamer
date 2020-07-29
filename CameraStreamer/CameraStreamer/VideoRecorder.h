@@ -334,24 +334,33 @@ public:
 			StopRecording();
 		}
 
-		// is the camera streaming at all?
-		if (!appStatus->IsAppCapturing())
-		{
-			Logger::Log("Recorder") << "Error! Cannot record without a camera..." << std::endl;
-			return false;
-		}
-
 		// can we record? what's the resolution so far
 		if (color && !appStatus->IsColorCameraEnabled())
 		{
-			Logger::Log("Recorder") << "Error! Cannot record color frames as camera is not streaming color (yet)..." << std::endl;
-			return false;
+			Logger::Log("Recorder") << "Warning! Started recording before color frames were received as camera is not streaming (yet)..." << std::endl;
+			
+			if (appStatus->GetStreamingHeight() > 0 && appStatus->GetStreamingWidth() > 0)
+				Logger::Log("Recorder") << "Make sure the configured values for streaming.width and streaming.height are valid!" << std::endl;
+			else
+			{
+				Logger::Log("Recorder") << "Error! Make sure streaming.width and streaming.height are set!" << std::endl;
+				return false;
+			}
+				
 		}
 
 		if (depth && !appStatus->IsDepthCameraEnabled())
 		{
-			Logger::Log("Recorder") << "Error! Cannot record depth frames as camera is not streaming depth (yet)..." << std::endl;
-			return false;
+			Logger::Log("Recorder") << "Warning! Started recording before depth frames were received as camera is not streaming depth (yet)..." << std::endl;
+
+			if (appStatus->GetStreamingHeight() > 0 && appStatus->GetStreamingWidth() > 0)
+				Logger::Log("Recorder") << "Make sure the configured values for streaming.width and streaming.height are valid!" << std::endl;
+			else
+			{
+				Logger::Log("Recorder") << "Error! Make sure streaming.width and streaming.height are set!" << std::endl;
+				return false;
+			}
+			//return false;
 		}
 
 		// yay, we are good to record!
