@@ -310,13 +310,16 @@ void AzureKinect::CameraLoop()
 							// copies original depth frame just so we can save it in its original resolution
 							timestamp = depthFrame.get_device_timestamp();
 							originalDepthFrame = Frame::Create(depthFrame.get_width_pixels(), depthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
-							memcpy(sharedDepthFrame->data, depthFrame.get_buffer(), sharedDepthFrame->size());
+							memcpy(originalDepthFrame->data, depthFrame.get_buffer(), originalDepthFrame->size());
 
 							if (colorCameraEnabled)
 							{
 								k4a::image largeDepthFrame = kinectCameraTransformation.depth_image_to_color_camera(depthFrame);
 								sharedDepthFrame = Frame::Create(largeDepthFrame.get_width_pixels(), largeDepthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
 								memcpy(sharedDepthFrame->data, largeDepthFrame.get_buffer(), sharedDepthFrame->size());
+							}
+							else {
+								sharedDepthFrame = originalDepthFrame;
 							}
 						}
 
