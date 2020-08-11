@@ -366,8 +366,8 @@ public:
 		// yay, we are good to record!
 		externalColorHeight = appStatus->GetStreamingHeight();
 		externalColorWidth  = appStatus->GetStreamingWidth();
-		externalDepthHeight = appStatus->GetStreamingHeight();
-		externalDepthWidth  = appStatus->GetStreamingWidth();
+		externalDepthHeight = appStatus->GetCameraDepthHeight();
+		externalDepthWidth  = appStatus->GetCameraDepthWidth();
 
 		// are we recording to the same path?
 		// (this might happen if the camera gets unplugged and plugged back again)

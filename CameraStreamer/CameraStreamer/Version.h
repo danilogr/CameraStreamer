@@ -3,7 +3,14 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
-const unsigned int VERSION_PATCH = 1;
+const unsigned int VERSION_PATCH = 2;
+
+// 1.0.2
+// ApplicationStatus 
+// - returns captureDepthHeight instead of captureDeptHeight
+// 
+// VideoRecorder:
+// - Fixed bug when depth being captured is different than the streamed one. Recorder will not stop anymore
 
 // 1.0.1
 // K4A Camera:

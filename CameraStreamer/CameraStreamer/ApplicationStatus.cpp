@@ -28,7 +28,7 @@ rapidjson::Document ApplicationStatus::GetApplicationStatusJSON()
 		applicationStatusJson.AddMember("capturingDepth", isCameraDepthRunning, allocator);
 		applicationStatusJson.AddMember("capturingColor", isCameraColorRunning, allocator);
 		applicationStatusJson.AddMember("captureDepthWidth", cameraDepthWidth, allocator);
-		applicationStatusJson.AddMember("captureDeptHeight", cameraDepthHeight, allocator);
+		applicationStatusJson.AddMember("captureDepthHeight", cameraDepthHeight, allocator);
 		applicationStatusJson.AddMember("captureColorWidth", cameraColorWidth, allocator);
 		applicationStatusJson.AddMember("captureColorHeight", cameraColorHeight, allocator);
 		
