@@ -284,7 +284,7 @@ void AzureKinect::CameraLoop()
 
 					if (kinectDevice.get_capture(&currentCapture, getFrameTimeout))
 					{
-						std::shared_ptr<Frame> sharedColorFrame, sharedDepthFrame;
+						std::shared_ptr<Frame> sharedColorFrame, sharedDepthFrame, originalDepthFrame;
 						std::chrono::microseconds timestamp;
 
 						// capture color
@@ -307,22 +307,22 @@ void AzureKinect::CameraLoop()
 						{
 							k4a::image depthFrame = currentCapture.get_depth_image();
 
+							// copies original depth frame just so we can save it in its original resolution
+							timestamp = depthFrame.get_device_timestamp();
+							originalDepthFrame = Frame::Create(depthFrame.get_width_pixels(), depthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
+							memcpy(sharedDepthFrame->data, depthFrame.get_buffer(), sharedDepthFrame->size());
+
 							if (colorCameraEnabled)
 							{
 								k4a::image largeDepthFrame = kinectCameraTransformation.depth_image_to_color_camera(depthFrame);
 								sharedDepthFrame = Frame::Create(largeDepthFrame.get_width_pixels(), largeDepthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
 								memcpy(sharedDepthFrame->data, largeDepthFrame.get_buffer(), sharedDepthFrame->size());
 							}
-							else {
-								timestamp = depthFrame.get_device_timestamp();
-								sharedDepthFrame = Frame::Create(depthFrame.get_width_pixels(), depthFrame.get_height_pixels(), FrameType::Encoding::Mono16);
-								memcpy(sharedDepthFrame->data, depthFrame.get_buffer(), sharedDepthFrame->size());
-							}
 						}
 
 						// invoke callback
 						if (onFramesReady)
-							onFramesReady(timestamp, sharedColorFrame, sharedDepthFrame);
+							onFramesReady(timestamp, sharedColorFrame, sharedDepthFrame, originalDepthFrame);
 
 						// update info
 						++statistics.framesCaptured;

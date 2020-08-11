@@ -211,7 +211,7 @@ protected:
 
 
 	// timestamp, color, depth
-	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
+	typedef std::function<void(std::chrono::microseconds, std::shared_ptr<Frame>, std::shared_ptr<Frame>, std::shared_ptr<Frame>)> FrameReadyCallback;
 	typedef std::function<void()> CameraConnectedCallback;
 	typedef std::function<void()> CameraDisconnectedCallback;
 

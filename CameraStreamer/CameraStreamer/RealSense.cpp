@@ -338,7 +338,7 @@ void RealSense::CameraLoop()
 
 						// invoke callback
 						if (onFramesReady)
-							onFramesReady(timestamp, sharedColorFrame, sharedDepthFrame);
+							onFramesReady(timestamp, sharedColorFrame, sharedDepthFrame, sharedDepthFrame);
 
 						// update info
 						++statistics.framesCaptured;

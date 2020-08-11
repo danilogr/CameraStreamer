@@ -242,7 +242,7 @@ void TCPRelayCamera::onSocketRead(std::shared_ptr<comms::ReliableCommunicationCl
 			 
 			// invoke frame ready callback
 			if (onFramesReady)
-				onFramesReady(packetReader->getLastFrameTimestamp(), packetReader->getLastColorFrame(), packetReader->getLastDepthFrame());
+				onFramesReady(packetReader->getLastFrameTimestamp(), packetReader->getLastColorFrame(), packetReader->getLastDepthFrame(), packetReader->getLastDepthFrame());
 
 			// read another frame
 			socket->read(headerBuffer, packetReader->FixedHeaderSize(), std::bind(&TCPRelayCamera::onSocketReadHeader, this, _1, _2), getFrameTimeout);

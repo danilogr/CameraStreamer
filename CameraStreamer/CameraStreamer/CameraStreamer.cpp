@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
 	// to let other threads know when it is recording, for instance)
 	std::shared_ptr<ApplicationStatus> appStatus = std::make_shared<ApplicationStatus>();
 
+
 	// Configuration is a data structure that holds the default settings
 	// for all threads
 	std::shared_ptr<Configuration> configuration = std::make_shared<Configuration>();
@@ -115,7 +116,7 @@ int main(int argc, char* argv[])
 		std::shared_ptr<Camera> camera = SupportedCamerasSet[appStatus->GetCameraType()](appStatus, configuration);
 
 		// set up callbacks
-		camera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth)
+		camera->onFramesReady = [&](std::chrono::microseconds, std::shared_ptr<Frame> color, std::shared_ptr<Frame> depth, std::shared_ptr<Frame> originalDepth)
 		{
 			// streams to client
 			server.ForwardToAll(color, depth);
@@ -123,7 +124,7 @@ int main(int argc, char* argv[])
 			// saves to file 
 			if (appStatusPtr.isRedirectingFramesToRecorder())
 			{
-				videoRecorderThread.RecordFrame(color, depth);
+				videoRecorderThread.RecordFrame(color, originalDepth);
 			}
 
 		};

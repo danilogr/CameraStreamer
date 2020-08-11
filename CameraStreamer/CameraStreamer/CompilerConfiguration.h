@@ -15,6 +15,8 @@
 #define ENABLE_TCPCLIENT_RELAY_CAMERA 1 // camera that relays content from the network
 
 
+#define ENABLE_MKV_PLAYER 1 // camera that plays MKV files created by a k4a tools
+
 
 // future work
 
