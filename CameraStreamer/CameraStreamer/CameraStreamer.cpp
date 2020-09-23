@@ -383,11 +383,13 @@ int main(int argc, char* argv[])
 	}
 	catch (const std::exception& ex)
 	{
-		Logger::Log("Main") << "Unhandled exception: " << ex.what();
-		Logger::Log("Main") << "Shutting down in 10 seconds...\n";
-		std::this_thread::sleep_for(std::chrono::seconds(10));
+		Logger::Log("Main") << "[FATAL ERROR] Unhandled exception: " << ex.what() << std::endl << std::endl;
+		Logger::Log("Main") << "\a\a\aShutting down in 30 seconds...\n";
+
+		std::this_thread::sleep_for(std::chrono::seconds(30));
+		return 1;
 	}
 
-
+	return 0;
 }
 
