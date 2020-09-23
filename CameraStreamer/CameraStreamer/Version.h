@@ -3,7 +3,12 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
-const unsigned int VERSION_PATCH = 2;
+const unsigned int VERSION_PATCH = 3;
+
+// 1.0.3
+// CameraStreamer
+// - unhandled exceptions are now handled -> user receives a message
+// -> TODO: try rebinding when TCPServer can't bind
 
 // 1.0.2
 // ApplicationStatus 

@@ -106,6 +106,7 @@ int main(int argc, char* argv[])
 	appStatus->UpdateAppStatusFromConfig(*configuration);
 
 	// main application loop where it waits for a user key to stop everything
+	try 
 	{
 
 		// starts listening but not yet dealing with client connections
@@ -379,6 +380,12 @@ int main(int argc, char* argv[])
 		videoRecorderThread.Stop();
 
 		// done
+	}
+	catch (const std::exception& ex)
+	{
+		Logger::Log("Main") << "Unhandled exception: " << ex.what();
+		Logger::Log("Main") << "Shutting down in 10 seconds...\n";
+		std::this_thread::sleep_for(std::chrono::seconds(10));
 	}
 
 
