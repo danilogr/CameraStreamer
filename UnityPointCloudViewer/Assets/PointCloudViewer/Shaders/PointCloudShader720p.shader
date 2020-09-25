@@ -123,7 +123,7 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 				[maxvertexcount(CVC)] // CVC refers to Cube Vectex Count - 36
 				void geom(point v2g p[1], inout TriangleStream<g2f> triStream)
 				{
-					float f = _PointSize / 20.0f; //half size
+					float f = _PointSize / 2.0f; //half size
 
 					const float4 vc[CVC] = { float4(-f,  f,  f, 0.0f), float4(f,  f,  f, 0.0f), float4(f,  f, -f, 0.0f),    //Top                                 
 											 float4(f,  f, -f, 0.0f), float4(-f,  f, -f, 0.0f), float4(-f,  f,  f, 0.0f),    //Top
