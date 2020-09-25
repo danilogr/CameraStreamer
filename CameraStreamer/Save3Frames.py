@@ -1,5 +1,6 @@
 import socket
 import cv2
+#import cv2.aruco as arc
 import numpy as np
 import sys
 import time
@@ -11,8 +12,8 @@ CPORT = 6606
 CAMERA = "camera"
 
 # do we have any parameters?
-if len(sys.argv) != 4:
-  print("Usage:\n\t %s port control_port camera_name" % sys.argv[0])
+if len(sys.argv) != 3:
+  print("Usage:\n\t %s port control_port" % sys.argv[0])
   exit(1)
 
 # get port
@@ -51,9 +52,6 @@ def receivedEntireMessage(sock, length):
   return b''.join(chunks)
 
 
-# get camera name
-CAMERA = sys.argv[3]
-
 print("[%s] - First, connecting to control port %s:%d....\n(Please, make sure control stream is running at the right port)\n\n" % (CAMERA,ADDR,CPORT))
 
 # opens a control connection
@@ -76,6 +74,8 @@ while cameraIsStreaming != True:
        CameraParameters = json.loads(msg["streamingCameraParameters"])
        CameraParameters["cameraType"] = msg["captureDeviceType"]
        CameraParameters["cameraSN"] = msg["captureDeviceSerial"]
+       CameraParameters["cameraName"] = msg["captureDeviceUserDefinedName"]
+       CAMERA =  CameraParameters["cameraName"] 
        CameraParameters["filePrefix"] = CAMERA
        print("[%s] - Camera parameters: %s" % (CAMERA, CameraParameters))
        with open("%s-param.json"%CAMERA,"w") as f:
@@ -90,7 +90,7 @@ print("[%s] - Successfully connected to stream on port %d" % (CAMERA, PORT))
 # reading and processing loop (3 frames)
 frameCount = 3
 
-while frameCount > 0:
+while frameCount:
   # read header
   width = int.from_bytes(receivedEntireMessage(stream, 4), "little")
   height = int.from_bytes(receivedEntireMessage(stream, 4), "little")
@@ -113,14 +113,15 @@ while frameCount > 0:
     frame = cv2.imdecode(numpyarr, cv2.IMREAD_COLOR)
     cv2.imwrite("%s-color-%d.jpeg" % (CAMERA,3-frameCount), frame)
     cv2.imshow('Color', frame)
+
     
 
   # show depth if enabled
-  if (depthLen > 0):
-    deptharray = np.fromstring(depthData, np.uint16).reshape(height,width)
-    with open("%s-depth-%d.bin" % (CAMERA,3-frameCount), "wb") as f:
-      np.save(f, deptharray)
-    cv2.imshow('Depth', cv2.normalize(deptharray, dst=None, alpha=0, beta=65535, norm_type=cv2.NORM_MINMAX))
+  #if (depthLen > 0):
+  #  deptharray = np.fromstring(depthData, np.uint16).reshape(height,width)
+    #with open("%s-depth-%d.bin" % (CAMERA,3-frameCount), "wb") as f:
+    #  np.save(f, deptharray)
+  #  cv2.imshow('Depth', cv2.normalize(deptharray, dst=None, alpha=0, beta=65535, norm_type=cv2.NORM_MINMAX))
 
   # keeps going
   frameCount -= 1
