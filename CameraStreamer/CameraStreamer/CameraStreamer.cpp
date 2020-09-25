@@ -106,6 +106,7 @@ int main(int argc, char* argv[])
 	appStatus->UpdateAppStatusFromConfig(*configuration);
 
 	// main application loop where it waits for a user key to stop everything
+	try 
 	{
 
 		// starts listening but not yet dealing with client connections
@@ -380,7 +381,15 @@ int main(int argc, char* argv[])
 
 		// done
 	}
+	catch (const std::exception& ex)
+	{
+		Logger::Log("Main") << "[FATAL ERROR] Unhandled exception: " << ex.what() << std::endl << std::endl;
+		Logger::Log("Main") << "\a\a\aShutting down in 30 seconds...\n";
 
+		std::this_thread::sleep_for(std::chrono::seconds(30));
+		return 1;
+	}
 
+	return 0;
 }
 
