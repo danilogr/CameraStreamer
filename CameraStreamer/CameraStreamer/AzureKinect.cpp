@@ -163,6 +163,7 @@ void AzureKinect::CameraLoop()
 					kinectCameraCalibration    = kinectDevice.get_calibration(kinectConfiguration.depth_mode, kinectConfiguration.color_resolution);
 					kinectCameraTransformation = k4a::transformation(kinectCameraCalibration);
 
+					// save parameters for later - we will later convert them to opencv
 					if (depthCameraEnabled)
 					{
 						depthCameraParameters.resolutionWidth = kinectCameraCalibration.depth_camera_calibration.resolution_width;

@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+// (09/28/2020) double checked that this is correct with respect to k4a:
+// https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/examples/opencv_compatibility/main.cpp
 std::string Camera::OpenCVCameraMatrix(const CameraParameters& param) const
 {
 	std::stringstream ss;
