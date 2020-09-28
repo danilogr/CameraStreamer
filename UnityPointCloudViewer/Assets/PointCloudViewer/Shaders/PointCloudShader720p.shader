@@ -13,11 +13,11 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 		_DepthTex("Depth Channel", 2D) = "black" {}
 		_ColorTex("Color Channel", 2D) = "black" {}
 		_ProjectionTex("Point Projection Channel", 2D) = "black" {}
-		_PointSize("Point Size", Float) = 0.0005
+		_PointSize("Point Size", Float) = 0.002
 	
-		//_Alpha("Alpha", Range(0.00, 1.00)) = 0.8
+		//_Alpha("Alpha", Range(0.00, 1.00)) = 0.
 
-		[Toggle] _PinholeCamera("Assume pinhole camera?", Float) = 1
+		[Toggle] _PinholeCamera("Assume pinhole camera?", Float) = 0
 		_FocalLengthX("Focal Length X", Range(0.01, 1920.00)) = 603.584
 		_FocalLengthY("Focal Length Y", Range(0.01, 1080.00)) = 603.401
 		_PrincipalPointX("Principal Point X", Float) = 640.951
@@ -25,8 +25,8 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 		_Width("Width", Float) = 1280
 		_Height("Height", Float) = 720
 
-			// kinect uses mm, so we want to multiply by 1000 (1000mm = 100cm =1m)
-			_MetricMultiplier("MetricMultiplier", Float) = 1000
+			// kinect uses mm, so we want to divide by 1000 (1000mm = 100cm =1m)
+			_MetricMultiplier("MetricMultiplier", Float) = 0.001
 	}
 		SubShader
 		{
@@ -123,7 +123,7 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 				[maxvertexcount(CVC)] // CVC refers to Cube Vectex Count - 36
 				void geom(point v2g p[1], inout TriangleStream<g2f> triStream)
 				{
-					float f = _PointSize / 20.0f; //half size
+					float f = _PointSize / 2.0f; //half size
 
 					const float4 vc[CVC] = { float4(-f,  f,  f, 0.0f), float4(f,  f,  f, 0.0f), float4(f,  f, -f, 0.0f),    //Top                                 
 											 float4(f,  f, -f, 0.0f), float4(-f,  f, -f, 0.0f), float4(-f,  f,  f, 0.0f),    //Top

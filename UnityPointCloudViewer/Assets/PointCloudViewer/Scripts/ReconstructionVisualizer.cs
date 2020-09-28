@@ -105,8 +105,8 @@ public class ReconstructionVisualizer : MonoBehaviour
         {
             for (int i = 0; i < width; i++)
             {
-                pointCloudVertices[i + j * width] = new Vector3((i - (width / 2.0f)) * 0.01f,
-                                                                (j - (height / 2.0f)) * 0.01f,
+                pointCloudVertices[i + j * width] = new Vector3((i - (width / 2.0f)) * 0.001f,
+                                                                (j - (height / 2.0f)) * 0.001f,
                                                                 0.0f);
             }
         }
@@ -126,8 +126,8 @@ public class ReconstructionVisualizer : MonoBehaviour
         {
             for (int i = 0; i < width; i++)
             {
-                uvs[i + j * width].x = i / (float)width;
-                uvs[i + j * width].y = j / (float)height;
+                uvs[i + j * width].x = (1f * i) / (float)width;
+                uvs[i + j * width].y = (1f * j) / (float)height;
             }
         }
 

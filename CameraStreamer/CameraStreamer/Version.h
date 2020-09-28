@@ -25,7 +25,7 @@ const unsigned int VERSION_PATCH = 3;
 // TCPRelayCamera
 // - introducing a relay camera for RAW YUV420 network packets
 //
-// App status:
+// App status: 
 // - reporting streaming color or depth will be disabled if not supported by the camera
 //
 // VideoRecorder:
