@@ -26,7 +26,7 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 		_Height("Height", Float) = 720
 
 			// kinect uses mm, so we want to divide by 1000 (1000mm = 100cm =1m)
-			_MetricMultiplier("MetricMultiplier", Float) = 0.001
+			_MetricMultiplier("MetricMultiplier", Float) = 1
 	}
 		SubShader
 		{
@@ -90,25 +90,23 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 					v2g o;
 
 					float2 inv_uv = float2(v.uv.x, 1.0 - v.uv.y);
-					float depth = tex2Dlod(_DepthTex, float4(inv_uv, 0, 0)).r;
+					float depth = tex2Dlod(_DepthTex, float4(inv_uv, 0, 0)).r * 65.536 * _MetricMultiplier;
 
 					if (_PinholeCamera > 0.5)
 					{
 
 						const float invfocalLengthx = 1.f / _FocalLengthX;
 						const float invfocalLengthy = 1.f / _FocalLengthY;
-						const float dist = _MetricMultiplier * depth;
 
-						v.vertex.x = (inv_uv.x * _Width - _PrincipalPointX) * dist * invfocalLengthx;
-						v.vertex.y = (inv_uv.y * _Height - _PrincipalPointY) * dist * invfocalLengthy;
-						v.vertex.z = dist;
+						v.vertex.x = (inv_uv.x * _Width - _PrincipalPointX) * depth * invfocalLengthx;
+						v.vertex.y = (inv_uv.y * _Height - _PrincipalPointY) * depth * invfocalLengthy;
+						v.vertex.z = depth;
 					}
 					else {
 						float4 projV = tex2Dlod(_ProjectionTex, float4(inv_uv, 0, 0));
-						float4 a = float4(projV.x * depth, projV.y * depth, 1.0 * depth, 0.0);
-						v.vertex.x = a.x * _MetricMultiplier;
-						v.vertex.y = a.y * _MetricMultiplier;
-						v.vertex.z = a.z * _MetricMultiplier;
+						v.vertex.x = projV.x * depth;
+						v.vertex.y = projV.y * depth;
+						v.vertex.z = depth;
 					}
 
 					o.vertex = v.vertex;
