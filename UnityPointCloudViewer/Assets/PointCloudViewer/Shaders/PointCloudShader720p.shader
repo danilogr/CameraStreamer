@@ -143,23 +143,23 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 					};
 
 
-					const float2 UV1[CVC] = { float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),         //Esta em uma ordem
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),         //aleatoria qualquer.
+					const float2 UV1[CVC] = { float2(-f,  f), float2(f,  f), float2(f,  f),    //Top                                 
+											 float2(f,  f), float2(-f,  f), float2(-f,  f),    //Top
 
-											  float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
+											 float2(f,  f), float2(f,  f), float2(f, -f),     //Right
+											 float2(f, -f), float2(f, -f), float2(f,  f),     //Right
 
-											  float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
+											 float2(-f,  f), float2(f,  f), float2(f, -f),     //Front
+											 float2(f, -f), float2(-f, -f), float2(-f,  f),     //Front
 
-											  float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
+											 float2(-f, -f), float2(f, -f), float2(f, -f),    //Bottom                                         
+											 float2(f, -f), float2(-f, -f), float2(-f, -f),     //Bottom
 
-											  float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
+											 float2(-f,  f), float2(-f,  f), float2(-f, -f),    //Left
+											 float2(-f, -f), float2(-f, -f), float2(-f,  f),    //Left
 
-											  float2(0.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f),
-											  float2(1.0f,    0.0f), float2(1.0f,    0.0f), float2(1.0f,    0.0f)
+											 float2(-f,  f), float2(-f, -f), float2(f, -f),    //Back
+											 float2(f, -f), float2(f,  f), float2(-f,  f)     //Back
 					};
 
 					const int TRI_STRIP[CVC] = { 0, 1, 2,  3, 4, 5,
@@ -176,7 +176,7 @@ Shader "PointCloudViewer/PointCloudShader_720p"
 					// Assign new vertices positions in view space
 					for (i = 0; i < CVC; i++) {
 						v[i].vertex = UnityObjectToClipPos(p[0].vertex + vc[i]);
-						v[i].uv = p[0].uv;
+						v[i].uv = p[0].uv;// +UV1[i] * 0.25;
 					}
 
 					// Build the cube tile by submitting triangle strip vertices
