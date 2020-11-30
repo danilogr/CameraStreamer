@@ -8,16 +8,17 @@
 // 
 
 
-#define ENABLE_K4A 1 // azure kinect cameras
-#define ENABLE_RS2 1 // real sense api
 
-#define ENABLE_REPLAY_CAMERA 1 // camera that can help measuring latency
-#define ENABLE_TCPCLIENT_RELAY_CAMERA 1 // camera that relays content from the network
-
-
-#define ENABLE_MKV_PLAYER 1 // camera that plays MKV files created by a k4a tools
+#define ENABLE_K4A 1					// azure kinect cameras (needs k4a:x64-windows)
+#define ENABLE_RS2 1					// real sense api       (needs realsense2:x64-windows)
+#define ENABLE_TCPCLIENT_RELAY_CAMERA 1 // camera that relays content from the network (TCP - better for local area network)
 
 
-// future work
+// ----  WIP ----  (Disabled for now as it is being developed)
 
-//#define ENABLE_DVI2USB_CAMERA		   // DVI2USB camera
+#define ENABLE_REPLAY_CAMERA 1			// video file replay camera (OpenCV)
+#define ENABLE_MKV_PLAYER 1				// camera that plays MKV files created by a k4a tools
+#define ENABLE_OPENCV_WEBCAM 1		    // using opencv to receive content from connected cameras
+#define ENABLE_DVI2USB_CAMERA 1		    // DVI2USB camera (needs headers and libraries already packaged in with CameraStreamer)
+
+
