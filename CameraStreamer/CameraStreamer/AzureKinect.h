@@ -2,7 +2,7 @@
 
 // are we compilling support to this camera into our application?
 #include "CompilerConfiguration.h"
-#ifdef ENABLE_K4A
+#ifdef CS_ENABLE_CAMERA_K4A
 
 
 

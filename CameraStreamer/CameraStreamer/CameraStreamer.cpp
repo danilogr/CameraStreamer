@@ -66,19 +66,19 @@ int main(int argc, char* argv[])
 	CameraNameToConstructorMap SupportedCamerasSet = {
 		
 		// Azure Kinect support
-		#ifdef ENABLE_K4A
+		#ifdef CS_ENABLE_CAMERA_K4A
 		{"k4a", &AzureKinect::Create},
 		#endif
 
 		// RealSense2 support
-		#ifdef ENABLE_RS2
+		#ifdef CS_ENABLE_CAMERA_RS2
 		{"rs2", &RealSense::Create},
 		#endif
 
 		// TCP Relay support
-		#ifdef  ENABLE_TCPCLIENT_RELAY_CAMERA
+		#ifdef  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
 		{"tcp-relay", &TCPRelayCamera::Create},
-		#endif //  ENABLE_TCPCLIENT_RELAY_CAMERA
+		#endif //  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
 
 	};
 	
