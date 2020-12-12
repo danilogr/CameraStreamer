@@ -4,7 +4,7 @@
 // we have compilation flags that determine whether this feature
 // is supported or not
 #include "CompilerConfiguration.h"
-#ifdef ENABLE_REPLAY_CAMERA
+#ifdef CS_ENABLE_CAMERA_VIDEOFILE
 
 // name used in logs
 const char* ReplayCamera::ReplayCameraConstStr = "ReplayCamera";
