@@ -13,20 +13,32 @@
 #include "Camera.h"
 
 /**
-  Replay camera camera replays generic video files
+  Replay camera camera replays generic video files, K4A MKV files or our old school custom recordings)
   
   In the future, it will replay K4A MKV files
 
 
   Custom configuration elements:
-  * path: path to files / file
-  * loop: whether or not to loop
+  * replayType: "opencv-video-file","k4a-mkv", "k4a-mkv-separate-files", "legacy-recorder"
+  * loop: whether or not to loop (defaults to True) (ignored when using  "opencv-webcam")
+
+  * for each replay camera type supported:
+  ** -> "opencv-video-file"
+        "path" or "colorPath" -> only color
+  ** -> k4a-mkv
+        "path" -> mkv file
+  ** -> k4a-mkv-separate-files
+	    "colorPath" -> mkv with color stream
+		"depthPath" -> mkv with depth stream
+  ** -> legacy-recorder
+		"colorPath" -> mp4 with color stream
+		"depthPath" -> .bin file with depth stream
 
 
   Generic configuration settings implemented:
   * type : "replay"
   * requestColor: true
-  * requestDepth: true
+  * requestDepth: true/false
 
   Configuration settings ignored:
   (For now, files only have a single stream of each type; thus, resolution
