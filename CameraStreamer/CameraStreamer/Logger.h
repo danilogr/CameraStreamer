@@ -10,6 +10,8 @@
 
 // This class' only purpose is to make logging with datetime accessible to 
 // all members of this software piece
+
+// todo: make logging thread safe? 
 class Logger
 {
 

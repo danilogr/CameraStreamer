@@ -23,10 +23,12 @@
 using boost::asio::ip::tcp;
 
 /*
-  The TCPStreamingServer class sends kinect color and depth
-  frames to all members connected.
+  The TCPStreamingServer class sends camera color and depth 
+  frames (whichever is available) to all tcp clients connected to it.
 
-  TCPStreamingServer runs on a separate thread
+  TCPStreamingServer runs on a separate thread and queues up packages
+  if encoding rate is not as fast as the rate in which a camera 
+  capture frames.
 */
 class TCPStreamingServer
 {
@@ -136,11 +138,11 @@ public:
 			if (color->getPixelLen() == 3)
 			{ 
 				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC3, color->getData());
-				cv::imencode(".jpg", colorImage, encodedColorImage);
+				cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
 			}
 			else {
 				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC4, color->getData());
-				cv::imencode(".jpg", colorImage, encodedColorImage);
+				cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
 			}
 		}
 
