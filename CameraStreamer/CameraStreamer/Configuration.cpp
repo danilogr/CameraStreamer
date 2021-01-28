@@ -138,6 +138,7 @@ void  Configuration::ParseConfiguration(bool warn)
 	{
 		ReadJSONDefaultInt(currentDoc, "camera", "colorWidth", cameraColorWidth, 1280, warn);
 		ReadJSONDefaultInt(currentDoc, "camera", "colorHeight", cameraColorHeight, 720, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "colorFPS", cameraColorFPS, 30, false);
 	}
 
 	ReadJSONDefaultBool(currentDoc, "camera", "requestDepth", requestDepthCamera, true, warn);
@@ -146,6 +147,7 @@ void  Configuration::ParseConfiguration(bool warn)
 	{
 		ReadJSONDefaultInt(currentDoc, "camera", "depthWidth", cameraDepthWidth, 640, warn);
 		ReadJSONDefaultInt(currentDoc, "camera", "depthHeight", cameraDepthHeight, 576, warn);
+		ReadJSONDefaultInt(currentDoc, "camera", "depthFPS", cameraDepthFPS, 30, false);
 	}
 
 	// should we force a specific camera serial number?

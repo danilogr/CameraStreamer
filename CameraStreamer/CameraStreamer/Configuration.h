@@ -70,6 +70,9 @@ protected:
 	// camera: color camera resolution
 	int cameraColorWidth, cameraColorHeight;
 
+	// camera color and depth: fps
+	double cameraColorFPS, cameraDepthFPS;
+
 	// camera: how long should we wait before doing something about oncoming frames 
 	unsigned long cameraFrameCaptureTimeout;
 	
@@ -101,7 +104,7 @@ public:
 	isStreamingColor(false), isStreamingDepth(false),
 	requestDepthCamera(true), requestColorCamera(true),
 	cameraDepthWidth(0), cameraDepthHeight(0),
-	cameraColorWidth(0), cameraColorHeight(0), requestFirstCameraAvailable(true),
+	cameraColorWidth(0), cameraColorHeight(0), cameraColorFPS(30), cameraDepthFPS(30), requestFirstCameraAvailable(true),
 	cameraFrameCaptureTimeout(1000) {};
 
 	//
@@ -123,16 +126,22 @@ public:
 	const std::string& GetCameraType() const { return cameraType; }
 	const std::string& GetCameraUserDefinedName() const { return cameraUserDefinedName;  }
 	const std::string& GetCameraSN() const { return cameraSerial; }
+
+	// defaults to true unless CameraSerial is set 
 	bool UseFirstCameraAvailable() const { return requestFirstCameraAvailable; }
 	bool SetUseFirstCameraAvailable(bool value) { requestFirstCameraAvailable = value; }
 	int GetCameraColorHeight() const { return cameraColorHeight; }
 	int GetCameraColorWidth() const { return cameraColorWidth; }
+	double GetCameraColorFPS() const { return cameraColorFPS; }
 	int GetCameraDepthHeight() const { return cameraDepthHeight; }
 	int GetCameraDepthWidth() const { return cameraDepthWidth; }
+	int GetCameraDepthFPS() const { return cameraColorFPS; }
 	void SetCameraColorHeight(int value) {  cameraColorHeight = value; }
 	void SetCameraColorWidth(int value) {  cameraColorWidth = value; }
+	void SetCameraColorFPS(int value) { cameraColorFPS = value; }
 	void SetCameraDepthHeight(int value) { cameraDepthHeight = value; }
 	void SetCameraDepthWidth(int value) { cameraDepthWidth = value; }
+	void SetCameraDepthFPS(int value) { cameraDepthFPS = value; }
 
 	void SetCameraFrameTimeoutMs(unsigned long value) { cameraFrameCaptureTimeout = value; }
 	unsigned long GetCameraFrameTimeoutMs() const { return cameraFrameCaptureTimeout;  }
