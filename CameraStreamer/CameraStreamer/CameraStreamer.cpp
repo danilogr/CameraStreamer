@@ -80,6 +80,11 @@ int main(int argc, char* argv[])
 		{"tcp-relay", &TCPRelayCamera::Create},
 		#endif //  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
 
+		// Azure Kinect support
+		#ifdef CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
+		{"opencv", &AzureKinect::Create},
+		#endif
+
 	};
 	
 

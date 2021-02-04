@@ -95,7 +95,7 @@ public:
 	  Returns a set of all devices connected to the computer
 	  (the order in which devices appear give their unique id)
 	*/
-	static std::vector<std::tuple<std::string, std::string>> ListDevices();
+	//static std::vector<std::tuple<std::string, std::string>> ListDevices();
 
 	CVVideoCaptureCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration), usingWebcam(false), cameraIndex(-1), usingFile(false), frameCount(-1)
 	{
