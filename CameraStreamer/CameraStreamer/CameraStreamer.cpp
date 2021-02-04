@@ -30,6 +30,7 @@
 #include "AzureKinect.h"
 #include "RealSense.h"
 #include "TCPRelayCamera.h"
+#include "OpenCVVideoCaptureCamera.h"
 
 // 5) version specific 
 #include "Version.h"
@@ -79,6 +80,11 @@ int main(int argc, char* argv[])
 		#ifdef  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
 		{"tcp-relay", &TCPRelayCamera::Create},
 		#endif //  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
+
+		// Azure Kinect support
+		#ifdef CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
+		{"opencv", &CVVideoCaptureCamera::Create},
+		#endif // CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
 
 	};
 	

@@ -3,7 +3,12 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
-const unsigned int VERSION_PATCH = 3;
+const unsigned int VERSION_PATCH = 4;
+
+// 1.0.4
+// OpenCVVideoCaptureCamera
+// - Support for OpenCV for webcams and video files (see OpenCVVideoCaptureCamera.h for more info)
+//
 
 // 1.0.3
 // CameraStreamer

@@ -108,6 +108,9 @@
     <ClCompile Include="RAWYUVProtocolReader.cpp">
       <Filter>Source Files\Network\Protocols\Readers</Filter>
     </ClCompile>
+    <ClCompile Include="OpenCVVideoCaptureCamera.cpp">
+      <Filter>Source Files\Cameras</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -149,9 +152,6 @@
     <ClInclude Include="Version.h">
       <Filter>Header Files\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Frame.h">
-      <Filter>Header Files\Cameras</Filter>
-    </ClInclude>
     <ClInclude Include="ReliableCommunicationClientX.h">
       <Filter>Header Files\Network\Comms</Filter>
     </ClInclude>
@@ -178,6 +178,15 @@
     </ClInclude>
     <ClInclude Include="RAWYUVProtocolReader.h">
       <Filter>Header Files\Network\Protocols\Readers</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="EpiphanDVI2USBCamera.h">
+      <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenCVVideoCaptureCamera.h">
+      <Filter>Header Files\Cameras</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

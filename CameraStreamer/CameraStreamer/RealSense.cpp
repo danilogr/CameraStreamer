@@ -111,7 +111,6 @@ void RealSense::CameraLoop()
 	// if the thread is stopped but we did execute the connected callback,
 	// then we will execute the disconnected callback to maintain consistency
 	bool didWeCallConnectedCallback = false; 
-	unsigned long long totalTries = 0;
 
 	// align to color filter
 	rs2::align align_to_color(RS2_STREAM_COLOR);
@@ -121,7 +120,6 @@ void RealSense::CameraLoop()
 	{
 		// start again ...
 		didWeCallConnectedCallback = false;
-		totalTries = 0;
 		device = nullptr;
 
 		//
@@ -252,7 +250,6 @@ void RealSense::CameraLoop()
 		{
 			// time to start reading frames and streaming
 			unsigned int triesBeforeRestart = 5;
-			totalTries = 0;
 
 			// updates app with capture and stream status
 			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,

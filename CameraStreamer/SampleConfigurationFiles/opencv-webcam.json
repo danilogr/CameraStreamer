@@ -1,0 +1,19 @@
+{
+  "controlPort" : 6606,
+  "streamerPort" : 50000,
+  "camera" :
+  { 
+	   "requestColor" : true,
+		 "requestDepth" : false,
+     "type" : "opencv",
+     "index" : 0,
+		 "colorWidth": 1920,
+     "colorHeight": 1080,
+		 "fps": 30,
+		 "forceDSHOW": true
+	},
+	"streaming" :
+	{
+	   "streamJPEGLengthValue" : true
+	}
+}

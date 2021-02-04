@@ -67,6 +67,7 @@ struct CameraParameters
 
 	int resolutionWidth;
 	int resolutionHeight;
+	int frameRate;
 	float metricRadius;
 };
 

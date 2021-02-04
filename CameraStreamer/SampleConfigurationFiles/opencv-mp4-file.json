@@ -1,0 +1,15 @@
+{
+  "controlPort" : 6606,
+  "streamerPort" : 50000,
+  "camera" :
+  { 
+	   "requestColor" : true,
+		 "requestDepth" : false,
+     "type" : "opencv",
+     "url" : "sample-mp4-file.mp4"
+	},
+	"streaming" :
+	{
+	   "streamJPEGLengthValue" : true
+	}
+}
