@@ -12,7 +12,7 @@
 #define CS_ENABLE_CAMERA_K4A 1					// azure kinect cameras (needs k4a:x64-windows)
 #define CS_ENABLE_CAMERA_RS2 1					// real sense api       (needs realsense2:x64-windows)
 #define CS_ENABLE_CAMERA_TCPCLIENT_RELAY 1		// camera that relays content from the network (TCP - better for local area network)
-//#define CS_ENABLE_CAMERA_CV_VIDEOCAPTURE 1	    // using opencv to receive content from connected cameras
+#define CS_ENABLE_CAMERA_CV_VIDEOCAPTURE 1	    // using opencv to receive content from connected cameras
 
 // ----  WIP ----  (Disabled for now as it is being developed)
 

@@ -204,6 +204,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="CameraStreamer.cpp" />
+    <ClCompile Include="OpenCVVideoCaptureCamera.cpp" />
     <ClCompile Include="RAWYUVProtocolReader.cpp" />
     <ClCompile Include="ReplayCamera.cpp" />
     <ClCompile Include="RealSense.cpp" />
@@ -219,9 +220,11 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CompilerConfiguration.h" />
     <ClInclude Include="Configuration.h" />
+    <ClInclude Include="EpiphanDVI2USBCamera.h" />
     <ClInclude Include="Frame.h" />
     <ClInclude Include="FrameNetworkBuffer.h" />
     <ClInclude Include="NetworkBuffer.h" />
+    <ClInclude Include="OpenCVVideoCaptureCamera.h" />
     <ClInclude Include="ProtocolPacketReader.h" />
     <ClInclude Include="ProtocolPacketWriter.h" />
     <ClInclude Include="CommsErrors.h" />
