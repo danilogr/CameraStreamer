@@ -48,7 +48,8 @@
   * index: 	id of the video capturing device to open. To open default camera using default backend just pass 0. 
   *         (defaults to 0)
   *
-  *
+  * // see why here: https://github.com/opencv/opencv/issues/17687
+  * forceDSHOW: should we force dshow instead of using cv::ANY? (defaults to true for cameras, false for files)
   * 
   * Future work:
   * 
@@ -68,7 +69,7 @@ class CVVideoCaptureCamera : public Camera
 
 	std::shared_ptr<cv::VideoCapture> device;
 	static const char* CVVideoCaptureCameraStr;
-	bool usingWebcam, usingFile;
+	bool usingWebcam, usingFile, forcedshow;
 	std::string url;
 	int cameraIndex, frameCount;
 
@@ -97,7 +98,7 @@ public:
 	*/
 	//static std::vector<std::tuple<std::string, std::string>> ListDevices();
 
-	CVVideoCaptureCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration), usingWebcam(false), cameraIndex(-1), usingFile(false), frameCount(-1)
+	CVVideoCaptureCamera(std::shared_ptr<ApplicationStatus> appStatus, std::shared_ptr<Configuration> configuration) : Camera(appStatus, configuration), usingWebcam(false), cameraIndex(-1), usingFile(false), forcedshow(true), frameCount(-1)
 	{
 	}
 

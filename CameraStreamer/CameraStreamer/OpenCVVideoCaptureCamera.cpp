@@ -7,7 +7,7 @@
 #ifdef CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
 
 // name used in logs
-const char* CVVideoCaptureCamera::CVVideoCaptureCameraStr = "cv2::VideoCapture";
+const char* CVVideoCaptureCamera::CVVideoCaptureCameraStr = "VideoCapture";
 
 
 bool CVVideoCaptureCamera::LoadConfigurationSettings()
@@ -17,6 +17,7 @@ bool CVVideoCaptureCamera::LoadConfigurationSettings()
 	{
 		Logger::Log(CVVideoCaptureCameraStr) << "Warning: Ignoring camera serial number defined as \"" << configuration->GetCameraSN() << "\" because this feature is not supported (yet) !" << std::endl;
 	}
+
 
 	// reads the URL or camera index
 	cameraIndex = configuration->GetCameraCustomInt("index", -1, false);
@@ -36,6 +37,10 @@ bool CVVideoCaptureCamera::LoadConfigurationSettings()
 	if (cameraIndex >= 0)
 	{
 		usingWebcam = true;
+		forcedshow = configuration->GetCameraCustomBool("forceDSHOW", true, false);
+	}
+	else {
+		forcedshow = configuration->GetCameraCustomBool("forceDSHOW", false, false);
 	}
 
 
@@ -43,6 +48,8 @@ bool CVVideoCaptureCamera::LoadConfigurationSettings()
 		Logger::Log(CVVideoCaptureCameraStr) << "Opening webcam at index: "<< cameraIndex << std::endl;
 	else
 		Logger::Log(CVVideoCaptureCameraStr) << "Opening URI: " << url << std::endl;
+
+
 	// else, url is set, so usingWebcam is not set
 	return true;
 }
@@ -97,9 +104,9 @@ void CVVideoCaptureCamera::CameraLoop()
 
 					// get device
 					if (usingWebcam)
-						device = std::make_shared<cv::VideoCapture>(cameraIndex);
+						device = std::make_shared<cv::VideoCapture>(cameraIndex, forcedshow ? cv::CAP_DSHOW : cv::CAP_ANY);
 					else
-						device = std::make_shared<cv::VideoCapture>(url);
+						device = std::make_shared<cv::VideoCapture>(url, forcedshow ? cv::CAP_DSHOW : cv::CAP_ANY);
 
 					// sanity check
 					if (!device)
@@ -156,27 +163,18 @@ void CVVideoCaptureCamera::CameraLoop()
 						if (cameraWidth != cvDeviceFrameWidth || cameraHeight != cvDeviceFrameHeight || cameraFPS != cvDeviceFrameRate)
 						{
 							Logger::Log(CVVideoCaptureCameraStr) << "Requested " << cameraWidth << "x" << cameraHeight << " at " << cameraFPS
-																 << " but got " << cvDeviceFrameWidth << "x" << cvDeviceFrameHeight << " at " << cvDeviceFrameRate << std::endl;
+								<< " but got " << cvDeviceFrameWidth << "x" << cvDeviceFrameHeight << " at " << cvDeviceFrameRate << std::endl;
 						}
 
 					}
 
-
-					//
-					// to be continued here:
-					// https://docs.opencv.org/4.4.0/d8/dfe/classcv_1_1VideoCapture.html#ae38c2a053d39d6b20c9c649e08ff0146
-					// https://docs.opencv.org/4.4.0/d8/dfe/classcv_1_1VideoCapture.html#a9ac7f4b1cdfe624663478568486e6712
-					// https://docs.opencv.org/4.4.0/d6/ddf/samples_2cpp_2laplace_8cpp-example.html#a6
-					// https://docs.opencv.org/4.4.0/d4/d15/group__videoio__flags__base.html#ggaeb8dd9c89c10a5c63c139bf7c4f5704daf01bc92359d2abc9e6eeb5cbe36d9af2
-
-					
 
 					// camera has opened, let's set the settings that we need
 					colorCameraEnabled = configuration->IsColorCameraEnabled();
 					colorCameraParameters.resolutionWidth = cvDeviceFrameWidth;
 					colorCameraParameters.resolutionHeight = cvDeviceFrameHeight;
 					colorCameraParameters.frameRate = cvDeviceFrameRate;
-					
+
 					// todo: come up with something less arbitrary ? :P
 					if (usingWebcam)
 					{
@@ -197,8 +195,8 @@ void CVVideoCaptureCamera::CameraLoop()
 						cameraSerialNumber = ss.str();
 					}
 
-					
-					
+
+
 				}
 				catch (const cv::Exception& e) // opencv exception
 				{
@@ -222,7 +220,7 @@ void CVVideoCaptureCamera::CameraLoop()
 			}
 
 			Logger::Log(CVVideoCaptureCameraStr) << "Opened cv::VideoCapture device: " << cameraSerialNumber << std::endl;
-
+		}
 			//
 			// Step #2) START, LOOP FOR FRAMES, STOP
 			//
@@ -443,7 +441,7 @@ void CVVideoCaptureCamera::CameraLoop()
 
 			}
 
-		}
+		
 	}
 
 
