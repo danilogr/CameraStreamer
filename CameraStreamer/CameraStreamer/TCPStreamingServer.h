@@ -169,25 +169,25 @@ public:
 		}
 		else {
 
-			message = std::make_shared<std::vector<uchar> >(4 * sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
+			message = std::make_shared<std::vector<uchar> >(5 * sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
 
-			// header [width][height][rgb length][depth length]
-			//*((uint32_t*)&(*message)[0]) = message->size();
-			*((uint32_t*)&(*message)[0]) = imgWidth;
-			*((uint32_t*)&(*message)[4]) = imgHeight;
-			*((uint32_t*)&(*message)[8]) = encodedColorImage.size();
-			*((uint32_t*)&(*message)[12]) = depthImgSize;
+			// header [package length][width][height][rgb length][depth length]
+			*((uint32_t*)&(*message)[0]) = message->size();
+			*((uint32_t*)&(*message)[4]) = imgWidth;
+			*((uint32_t*)&(*message)[8]) = imgHeight;
+			*((uint32_t*)&(*message)[12]) = encodedColorImage.size();
+			*((uint32_t*)&(*message)[16]) = depthImgSize;
 
 			// write color frame
 			if (streamingColor)
 			{
-				memcpy((unsigned char*)&(*message)[16], &encodedColorImage[0], encodedColorImage.size());
+				memcpy((unsigned char*)&(*message)[20], &encodedColorImage[0], encodedColorImage.size());
 			}
 
 			// write depth frame
 			if (streamingDepth)
 			{
-				memcpy((unsigned char*)&(*message)[16 + encodedColorImage.size()], (const char*)depth->getData(), depth->size());
+				memcpy((unsigned char*)&(*message)[20 + encodedColorImage.size()], (const char*)depth->getData(), depth->size());
 			}
 		}
 
