@@ -160,7 +160,7 @@ public:
 		{
 			message = std::make_shared<std::vector<uchar> >(1 * sizeof(uint32_t) + encodedColorImage.size());
 
-			// header [color jpeg size]
+			// header [color jpeg size] - tells clients how many bytes they should read
 			*((uint32_t*)&(*message)[0]) = encodedColorImage.size();
 
 			// copies color
@@ -171,8 +171,10 @@ public:
 
 			message = std::make_shared<std::vector<uchar> >(5 * sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
 
-			// header [package length][width][height][rgb length][depth length]
-			*((uint32_t*)&(*message)[0]) = message->size();
+			// header prefix [package length]  - tells clients how many bytes they should read
+			*((uint32_t*)&(*message)[0]) = message->size() - sizeof(uint32_t);
+
+			// header [width][height][rgb length][depth length]
 			*((uint32_t*)&(*message)[4]) = imgWidth;
 			*((uint32_t*)&(*message)[8]) = imgHeight;
 			*((uint32_t*)&(*message)[12]) = encodedColorImage.size();
