@@ -3,7 +3,10 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
-const unsigned int VERSION_PATCH = 5;
+const unsigned int VERSION_PATCH = 6;
+
+// 1.0.6
+// Streaming protocol always sends 4 bytes (LV) - fixed bug with the header including itself in the size
 
 // 1.0.5
 // Streaming protocol always sends 4 bytes with the whole network packet size before sending anything else

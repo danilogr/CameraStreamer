@@ -172,7 +172,7 @@ public:
 			message = std::make_shared<std::vector<uchar> >(5 * sizeof(uint32_t) + encodedColorImage.size() + depthImgSize);
 
 			// header prefix [package length]  - tells clients how many bytes they should read
-			*((uint32_t*)&(*message)[0]) = message->size() - sizeof(uint32_t);
+			*((uint32_t*)&(*message)[0]) = message->size() - sizeof(uint32_t); // header size doesn't include itself
 
 			// header [width][height][rgb length][depth length]
 			*((uint32_t*)&(*message)[4]) = imgWidth;
