@@ -346,10 +346,8 @@ int main(int argc, char* argv[])
 		remoteControlServer.Run();
 
 
-		//
-		// waits for user command to exit
-		// (either user pressing "q" or sending a message through the control port)
-		//
+	
+
 		bool exit = false;
 		while (!exit)
 		{
@@ -363,6 +361,12 @@ int main(int argc, char* argv[])
 					break;
 				case 'q':
 					exit = true;
+					break;
+				case 'r':
+					if (videoRecorderThread.isRecordingInProgress())
+						videoRecorderThread.StopRecording();
+
+					videoRecorderThread.StartRecording(true, false, "recording1", "");
 					break;
 			}
 		}

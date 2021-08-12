@@ -1,8 +1,12 @@
-# CameraStreamer
-CameraStreamer is an easy-to-use camera streamer with special support for RGB+D streams.
+# DataPipe?
+Data acquisition, manipulation, integration, and storage is at the core of most interactive cross device (XD) prototypes.
+
+DataPipe is a swiss-army knife tool that makes that easy!
 
 
-## Building CameraStreamer
+
+
+## Building DataPipe
  - Install [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows)
  - Use `vcpkg` to install the following packages:
  - **boost** `vcpkg install boost:x64-windows`
@@ -18,5 +22,5 @@ CameraStreamer is an easy-to-use camera streamer with special support for RGB+D 
 
 
 # License
-<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>. If you are interested in using this tool commercially, reach out to commercial@xrxdprototyping.io
 
