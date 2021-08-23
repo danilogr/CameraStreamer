@@ -67,6 +67,12 @@
     <Filter Include="Source Files\Network\Protocols\Writers">
       <UniqueIdentifier>{eecd3d04-a5cc-4a12-9161-f74e0ee8ef7c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\DataSource">
+      <UniqueIdentifier>{0694594e-5d90-410f-a720-0628c52c18e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DataSource">
+      <UniqueIdentifier>{abdd5bff-4751-433b-a12e-f1857a33bbd7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp">
@@ -110,6 +116,9 @@
     </ClCompile>
     <ClCompile Include="OpenCVVideoCaptureCamera.cpp">
       <Filter>Source Files\Cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="DataSource.cpp">
+      <Filter>Source Files\DataSource</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -187,6 +196,9 @@
     </ClInclude>
     <ClInclude Include="OpenCVVideoCaptureCamera.h">
       <Filter>Header Files\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="DataSource.h">
+      <Filter>Header Files\DataSource</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

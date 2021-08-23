@@ -10,6 +10,8 @@
 #include "Frame.h"
 #include "Logger.h"
 
+#include "DataSource.h"
+
 #include "Configuration.h"
 #include "ApplicationStatus.h"
 
@@ -69,77 +71,18 @@ struct CameraParameters
 	int resolutionHeight;
 	int frameRate;
 	float metricRadius;
+
+	CameraParameters() : resolutionWidth(0), resolutionHeight(0), frameRate(0), metricRadius(0)
+	{
+
+	}
 };
 
-
-struct CameraStatistics
+/*
+ * CameraStatistics are the same as a DataSourceStatistics
+ */
+struct CameraStatistics : DataSourceStatistics
 {
-	// number of frames captured on the long run
-	unsigned long long framesCapturedTotal;
-	unsigned long long framesFailedTotal;
-	unsigned int sessions;
-	std::chrono::steady_clock::time_point startTimeTotal;
-	std::chrono::steady_clock::time_point endTimeTotal;
-
-	// number of frames captured in this session
-	unsigned long long framesCaptured;
-	unsigned long long framesFailed;
-	std::chrono::steady_clock::time_point startTime;
-	std::chrono::steady_clock::time_point endTime;
-
-
-	CameraStatistics() : framesCapturedTotal(0), framesFailedTotal(0), sessions(0), framesCaptured(0), framesFailed(0), initialized(false), inSession(false) {}
-
-	void StartCounting()
-	{
-		// did we forget to stop counting?
-		if (inSession)
-		{
-			StopCounting(); // not super accurate, but whatevs
-		}
-
-		startTime = std::chrono::high_resolution_clock::now();
-		framesCaptured = 0;
-		framesFailed = 0;
-
-		// this is the first time we are running the camera loop
-		// thus, we will set both the startTimeTotal and the startTime
-		if (!initialized)
-		{
-			initialized = true;
-			startTimeTotal = startTime;
-		}
-
-		++sessions;
-		inSession = true;
-	}
-
-	void StopCounting()
-	{
-		if (inSession)
-		{
-			endTime = std::chrono::high_resolution_clock::now();
-		
-			// add information to the long run
-			inSession = false;
-			endTimeTotal = endTime;
-			framesCapturedTotal += framesCaptured;
-			framesFailedTotal += framesFailed;
-		}
-	}
-
-	inline long long durationInSeconds()
-	{
-		return std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
-	}
-
-	inline long long totalDurationInSeconds()
-	{
-		return std::chrono::duration_cast<std::chrono::seconds>(endTimeTotal - startTimeTotal).count();
-	}
-
-private:
-	bool initialized, inSession;
 };
 
 /**
