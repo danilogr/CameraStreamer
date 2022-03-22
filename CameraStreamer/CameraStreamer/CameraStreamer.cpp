@@ -365,7 +365,7 @@ int main(int argc, char* argv[])
 					if (videoRecorderThread.isRecordingInProgress())
 						videoRecorderThread.StopRecording();
 
-					videoRecorderThread.StartRecording(true, false, "recording1", "");
+					videoRecorderThread.StartRecording(true, false, "manual-recording", "");
 					break;
 			}
 		}
