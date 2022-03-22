@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 		{"tcp-relay", &TCPRelayCamera::Create},
 		#endif //  CS_ENABLE_CAMERA_TCPCLIENT_RELAY
 
-		// Azure Kinect support
+		// OpenCV
 		#ifdef CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
 		{"opencv", &CVVideoCaptureCamera::Create},
 		#endif // CS_ENABLE_CAMERA_CV_VIDEOCAPTURE
@@ -149,7 +149,6 @@ int main(int argc, char* argv[])
 
 			// also, make sure that the streaming software can handle the content comming from the camera
 			// (this only works to disable streaming in case it was expected)
-
 			if (appStatus && appStatus->GetStreamingColorEnabled())
 			{
 				appStatus->SetStreamingColorEnabled(camera->IsColorCameraEnabled());

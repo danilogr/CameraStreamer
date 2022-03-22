@@ -68,12 +68,12 @@ class VideoRecorder
 	static const long long TicksNow()
 	{
 		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-		auto ticks = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
+		auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
 
 		// to suport timezones we can do something like the below.. unfortunately it crashes
 		//auto now = date::make_zoned(date::current_zone(), std::chrono::system_clock::now()).get_local_time();
 
-		return ((long long)ticks.count() / (long long)100) + (long long)621355968000000000;
+		return (long long)ticks.count();// / (long long)100) + (long long)621355968000000000;
 	}
 
 	void RequestInternalStop()
@@ -122,7 +122,7 @@ class VideoRecorder
 
 	// similar to InternalStopRecording. This method is guaranteed to be called by the VideoRecorder thread
 	void InternalStartRecording(const std::string& colorPath, const std::string& depthPath, bool recordColor, bool recordDepth,
-								int colorWidth, int colorHeight, int depthWidth, int depthHeight)
+								int colorWidth, int colorHeight, int depthWidth, int depthHeight, int colorFPS)
 	{
 		// there is a small change that an external request to start a new recording
 		// while a recording is already happening will be ignored because another thread
@@ -145,7 +145,7 @@ class VideoRecorder
 			if (internalIsRecordingColor)
 			{
 	//			vw.open(filenameDepth, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 30, cv::Size(KinectV2Source::cColorWidth, KinectV2Source::cColorHeight));
-				colorVideoWriter.open(internalFilenameColor, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 30, cv::Size(colorWidth, colorHeight));
+				colorVideoWriter.open(internalFilenameColor, cv::VideoWriter::fourcc('F', 'M', 'P', '4'), colorFPS, cv::Size(colorWidth, colorHeight));
 			}
 		}
 		catch (const std::exception& e)
@@ -421,7 +421,7 @@ public:
 
 		// we start recording internally
 		// whenever possible, that is (adds event to the end of the queue)
-		boost::asio::post(io_context, std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight));
+		boost::asio::post(io_context, std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight, appStatus->GetCameraColorFPS()));
 		
 		// we start accepting frame requests
 		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);

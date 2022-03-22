@@ -160,7 +160,7 @@ void CVVideoCaptureCamera::CameraLoop()
 						cvDeviceFrameHeight = device->get(cv::CAP_PROP_FRAME_HEIGHT);
 						cvDeviceFrameRate = device->get(cv::CAP_PROP_FPS);
 
-						if (cameraWidth != cvDeviceFrameWidth || cameraHeight != cvDeviceFrameHeight || cameraFPS != cvDeviceFrameRate)
+						if (cameraWidth != cvDeviceFrameWidth || cameraHeight != cvDeviceFrameHeight || abs(cameraFPS - cvDeviceFrameRate) > 0.01)
 						{
 							Logger::Log(CVVideoCaptureCameraStr) << "Requested " << cameraWidth << "x" << cameraHeight << " at " << cameraFPS
 								<< " but got " << cvDeviceFrameWidth << "x" << cvDeviceFrameHeight << " at " << cvDeviceFrameRate << std::endl;

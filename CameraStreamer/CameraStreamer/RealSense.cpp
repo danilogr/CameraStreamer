@@ -319,11 +319,11 @@ void RealSense::CameraLoop()
 							rs2::depth_frame filteredDepthFrame = depthFrame;
 
 							// filters
-							filteredDepthFrame = dec_filter->process(filteredDepthFrame);
-							filteredDepthFrame = depth_to_disparity->process(filteredDepthFrame);
-							filteredDepthFrame = spat_filter->process(filteredDepthFrame);
-							filteredDepthFrame = temp_filter->process(filteredDepthFrame);
-							filteredDepthFrame = disparity_to_depth->process(filteredDepthFrame);
+							//filteredDepthFrame = dec_filter->process(filteredDepthFrame);
+							//filteredDepthFrame = depth_to_disparity->process(filteredDepthFrame);
+							//filteredDepthFrame = spat_filter->process(filteredDepthFrame);
+							//filteredDepthFrame = temp_filter->process(filteredDepthFrame);
+							//filteredDepthFrame = disparity_to_depth->process(filteredDepthFrame);
 
 							sharedDepthFrame = Frame::Create(depthFrame.get_width(), depthFrame.get_height(), FrameType::Encoding::Mono16);
 							if (!sharedDepthFrame)

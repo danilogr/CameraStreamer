@@ -78,10 +78,11 @@ struct CameraParameters
 	}
 };
 
+
 /*
  * CameraStatistics are the same as a DataSourceStatistics
  */
-struct CameraStatistics : DataSourceStatistics
+struct CameraStatistics : public DataSourceStatistics
 {
 };
 
@@ -95,8 +96,6 @@ struct CameraStatistics : DataSourceStatistics
   */
 class Camera
 {
-
-public:
 
 protected:
 	// camera properties that help us identify the type of camera

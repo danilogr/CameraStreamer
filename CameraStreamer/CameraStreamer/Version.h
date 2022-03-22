@@ -5,6 +5,10 @@ const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
 const unsigned int VERSION_PATCH = 6;
 
+// 1.0.7
+// Timestamps follow POSIX
+// Passing video frame-rate to save video files
+
 // 1.0.6
 // Streaming protocol always sends 4 bytes (LV) - fixed bug with the header including itself in the size
 
