@@ -171,7 +171,8 @@ int main(int argc, char* argv[])
 			if (appStatus && appStatus->HasPendingRequestToRecord())
 			{
 				videoRecorderThread.StartRecording(appStatus->HasPendingRequestToRecordColor(), appStatus->HasPendingRequestToRecordDepth(),
-					appStatus->GetRequestToRecordColorPath(), appStatus->GetRequestToRecordDepthPath());
+					appStatus->GetRequestToRecordColorPath(), appStatus->GetRequestToRecordDepthPath(), appStatus->GetRequestToRecordColorFilename(),
+					appStatus->GetRequestToRecordDepthFilename());
 			}
 
 		};
@@ -236,7 +237,7 @@ int main(int argc, char* argv[])
 			bool recordingColor = (message.HasMember("color") && message["color"].IsBool()) ? message["color"].GetBool() : true; // records color by default
 			bool recordingDepth = (message.HasMember("depth") && message["depth"].IsBool()) ? message["depth"].GetBool() : true; // records depth by default
 
-			std::string recordingColorPath;
+			std::string recordingColorPath, recordingColorFilename;
 			if (recordingColor)
 			{
 				if (message.HasMember("colorPath"))
@@ -246,9 +247,12 @@ int main(int argc, char* argv[])
 					Logger::Log("Remote") << "(startRecording) Color path was not defined!" << std::endl;
 					return;
 				}
+
+				if (message.HasMember("colorFilename"))
+					recordingColorFilename = std::string(message["colorFilename"].GetString(), message["colorFilename"].GetStringLength());
 			}
 
-			std::string recordingDepthPath;
+			std::string recordingDepthPath, recordingDepthFilename;
 
 			if (recordingDepth)
 			{
@@ -259,10 +263,15 @@ int main(int argc, char* argv[])
 					Logger::Log("Remote") << "(startRecording) Depth path was not defined!" << std::endl;
 					return;
 				}
+
+				if (message.HasMember("depthFilename"))
+					recordingDepthFilename = std::string(message["depthFilename"].GetString(), message["depthFilename"].GetStringLength());
 			}
 			
-			appStatusPtr.UpdateIntentToRecord(recordingColor, recordingDepth, recordingColorPath, recordingDepthPath);
-			videoRecorderThread.StartRecording(recordingColor, recordingDepth, recordingColorPath, recordingDepthPath);
+			appStatusPtr.UpdateIntentToRecord(recordingColor, recordingDepth,
+				recordingColorPath, recordingDepthPath, recordingColorFilename, recordingDepthFilename);
+			videoRecorderThread.StartRecording(recordingColor, recordingDepth,
+				recordingColorPath, recordingDepthPath, recordingColorFilename, recordingDepthFilename);
 
 		},
 
@@ -365,7 +374,7 @@ int main(int argc, char* argv[])
 					if (videoRecorderThread.isRecordingInProgress())
 						videoRecorderThread.StopRecording();
 
-					videoRecorderThread.StartRecording(true, false, "manual-recording", "");
+					videoRecorderThread.StartRecording(true, false, "cli-recordings", "");
 					break;
 			}
 		}

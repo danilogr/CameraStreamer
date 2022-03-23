@@ -29,7 +29,8 @@ protected:
 	//
 
 	// recording: path for color and depth files
-	std::string recordingColorPath, recordingDepthPath, requestedRecordingColorPath, requestedRecordingDepthPath;
+	std::string recordingColorPath, recordingDepthPath, requestedRecordingColorPath, requestedRecordingDepthPath,
+		colorFilename, depthFilename, requestedRecordingColorFilename, requestedRecordingDepthFilename;
 	// recording: are we recording?
 	bool isRecordingColor, isRecordingDepth, hasARequestToRecordColor, hasARequestToRecordDepth;
 	// recording: should the camera callback send frames to the recording thread?
@@ -137,25 +138,33 @@ public:
 	  * 
 	  */
 
-	void UpdateIntentToRecord(bool color, bool depth, const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
+	void UpdateIntentToRecord(bool color, bool depth,
+		const std::string& colorPath = std::string(), const std::string& depthPath = std::string(),
+		const std::string& colorFilename = std::string(), const std::string& depthFilename = std::string())
 	{
 		this->hasARequestToRecordColor = color;
 		this->hasARequestToRecordDepth = depth;
 		this->requestedRecordingColorPath = colorPath;
 		this->requestedRecordingDepthPath = depthPath;
+		this->requestedRecordingColorFilename = colorFilename;
+		this->requestedRecordingDepthFilename = depthFilename;
 	}
 
 	bool HasPendingRequestToRecord() const { return (hasARequestToRecordColor || hasARequestToRecordDepth);  }
 
 	const std::string& GetRequestToRecordColorPath() const {return requestedRecordingColorPath; }
 	const std::string& GetRequestToRecordDepthPath() const { return requestedRecordingDepthPath; }
+	const std::string& GetRequestToRecordColorFilename() const { return requestedRecordingColorFilename; }
+	const std::string& GetRequestToRecordDepthFilename() const { return requestedRecordingDepthFilename; }
+
 	bool HasPendingRequestToRecordColor() const { return hasARequestToRecordColor; }
 	bool HasPendingRequestToRecordDepth() const { return hasARequestToRecordDepth; }
 
 	/**
 	 * Updates the application status internally (recording)
 	 **/
-	void UpdateRecordingStatus(bool readyToStartRecording, bool isRecordingColor, bool isRecordingDepth, const std::string& colorPath = std::string(), const std::string& depthPath = std::string())
+	void UpdateRecordingStatus(bool readyToStartRecording, bool isRecordingColor, bool isRecordingDepth, const std::string& colorPath = std::string(), const std::string& depthPath = std::string(),
+		const std::string& colorFilename = std::string(), const std::string& depthFilename = std::string())
 	{
 		std::lock_guard<std::mutex> guard(dataLock);
 
@@ -168,6 +177,8 @@ public:
 		this->isRecordingDepth = isRecordingDepth;
 		this->recordingColorPath = colorPath;
 		this->recordingDepthPath = depthPath;
+		this->colorFilename = colorFilename;
+		this->depthFilename = depthFilename;
 
 	}
 

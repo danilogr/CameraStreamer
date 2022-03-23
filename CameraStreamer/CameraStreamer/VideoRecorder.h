@@ -311,7 +311,7 @@ public:
 	}
 
 
-	bool StartRecording(bool color, bool depth, const std::string& colorPath, const std::string& depthPath)
+	bool StartRecording(bool color, bool depth, const std::string& colorPath, const std::string& depthPath, const std::string& filenameColor=std::string(), const std::string& filenameDepth=std::string())
 	{
 		// if not running
 		if (!sThread)
@@ -402,11 +402,29 @@ public:
 		// creates file names
 		{
 			std::stringstream depthFileName, colorFileName;
-			colorFileName << filePrefix << "_Color_Take-" << externalColorTakeNumber << "_Time-" << timestampNow << ".mp4";
-			depthFileName << filePrefix << "_Depth_Take-" << externalDepthTakeNumber << "_Time-" << timestampNow << ".depth.artemis";
+			if (filenameColor.length() > 0)
+				colorFileName << filenameColor << '-' << timestampNow << ".mp4";
+			else
+				colorFileName << filePrefix << "_Color_Take-" << externalColorTakeNumber << "_Time-" << timestampNow << ".mp4";
+			
+			if (filenameDepth.length() > 0)
+				depthFileName << filenameDepth << '-' << timestampNow << ".mp4";
+			else
+				depthFileName << filePrefix << "_Depth_Take-" << externalDepthTakeNumber << "_Time-" << timestampNow << ".depth";
 		
 			// figure out paths
 			std::filesystem::path colorVideoP(colorFolderPath), depthVideoP(depthFolderPath);
+			colorVideoP = std::filesystem::absolute(colorVideoP);
+			depthVideoP = std::filesystem::absolute(depthVideoP);
+
+			// create paths if they don't exist
+			if (color)
+				std::filesystem::create_directories(colorVideoP);
+
+			if (depth)
+				std::filesystem::create_directories(depthVideoP);
+
+			// adds filenames to the paths
 			colorVideoP.append(colorFileName.str());
 			depthVideoP.append(depthFileName.str());
 
@@ -424,10 +442,15 @@ public:
 		boost::asio::post(io_context, std::bind(&VideoRecorder::InternalStartRecording, this, colorVideoPath, depthVideoPath, color, depth, externalColorWidth, externalColorHeight, externalDepthWidth, externalDepthHeight, appStatus->GetCameraColorFPS()));
 		
 		// we start accepting frame requests
-		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath);
+		appStatus->UpdateRecordingStatus(true, color, depth, colorVideoPath, depthVideoPath, filenameColor, filenameDepth);
 
 		// logs what just happened
-		Logger::Log("Recorder") << "Request to record to " << colorVideoPath << " and "  <<  depthVideoPath << " processed succesfully!" << std::endl;
+		if (color && depth)
+			Logger::Log("Recorder") << "Request to record to " << colorVideoPath << " and "  <<  depthVideoPath << " processed succesfully!" << std::endl;
+		else if (color)
+			Logger::Log("Recorder") << "Request to record to " << colorVideoPath  << " processed succesfully!" << std::endl;
+		else
+			Logger::Log("Recorder") << "Request to record to " << depthVideoPath << " processed succesfully!" << std::endl;
 			
 		return true;
 	}
