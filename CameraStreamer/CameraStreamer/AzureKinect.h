@@ -53,10 +53,11 @@ class AzureKinect : public Camera
 
 	k4a_calibration_intrinsic_parameters_t* intrinsics_color;
 	k4a_calibration_intrinsic_parameters_t* intrinsics_depth;
-	std::string kinectDeviceSerial;
+
 
 
 	static const char* AzureKinectConstStr;
+	static const int AzureKinectSNLength;
 
 public:
 
@@ -155,6 +156,9 @@ protected:
 
 	// opens the default kinect camera
 	bool OpenDefaultKinect();
+
+	// opens a kinect camera given a serial number;
+	bool OpenKinectBySN(const std::string& sn);
 	
 	void saveTransformationTable(int img_width, int img_height);
 

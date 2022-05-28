@@ -3,7 +3,13 @@
 // todo: pull application version from git
 const unsigned int VERSION_MAJOR = 1; // breaking changes
 const unsigned int VERSION_MINOR = 0;
-const unsigned int VERSION_PATCH = 6;
+const unsigned int VERSION_PATCH = 8;
+
+// 1.0.9
+// added support to setting and loading extrinsics
+
+// 1.0.8
+// k4a allows sellecting cameras by serial number
 
 // 1.0.7
 // Timestamps follow POSIX

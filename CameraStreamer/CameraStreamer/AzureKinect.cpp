@@ -6,7 +6,67 @@
 
 // name used in logs
 const char* AzureKinect::AzureKinectConstStr = "AzureKinect";
+const int AzureKinect::AzureKinectSNLength = 12;
 
+bool AzureKinect::OpenKinectBySN(const std::string& sn)
+{
+	if (kinectDevice)
+	{
+		Logger::Log(AzureKinectConstStr) << "Device is already open!" << std::endl;
+		return true;
+	}
+
+	std::vector<std::string> kinectDevicesAvailable;
+	// searchs for the device
+	try
+	{
+		uint32_t k4aDeviceCount = k4a::device::get_installed_count();
+		for (uint32_t i = 0; i < k4aDeviceCount; ++i)
+		{
+			try
+			{
+				kinectDevice = k4a::device::open(i);
+				std::string currentDeviceSN = kinectDevice.get_serialnum();
+				kinectDevicesAvailable.push_back(currentDeviceSN);
+				if (currentDeviceSN.compare(sn)==0)
+				{
+					// found our device! :)
+					return true;
+				}
+				kinectDevice.close();
+			}
+			catch (const k4a::error& e)
+			{
+				// ignores
+			}
+		}
+
+	}
+	catch (const k4a::error& e)
+	{
+		Logger::Log(AzureKinectConstStr) << "Could not open selected ("<< sn <<") device..." << "(" << e.what() << ")" << std::endl;
+		return false;
+	}
+
+	// device not found and no errors were triggered
+	std::stringstream ss;
+
+	if (kinectDevicesAvailable.size() > 0)
+	{
+		ss << kinectDevicesAvailable[0];
+		for (int i = 1; i < kinectDevicesAvailable.size(); ++i)
+		{
+			ss << ", " << kinectDevicesAvailable[i];
+		}
+
+	}
+
+
+	Logger::Log(AzureKinectConstStr) << "Could not open device with serial number: " << sn << ". Current devices available are: " <<
+		ss.str() << std::endl;
+
+	return false;
+}
 
 bool AzureKinect::OpenDefaultKinect()
 {
@@ -127,12 +187,33 @@ void AzureKinect::CameraLoop()
 				std::this_thread::sleep_for(std::chrono::seconds(5));
 			}
 
-			// try opening the device
-			while (!OpenDefaultKinect() && thread_running)
+			// did we define a specific kinect we want?
+
+			if (!configuration->UseFirstCameraAvailable() && configuration->GetCameraSN().length() != AzureKinectSNLength)
 			{
-				// waits one second
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-				Logger::Log(AzureKinectConstStr) << "Trying again..." << std::endl;
+				Logger::Log(AzureKinectConstStr) << "Ignoring serial number \"" << configuration->GetCameraSN() << "\" as "<< AzureKinectSNLength <<" characters are expected!" << std::endl;
+			}
+
+			if (!configuration->UseFirstCameraAvailable() && configuration->GetCameraSN().length() == AzureKinectSNLength)
+			{
+				cameraSerialNumber = configuration->GetCameraSN();
+				Logger::Log(AzureKinectConstStr) << "Opening device with sn " << cameraSerialNumber << std::endl;
+				while (!OpenKinectBySN(cameraSerialNumber))
+				{
+					Logger::Log(AzureKinectConstStr) << "Not found... trying again..." << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+				}
+
+			} else {
+
+
+				// try opening the device
+				while (!OpenDefaultKinect() && thread_running)
+				{
+					// waits one second
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+					Logger::Log(AzureKinectConstStr) << "Trying again..." << std::endl;
+				}
 			}
 
 			//  if we stop the application while waiting...
@@ -567,12 +648,6 @@ bool AzureKinect::LoadConfigurationSettings()
 			// the second fastest speed it can run is 15fps
 			kinectConfiguration.camera_fps = K4A_FRAMES_PER_SECOND_15;
 			Logger::Log(AzureKinectConstStr) << "WARNING! The selected combination of depth and color resolution can run at a max of 15fps!" << std::endl;
-		}
-
-		// what about the device?
-		if (!configuration->UseFirstCameraAvailable())
-		{
-			Logger::Log(AzureKinectConstStr) << "WARNING! We currently do not support selecting a camera based on serial number (Sorry!)" << std::endl;
 		}
 
 		return true;
