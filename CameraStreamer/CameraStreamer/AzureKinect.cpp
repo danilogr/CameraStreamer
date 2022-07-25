@@ -2,11 +2,14 @@
 
 #ifdef CS_ENABLE_CAMERA_K4A
 #include <sstream>
+#include <filesystem>
 
 
 // name used in logs
 const char* AzureKinect::AzureKinectConstStr = "AzureKinect";
 const int AzureKinect::AzureKinectSNLength = 12;
+
+
 
 bool AzureKinect::OpenKinectBySN(const std::string& sn)
 {
@@ -15,6 +18,25 @@ bool AzureKinect::OpenKinectBySN(const std::string& sn)
 		Logger::Log(AzureKinectConstStr) << "Device is already open!" << std::endl;
 		return true;
 	}
+
+	// Reset the device by SN if the AzureKinectFirmwareTool.exe is in the directory
+	std::string azureKinectFirmwareToolPath = "AzureKinectFirmwareTool.exe";
+	
+	// Check if the AzureKinectFirmwareTool.exe is in the current directory
+	if (std::filesystem::exists(azureKinectFirmwareToolPath))
+	{
+		// Reset the device by SN
+		std::stringstream ss;
+		ss << "\"" << azureKinectFirmwareToolPath << "\" -r " << sn;
+		std::string command = ss.str();
+		Logger::Log(AzureKinectConstStr) << "Reset the device by SN: " << command << std::endl;
+		system(command.c_str());
+	}
+	else
+	{
+		Logger::Log(AzureKinectConstStr) << "AzureKinectFirmwareTool.exe is not in the current directory!" << std::endl;
+	}
+	
 
 	std::vector<std::string> kinectDevicesAvailable;
 	// searchs for the device
@@ -330,7 +352,7 @@ void AzureKinect::CameraLoop()
 		if (thread_running && IsAnyCameraEnabled())
 		{
 			// time to start reading frames and streaming
-			unsigned int triesBeforeRestart = 5;
+			unsigned int triesBeforeRestart = 1;
 
 			// updates app with capture and stream status
 			appStatus->UpdateCaptureStatus(colorCameraEnabled, depthCameraEnabled, cameraSerialNumber,
@@ -356,6 +378,22 @@ void AzureKinect::CameraLoop()
 			if (onCameraConnect)
 				onCameraConnect();
 
+			kinectDevice.set_color_control(K4A_COLOR_CONTROL_AUTO_EXPOSURE_PRIORITY, K4A_COLOR_CONTROL_MODE_MANUAL, 0);
+			int proposedGain = 5;
+			int proposedExposure = -5;
+			kinectDevice.set_color_control(K4A_COLOR_CONTROL_GAIN, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>((float)proposedGain * 25.5f));
+			currentGain = proposedGain;
+			Logger::Log(AzureKinectConstStr) << "Gain level: " << currentGain << std::endl;
+			kinectDevice.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, K4A_COLOR_CONTROL_MODE_MANUAL, static_cast<int32_t>(exp2f((float)proposedExposure) *
+				1000000.0f));
+			currentExposure = proposedExposure;
+			Logger::Log(AzureKinectConstStr) << "Exposure level: " << currentExposure << std::endl;
+			
+			getFrameTimeout = std::chrono::milliseconds(2000);
+			getFrameTimeoutMSInt = 2000;
+			Logger::Log(AzureKinectConstStr) << "Set Timeout to: " << getFrameTimeoutMSInt << " milliseconds" << std::endl;
+			std::this_thread::sleep_for(std::chrono::milliseconds(32));
+
 			// capture loop
 			try
 			{
@@ -367,7 +405,8 @@ void AzureKinect::CameraLoop()
 					if (kinectDevice.get_capture(&currentCapture, getFrameTimeout))
 					{
 						std::shared_ptr<Frame> sharedColorFrame, sharedDepthFrame, originalDepthFrame;
-						std::chrono::microseconds timestamp;
+						// init to current time
+						std::chrono::microseconds timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
 
 						// capture color
 						if (colorCameraEnabled)
@@ -380,7 +419,7 @@ void AzureKinect::CameraLoop()
 							//k4a::image colorInDepthFrame = kinectCameraTransformation.color_image_to_depth_camera(depthFrame, colorFrame);
 
 							// copies images to Frame
-							sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), FrameType::Encoding::BGRA32);
+							sharedColorFrame = Frame::Create(colorFrame.get_width_pixels(), colorFrame.get_height_pixels(), colorFrame.get_size());
 							memcpy(sharedColorFrame->data, colorFrame.get_buffer(), sharedColorFrame->size());
 						}
 
@@ -411,7 +450,7 @@ void AzureKinect::CameraLoop()
 
 						// update info
 						++statistics.framesCaptured;
-						triesBeforeRestart = 5;
+						triesBeforeRestart = 1;
 					}
 					else {
 						Logger::Log(AzureKinectConstStr) << "Timed out while getting a frame..." << std::endl;
@@ -420,8 +459,8 @@ void AzureKinect::CameraLoop()
 
 						if (triesBeforeRestart == 0)
 						{
-							Logger::Log(AzureKinectConstStr) << "Tried to get a frame 5 times but failed! Restarting system in 1 second..." << std::endl;
-							std::this_thread::sleep_for(std::chrono::seconds(1));
+							Logger::Log(AzureKinectConstStr) << "Tried to get a frame 1 times but failed! Restarting system in 2 second..." << std::endl;
+							std::this_thread::sleep_for(std::chrono::seconds(2));
 							if (kinectDevice)
 							{
 								kinectDevice.stop_cameras();
@@ -432,6 +471,8 @@ void AzureKinect::CameraLoop()
 							break; // breaks out of the loop
 						}
 					}
+
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				}
 			}
 			catch (const k4a::error& e)
@@ -519,7 +560,8 @@ bool AzureKinect::LoadConfigurationSettings()
 		// first figure out which cameras have been loaded
 		if (configuration->IsColorCameraEnabled())
 		{
-			kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
+			//kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; // for now, we force BGRA32
+			kinectConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_MJPG; // use mjpg insteads
 
 			const int requestedWidth = configuration->GetCameraColorWidth();
 			const int requestedHeight = configuration->GetCameraColorHeight();

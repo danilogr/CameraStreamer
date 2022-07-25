@@ -134,15 +134,24 @@ public:
 			imgWidth = color->getWidth();
 			imgHeight = color->getHeight();
 
-			// todo: better, flexible fix in the future?
-			if (color->getPixelLen() == 3)
-			{ 
-				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC3, color->getData());
-				cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
+			if (color->getEncoding() == FrameType::Encoding::Custom) {
+				// enlarge the vector to the size of the image
+				encodedColorImage.resize(color->size());
+				// copy the data
+				memcpy(encodedColorImage.data(), color->getData(), color->size());
 			}
 			else {
-				cv::Mat colorImage(imgHeight, imgWidth, CV_8UC4, color->getData());
-				cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
+
+				// todo: better, flexible fix in the future?
+				if (color->getPixelLen() == 3)
+				{
+					cv::Mat colorImage(imgHeight, imgWidth, CV_8UC3, color->getData());
+					cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
+				}
+				else {
+					cv::Mat colorImage(imgHeight, imgWidth, CV_8UC4, color->getData());
+					cv::imencode(".jpg", colorImage, encodedColorImage); // todo: use jpegturbo or mozjpeg instead of OpenCV
+				}
 			}
 		}
 

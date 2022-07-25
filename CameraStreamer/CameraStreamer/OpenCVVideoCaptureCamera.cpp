@@ -291,7 +291,7 @@ void CVVideoCaptureCamera::CameraLoop()
 								if (!sharedColorFrame)
 									throw std::bad_alloc();
 
-								assert(colorFrame.get_data_size() == sharedColorFrame->size()); // sanity check for debugging
+								//assert(colorFrame.get_data_size() == sharedColorFrame->size()); // sanity check for debugging
 								memcpy(sharedColorFrame->data, videoFrame.ptr(), sharedColorFrame->size()); // no suppport for stride! (yet)
 
 								// invoke callback
@@ -332,7 +332,7 @@ void CVVideoCaptureCamera::CameraLoop()
 								if (!sharedColorFrame)
 									throw std::bad_alloc();
 
-								assert(colorFrame.get_data_size() == sharedColorFrame->size()); // sanity check for debugging
+								//assert(colorFrame.get_data_size() == sharedColorFrame->size()); // sanity check for debugging
 								memcpy(sharedColorFrame->data, videoFrame.ptr(), sharedColorFrame->size()); // no suppport for stride! (yet)
 
 								// sleep a little bit (to control frame rate)

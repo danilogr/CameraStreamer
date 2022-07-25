@@ -204,7 +204,7 @@ public:
 	virtual ~Frame()
 	{
 		if (customDataAlloc) return; // no dellocation required
-		if (encoding == FrameType::Encoding::Custom) delete[] data;
+		//if (encoding == FrameType::Encoding::Custom) delete[] data; already cover by the default case below
 
 		switch (size())
 		{
