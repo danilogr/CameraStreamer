@@ -1,7 +1,7 @@
 # CameraStreamer
 CameraStreamer facilitates the acquisition, integration, and storage of video streams.
 
-## Building DataPipe
+## Building CameraStreamer
  - Install [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows)
  - Use `vcpkg` to install the following packages:
  - **boost** `vcpkg install boost:x64-windows`
